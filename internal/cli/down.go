@@ -177,20 +177,27 @@ func manifestsForNode(node *dependencyNode) []model.Manifest {
 func deleteK8sEntities(ctx context.Context, manifests []model.Manifest, updateSettings model.UpdateSettings, downDeps DownDeps, deleteNamespaces bool) error {
 	kubeconfigWriter := downDeps.kubeconfigWriter
 	kClient := downDeps.kClient
-	kubeconfigPath, err := kubeconfigWriter.WriteFrozenKubeConfig(
-		ctx,
-		types.NamespacedName{Name: v1alpha1.ClusterNameDefault},
-		kClient.APIConfig())
-	if err != nil {
-		return errors.Wrap(err, "Writing kubeconfig connection")
-	}
-	defer func() {
-		_ = downDeps.fs.Remove(kubeconfigPath)
-	}()
 
 	entities, deleteCmds, err := k8sToDelete(manifests...)
 	if err != nil {
 		return errors.Wrap(err, "Parsing manifest YAML")
+	}
+
+	// If we need to inject the kubeconfig into external
+	// commands, freeze it first, so that we capture all the cli flags.
+	kubeconfigPath := ""
+	if len(deleteCmds) > 0 {
+		var err error
+		kubeconfigPath, err = kubeconfigWriter.WriteFrozenKubeConfig(
+			ctx,
+			types.NamespacedName{Name: v1alpha1.ClusterNameDefault},
+			kClient.APIConfig())
+		if err != nil {
+			return errors.Wrap(err, "Writing kubeconfig connection")
+		}
+		defer func() {
+			_ = downDeps.fs.Remove(kubeconfigPath)
+		}()
 	}
 
 	entities, _, err = k8s.Filter(entities, func(e k8s.K8sEntity) (b bool, err error) {

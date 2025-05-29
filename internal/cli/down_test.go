@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
@@ -271,6 +272,15 @@ func TestDownK8sDeleteCmd_Error(t *testing.T) {
 	if assert.Len(t, calls, 1, "Should have been exactly 1 exec call") {
 		assert.Equal(t, []string{"custom-delete-cmd"}, calls[0].Cmd.Argv)
 	}
+}
+
+func TestDownDockerComposeWithExplodingKubeConfig(t *testing.T) {
+	f := newDownFixture(t)
+
+	f.deps.kClient = k8s.NewExplodingClient(errors.New("could not set up kubernetes client"))
+	f.tfl.Result = newTiltfileLoadResult(newDCManifest())
+	err := f.cmd.down(f.ctx, f.deps, nil)
+	assert.NoError(t, err)
 }
 
 func TestDownDCFails(t *testing.T) {
