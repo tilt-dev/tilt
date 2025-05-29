@@ -11,6 +11,9 @@ import (
 )
 
 func TestOneDockerCompose(t *testing.T) {
+	// Make sure a broken kubeconfig has no effect on docker compose.
+	t.Setenv("KUBECONFIG", "/path/does/not/exist/kubeconfig")
+
 	f := newDCFixture(t, "onedc")
 	f.dockerKillAll("tilt")
 	f.TiltUp()

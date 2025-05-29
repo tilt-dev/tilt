@@ -25,6 +25,12 @@ type explodingClient struct {
 	err error
 }
 
+func NewExplodingClient(err error) Client {
+	return &explodingClient{
+		err: err,
+	}
+}
+
 func (ec *explodingClient) Upsert(ctx context.Context, entities []K8sEntity, timeout time.Duration) ([]K8sEntity, error) {
 	return nil, errors.Wrap(ec.err, "could not set up kubernetes client")
 }
