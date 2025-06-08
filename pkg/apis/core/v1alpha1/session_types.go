@@ -75,6 +75,11 @@ type SessionCISpec struct {
 
 	// Timeout for the whole CI pipeline. Defaults to 30m.
 	Timeout *metav1.Duration `json:"timeout,omitempty" protobuf:"bytes,2,opt,name=timeout"`
+
+	// Timeout for a resource to become ready before the CI pipeline fails.
+	// Measured from the time the resource is started.
+	// Defaults to 5m.
+	ReadinessTimeout *metav1.Duration `json:"readinessTimeout,omitempty" protobuf:"bytes,3,opt,name=readinessTimeout"`
 }
 
 type ExitCondition string
@@ -256,6 +261,8 @@ type TargetStateActive struct {
 	//
 	// If the target does not use or support readiness checks, this is always true.
 	Ready bool `json:"ready" protobuf:"varint,2,opt,name=ready"`
+	// LastReadyTime is when the target last passed readiness checks.
+	LastReadyTime metav1.MicroTime `json:"lastReadyTime" protobuf:"bytes,3,opt,name=lastReadyTime"`
 }
 
 type TargetGraceStatus string

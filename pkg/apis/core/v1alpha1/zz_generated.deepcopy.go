@@ -3222,6 +3222,11 @@ func (in *SessionCISpec) DeepCopyInto(out *SessionCISpec) {
 		*out = new(v1.Duration)
 		**out = **in
 	}
+	if in.ReadinessTimeout != nil {
+		in, out := &in.ReadinessTimeout, &out.ReadinessTimeout
+		*out = new(v1.Duration)
+		**out = **in
+	}
 	return
 }
 
@@ -3455,6 +3460,7 @@ func (in *TargetState) DeepCopy() *TargetState {
 func (in *TargetStateActive) DeepCopyInto(out *TargetStateActive) {
 	*out = *in
 	in.StartTime.DeepCopyInto(&out.StartTime)
+	in.LastReadyTime.DeepCopyInto(&out.LastReadyTime)
 	return
 }
 

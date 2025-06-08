@@ -73,8 +73,8 @@ func TestExitControlCI_FirstBuildFailure(t *testing.T) {
 
 	f.Store.WithState(func(state *store.EngineState) {
 		state.ManifestTargets["fe"].State.AddCompletedBuild(model.BuildRecord{
-			StartTime:  time.Now(),
-			FinishTime: time.Now(),
+			StartTime:  f.clock.Now(),
+			FinishTime: f.clock.Now(),
 			Error:      fmt.Errorf("does not compile"),
 		})
 	})
@@ -92,12 +92,12 @@ func TestExitControlCI_FirstRuntimeFailure(t *testing.T) {
 	f.upsertManifest(m2)
 	f.Store.WithState(func(state *store.EngineState) {
 		state.ManifestTargets["fe"].State.AddCompletedBuild(model.BuildRecord{
-			StartTime:  time.Now(),
-			FinishTime: time.Now(),
+			StartTime:  f.clock.Now(),
+			FinishTime: f.clock.Now(),
 		})
 		state.ManifestTargets["fe2"].State.AddCompletedBuild(model.BuildRecord{
-			StartTime:  time.Now(),
-			FinishTime: time.Now(),
+			StartTime:  f.clock.Now(),
+			FinishTime: f.clock.Now(),
 		})
 	})
 
@@ -183,8 +183,8 @@ func TestExitControlCI_PodRunningContainerError(t *testing.T) {
 	f.upsertManifest(m)
 	f.Store.WithState(func(state *store.EngineState) {
 		state.ManifestTargets["fe"].State.AddCompletedBuild(model.BuildRecord{
-			StartTime:  time.Now(),
-			FinishTime: time.Now(),
+			StartTime:  f.clock.Now(),
+			FinishTime: f.clock.Now(),
 		})
 	})
 
@@ -259,15 +259,15 @@ func TestExitControlCI_Success(t *testing.T) {
 
 	f.Store.WithState(func(state *store.EngineState) {
 		state.ManifestTargets["fe"].State.AddCompletedBuild(model.BuildRecord{
-			StartTime:  time.Now(),
-			FinishTime: time.Now(),
+			StartTime:  f.clock.Now(),
+			FinishTime: f.clock.Now(),
 		})
 		state.ManifestTargets["fe2"].State.AddCompletedBuild(model.BuildRecord{
-			StartTime:  time.Now(),
-			FinishTime: time.Now(),
+			StartTime:  f.clock.Now(),
+			FinishTime: f.clock.Now(),
 		})
 		// pod-a: ready / pod-b: doesn't exist
-		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeStateWithPods(m, pod("pod-a", true))
+		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeStateWithPods(m, f.pod(k8s.PodID("pod-a"), true))
 	})
 
 	f.MustReconcile(sessionKey)
@@ -276,7 +276,7 @@ func TestExitControlCI_Success(t *testing.T) {
 	// pod-a: ready / pod-b: ready
 	f.Store.WithState(func(state *store.EngineState) {
 		mt := state.ManifestTargets["fe2"]
-		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, pod("pod-b", true))
+		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, f.pod(k8s.PodID("pod-b"), true))
 	})
 
 	f.MustReconcile(sessionKey)
@@ -293,12 +293,12 @@ func TestExitControlCI_PodReadinessMode_Wait(t *testing.T) {
 	f.upsertManifest(m)
 	f.Store.WithState(func(state *store.EngineState) {
 		state.ManifestTargets["fe"].State.AddCompletedBuild(model.BuildRecord{
-			StartTime:  time.Now(),
-			FinishTime: time.Now(),
+			StartTime:  f.clock.Now(),
+			FinishTime: f.clock.Now(),
 		})
 
 		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeStateWithPods(m,
-			pod("pod-a", false))
+			f.pod(k8s.PodID("pod-a"), false))
 	})
 
 	f.MustReconcile(sessionKey)
@@ -307,7 +307,7 @@ func TestExitControlCI_PodReadinessMode_Wait(t *testing.T) {
 	f.Store.WithState(func(state *store.EngineState) {
 		mt := state.ManifestTargets["fe"]
 		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
-			pod("pod-a", true),
+			f.pod(k8s.PodID("pod-a"), true),
 		)
 	})
 
@@ -326,8 +326,8 @@ func TestExitControlCI_PodReadinessMode_Ignore_Pods(t *testing.T) {
 	f.upsertManifest(m)
 	f.Store.WithState(func(state *store.EngineState) {
 		state.ManifestTargets["fe"].State.AddCompletedBuild(model.BuildRecord{
-			StartTime:  time.Now(),
-			FinishTime: time.Now(),
+			StartTime:  f.clock.Now(),
+			FinishTime: f.clock.Now(),
 		})
 
 		// created but no pods yet
@@ -340,7 +340,7 @@ func TestExitControlCI_PodReadinessMode_Ignore_Pods(t *testing.T) {
 	f.Store.WithState(func(state *store.EngineState) {
 		mt := state.ManifestTargets["fe"]
 		// pod deployed, but explicitly not ready - we should not care and exit anyway
-		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, pod("pod-a", false))
+		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, f.pod(k8s.PodID("pod-a"), false))
 	})
 
 	f.MustReconcile(sessionKey)
@@ -359,8 +359,8 @@ func TestExitControlCI_PodReadinessMode_Ignore_NoPods(t *testing.T) {
 	f.upsertManifest(m)
 	f.Store.WithState(func(state *store.EngineState) {
 		state.ManifestTargets["fe"].State.AddCompletedBuild(model.BuildRecord{
-			StartTime:  time.Now(),
-			FinishTime: time.Now(),
+			StartTime:  f.clock.Now(),
+			FinishTime: f.clock.Now(),
 		})
 
 		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeState(m)
@@ -391,10 +391,10 @@ func TestExitControlCI_JobSuccess(t *testing.T) {
 	f.upsertManifest(m)
 	f.Store.WithState(func(state *store.EngineState) {
 		state.ManifestTargets["fe"].State.AddCompletedBuild(model.BuildRecord{
-			StartTime:  time.Now(),
-			FinishTime: time.Now(),
+			StartTime:  f.clock.Now(),
+			FinishTime: f.clock.Now(),
 		})
-		krs := store.NewK8sRuntimeStateWithPods(m, pod("pod-a", true))
+		krs := store.NewK8sRuntimeStateWithPods(m, f.pod(k8s.PodID("pod-a"), true))
 		state.ManifestTargets["fe"].State.RuntimeState = krs
 	})
 
@@ -421,8 +421,8 @@ func TestExitControlCI_JobSuccessWithNoPods(t *testing.T) {
 	f.upsertManifest(m)
 	f.Store.WithState(func(state *store.EngineState) {
 		state.ManifestTargets["fe"].State.AddCompletedBuild(model.BuildRecord{
-			StartTime:  time.Now(),
-			FinishTime: time.Now(),
+			StartTime:  f.clock.Now(),
+			FinishTime: f.clock.Now(),
 		})
 	})
 
@@ -491,8 +491,8 @@ func TestExitControlCI_TriggerMode_Local(t *testing.T) {
 				f.Store.WithState(func(state *store.EngineState) {
 					mt := state.ManifestTargets["fe"]
 					mt.State.AddCompletedBuild(model.BuildRecord{
-						StartTime:  time.Now(),
-						FinishTime: time.Now(),
+						StartTime:  f.clock.Now(),
+						FinishTime: f.clock.Now(),
 					})
 				})
 
@@ -510,8 +510,8 @@ func TestExitControlCI_TriggerMode_Local(t *testing.T) {
 							CmdName:                  "echo hi",
 							Status:                   v1alpha1.RuntimeStatusOK,
 							PID:                      1234,
-							StartTime:                time.Now(),
-							LastReadyOrSucceededTime: time.Now(),
+							StartTime:                f.clock.Now(),
+							LastReadyOrSucceededTime: f.clock.Now(),
 							Ready:                    true,
 						}
 					})
@@ -545,8 +545,8 @@ func TestExitControlCI_TriggerMode_K8s(t *testing.T) {
 				f.Store.WithState(func(state *store.EngineState) {
 					mt := state.ManifestTargets["fe"]
 					mt.State.AddCompletedBuild(model.BuildRecord{
-						StartTime:  time.Now(),
-						FinishTime: time.Now(),
+						StartTime:  f.clock.Now(),
+						FinishTime: f.clock.Now(),
 					})
 					mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, successPod("pod-a"))
 				})
@@ -572,8 +572,8 @@ func TestExitControlCI_Disabled(t *testing.T) {
 		m2 := manifestbuilder.New(f, "m2").WithLocalResource("m2", nil).Build()
 		mt2 := store.NewManifestTarget(m2)
 		mt2.State.AddCompletedBuild(model.BuildRecord{
-			StartTime:  time.Now(),
-			FinishTime: time.Now(),
+			StartTime:  f.clock.Now(),
+			FinishTime: f.clock.Now(),
 		})
 		mt2.State.DisableState = v1alpha1.DisableStateEnabled
 		state.UpsertManifestTarget(mt2)
@@ -679,6 +679,10 @@ type fixture struct {
 }
 
 func newFixture(t testing.TB, engineMode store.EngineMode) *fixture {
+	// Fake clock is set to 2006-01-02 15:04:05
+	// This helps ensure that nanosecond rounding in time doesn't break tests.
+	clock := clockwork.NewFakeClockAt(time.Date(2006, time.January, 2, 15, 4, 5, 0, time.UTC))
+
 	cfb := fake.NewControllerFixtureBuilder(t)
 	tdf := tempdir.NewTempDirFixture(t)
 	st := cfb.Store
@@ -692,15 +696,12 @@ func newFixture(t testing.TB, engineMode store.EngineMode) *fixture {
 			Tiltfile: tf,
 		})
 		state.TiltfileStates[mn].AddCompletedBuild(model.BuildRecord{
-			StartTime:  time.Now(),
-			FinishTime: time.Now(),
+			StartTime:  clock.Now(),
+			FinishTime: clock.Now(),
 			Reason:     model.BuildReasonFlagInit,
 		})
 	})
 
-	// Fake clock is set to 2006-01-02 15:04:05
-	// This helps ensure that nanosecond rounding in time doesn't break tests.
-	clock := clockwork.NewFakeClockAt(time.Date(2006, time.January, 2, 15, 4, 5, 0, time.UTC))
 	r := NewReconciler(cfb.Client, st, clock)
 	cf := cfb.Build(r)
 
@@ -790,7 +791,7 @@ func (f *fixture) upsertFailingPod(mn model.ManifestName) {
 	})
 }
 
-func pod(podID k8s.PodID, ready bool) v1alpha1.Pod {
+func (f *fixture) pod(podID k8s.PodID, ready bool) v1alpha1.Pod {
 	return v1alpha1.Pod{
 		Name:  podID.String(),
 		Phase: string(v1.PodRunning),
@@ -799,7 +800,7 @@ func pod(podID k8s.PodID, ready bool) v1alpha1.Pod {
 				ID:    string(podID + "-container"),
 				Ready: ready,
 				State: v1alpha1.ContainerState{
-					Running: &v1alpha1.ContainerStateRunning{StartedAt: metav1.Now()},
+					Running: &v1alpha1.ContainerStateRunning{StartedAt: metav1.NewTime(f.clock.Now())},
 				},
 			},
 		},
@@ -839,4 +840,97 @@ func triggerModeString(v model.TriggerMode) string {
 	default:
 		panic(fmt.Errorf("unknown trigger mode value: %v", v))
 	}
+}
+
+func TestExitControlCI_ReadinessTimeout(t *testing.T) {
+	f := newFixture(t, store.EngineModeCI)
+
+	// Set the session CI spec with a ReadinessTimeout of 30 seconds.
+	var session v1alpha1.Session
+	f.MustGet(types.NamespacedName{Name: "Tiltfile"}, &session)
+	session.Spec.CI = &v1alpha1.SessionCISpec{
+		ReadinessTimeout: &metav1.Duration{Duration: 30 * time.Second},
+	}
+	f.Update(&session)
+
+	// Upsert a manifest with K8sPodReadiness set to Wait so that update target is created.
+	m := manifestbuilder.New(f, "fe").
+		WithK8sPodReadiness(model.PodReadinessWait).
+		WithK8sYAML(testyaml.SanchoYAML).
+		Build()
+	f.upsertManifest(m)
+
+	// Simulate a build and a runtime state with a pod that is not ready.
+	f.Store.WithState(func(state *store.EngineState) {
+		mt := state.ManifestTargets["fe"]
+		mt.State.AddCompletedBuild(model.BuildRecord{
+			StartTime:  f.clock.Now(),
+			FinishTime: f.clock.Now(),
+		})
+		// Set runtime state with a pod that is not ready.
+		mt.State.LastSuccessfulDeployTime = f.clock.Now()
+		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, f.pod(k8s.PodID("pod-test"), false))
+	})
+
+	// Initial reconcile: the readiness timeout should not have been reached yet.
+	f.MustReconcile(sessionKey)
+	f.requireNotDone()
+
+	// Advance the clock by 35 seconds to exceed the 30-second readiness timeout.
+	f.clock.Advance(35 * time.Second)
+	f.MustReconcile(sessionKey)
+	// Expect the CI job to fail with a readiness timeout error.
+	// The expected error message is built as:
+	// "Readiness timeout after 30s: target fe:update not ready"
+	f.requireDoneWithError("Readiness timeout after 30s: target fe:runtime not ready")
+}
+
+func TestExitControlCI_LocalReadinessTimeout(t *testing.T) {
+	f := newFixture(t, store.EngineModeCI)
+
+	// Set the session CI spec with a ReadinessTimeout of 30 seconds.
+	var session v1alpha1.Session
+	f.MustGet(types.NamespacedName{Name: "Tiltfile"}, &session)
+	session.Spec.CI = &v1alpha1.SessionCISpec{
+		ReadinessTimeout: &metav1.Duration{Duration: 30 * time.Second},
+	}
+	f.Update(&session)
+
+	// Upsert a local resource with a serve command so that the serve target is created.
+	m := manifestbuilder.New(f, "local").
+		WithLocalResource("echo hi", nil).
+		WithLocalServeCmd("sleep 9999").
+		Build()
+	f.upsertManifest(m)
+
+	// Simulate a build and a runtime state where the local resource is not ready.
+	f.Store.WithState(func(state *store.EngineState) {
+		mt := state.ManifestTargets["local"]
+		mt.State.AddCompletedBuild(model.BuildRecord{
+			StartTime:  f.clock.Now(),
+			FinishTime: f.clock.Now(),
+		})
+		// Set a local runtime state that is not ready.
+		mt.State.RuntimeState = store.LocalRuntimeState{
+			CmdName:                  "echo hi",
+			Status:                   "Not Ready",
+			PID:                      123,
+			StartTime:                f.clock.Now(),
+			LastReadyOrSucceededTime: time.Time{}, // zero value indicates not ready
+			Ready:                    false,
+		}
+	})
+
+	// Initial reconcile: readiness timeout should not have been reached.
+	f.MustReconcile(sessionKey)
+	f.requireNotDone()
+
+	// Advance the clock by 35 seconds to exceed the 30-second readiness timeout.
+	f.clock.Advance(35 * time.Second)
+	f.MustReconcile(sessionKey)
+
+	// Expect the CI job to fail with a readiness timeout error.
+	// The expected error message is:
+	// "Readiness timeout after 30s: target local:serve not ready"
+	f.requireDoneWithError("Readiness timeout after 30s: target local:serve not ready")
 }

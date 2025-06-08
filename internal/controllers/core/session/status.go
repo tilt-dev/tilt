@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	ctrl "sigs.k8s.io/controller-runtime"
 
@@ -42,22 +43,12 @@ func (r *Reconciler) makeLatestStatus(session *v1alpha1.Session, result *ctrl.Re
 		return status.Targets[i].Name < status.Targets[j].Name
 	})
 
-	r.processExitCondition(session.Spec, &state, &status)
-
-	// If there's a global timeout, schedule a requeue.
-	ci := session.Spec.CI
-	if ci != nil && ci.Timeout != nil && ci.Timeout.Duration > 0 {
-		timeout := ci.Timeout.Duration
-		requeueAfter := timeout - r.clock.Since(session.Status.StartTime.Time)
-		if result.RequeueAfter == 0 || result.RequeueAfter > requeueAfter {
-			result.RequeueAfter = requeueAfter
-		}
-	}
+	r.processExitCondition(session.Spec, &state, &status, result)
 
 	return status
 }
 
-func (r *Reconciler) processExitCondition(spec v1alpha1.SessionSpec, state *store.EngineState, status *v1alpha1.SessionStatus) {
+func (r *Reconciler) processExitCondition(spec v1alpha1.SessionSpec, state *store.EngineState, status *v1alpha1.SessionStatus, result *ctrl.Result) {
 	exitCondition := spec.ExitCondition
 	if exitCondition == v1alpha1.ExitConditionManual {
 		return
@@ -110,6 +101,8 @@ func (r *Reconciler) processExitCondition(spec v1alpha1.SessionSpec, state *stor
 		status.Done = true
 	}
 
+	r.enforceReadinessTimeout(spec, status, result)
+
 	summary := func() string {
 		buf := new(strings.Builder)
 		for _, category := range []struct {
@@ -131,12 +124,70 @@ func (r *Reconciler) processExitCondition(spec v1alpha1.SessionSpec, state *stor
 		return buf.String()
 	}
 
-	// Enforce a global timeout.
+	r.enforceGlobalTimeout(spec, status, summary, result)
+}
+
+func (r *Reconciler) enforceGlobalTimeout(spec v1alpha1.SessionSpec, status *v1alpha1.SessionStatus, summaryFn func() string, result *ctrl.Result) {
+	if status.Done {
+		return
+	}
+
 	ci := spec.CI
-	if status.Error == "" && ci != nil && ci.Timeout != nil && ci.Timeout.Duration > 0 &&
-		r.clock.Since(status.StartTime.Time) > ci.Timeout.Duration {
+	if ci == nil || ci.Timeout == nil || ci.Timeout.Duration <= 0 {
+		return
+	}
+
+	elapsed := r.clock.Since(status.StartTime.Time)
+	if elapsed > ci.Timeout.Duration {
 		status.Done = true
-		status.Error = fmt.Sprintf("Timeout after %s: %v", ci.Timeout.Duration, summary())
+		status.Error = fmt.Sprintf("Timeout after %s: %v", ci.Timeout.Duration, summaryFn())
+	} else {
+		remaining := ci.Timeout.Duration - elapsed
+		if result.RequeueAfter == 0 || result.RequeueAfter > remaining {
+			result.RequeueAfter = remaining
+		}
+	}
+}
+
+func (r *Reconciler) enforceReadinessTimeout(spec v1alpha1.SessionSpec, status *v1alpha1.SessionStatus, result *ctrl.Result) {
+	if status.Done {
+		return
+	}
+	if spec.CI == nil || spec.CI.ReadinessTimeout == nil || spec.CI.ReadinessTimeout.Duration <= 0 {
+		return
+	}
+	readinessTimeout := spec.CI.ReadinessTimeout.Duration
+	minRemaining := readinessTimeout
+	for _, target := range status.Targets {
+		if target.State.Active == nil || target.State.Active.Ready {
+			continue
+		}
+		var refTime time.Time
+		if !target.State.Active.LastReadyTime.IsZero() {
+			refTime = target.State.Active.LastReadyTime.Time
+		} else if !target.State.Active.StartTime.IsZero() {
+			refTime = target.State.Active.StartTime.Time
+		}
+		if refTime.IsZero() {
+			continue
+		}
+		elapsed := r.clock.Since(refTime)
+		if elapsed > readinessTimeout {
+			status.Done = true
+			status.Error = fmt.Sprintf("Readiness timeout after %s: target %s not ready",
+				readinessTimeout, target.Name)
+			return
+		} else {
+			remaining := readinessTimeout - elapsed
+			if remaining < minRemaining {
+				minRemaining = remaining
+			}
+		}
+	}
+	if minRemaining < readinessTimeout {
+		if result.RequeueAfter == 0 || result.RequeueAfter > minRemaining {
+			result.RequeueAfter = minRemaining
+		}
 	}
 }
 

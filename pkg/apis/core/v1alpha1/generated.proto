@@ -2637,6 +2637,11 @@ message SessionCISpec {
 
   // Timeout for the whole CI pipeline. Defaults to 30m.
   optional k8s.io.apimachinery.pkg.apis.meta.v1.Duration timeout = 2;
+
+  // Timeout for a resource to become ready before the CI pipeline fails.
+  // Measured from the time the resource is started.
+  // Defaults to 5m.
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.Duration readinessTimeout = 3;
 }
 
 // SessionList is a list of Session objects.
@@ -2773,6 +2778,9 @@ message TargetStateActive {
   //
   // If the target does not use or support readiness checks, this is always true.
   optional bool ready = 2;
+
+  // LastReadyTime is when the target last passed readiness checks.
+  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime lastReadyTime = 3;
 }
 
 // TargetStateDisabled is a target that has been disabled.

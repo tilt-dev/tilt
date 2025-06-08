@@ -67,6 +67,7 @@ func (r *Reconciler) k8sRuntimeTarget(mt *store.ManifestTarget, ci *v1alpha1.Ses
 	// Ideally, we'd use KubernetesApply's LastApplyStartTime, but this
 	// is LastSuccessfulDeployTime is good enough.
 	createdAt := apis.NewMicroTime(mt.State.LastSuccessfulDeployTime)
+	lastReadyTime := apis.NewMicroTime(krs.LastReadyOrSucceededTime)
 	k8sGracePeriod := time.Duration(0)
 	if ci != nil && ci.K8sGracePeriod != nil {
 		k8sGracePeriod = ci.K8sGracePeriod.Duration
@@ -97,8 +98,9 @@ func (r *Reconciler) k8sRuntimeTarget(mt *store.ManifestTarget, ci *v1alpha1.Ses
 		}
 
 		target.State.Active = &session.TargetStateActive{
-			StartTime: createdAt,
-			Ready:     true,
+			StartTime:     createdAt,
+			Ready:         true,
+			LastReadyTime: lastReadyTime,
 		}
 		return target
 	}
@@ -140,8 +142,9 @@ func (r *Reconciler) k8sRuntimeTarget(mt *store.ManifestTarget, ci *v1alpha1.Ses
 	if status == v1alpha1.RuntimeStatusPending {
 		if v1.PodRunning == phase {
 			target.State.Active = &session.TargetStateActive{
-				StartTime: createdAt,
-				Ready:     false,
+				StartTime:     createdAt,
+				Ready:         false,
+				LastReadyTime: lastReadyTime,
 			}
 			return target
 		}
@@ -181,6 +184,7 @@ func (r *Reconciler) localServeTarget(mt *store.ManifestTarget, holds buildcontr
 	}
 
 	lrs := mt.State.LocalRuntimeState()
+	lastReadyTime := apis.NewMicroTime(lrs.LastReadyOrSucceededTime)
 	if runtimeErr := lrs.RuntimeStatusError(); runtimeErr != nil {
 		target.State.Terminated = &session.TargetStateTerminated{
 			StartTime:  apis.NewMicroTime(lrs.StartTime),
@@ -189,8 +193,9 @@ func (r *Reconciler) localServeTarget(mt *store.ManifestTarget, holds buildcontr
 		}
 	} else if lrs.PID != 0 {
 		target.State.Active = &session.TargetStateActive{
-			StartTime: apis.NewMicroTime(lrs.StartTime),
-			Ready:     lrs.Ready,
+			StartTime:     apis.NewMicroTime(lrs.StartTime),
+			Ready:         lrs.Ready,
+			LastReadyTime: lastReadyTime,
 		}
 	} else if mt.Manifest.TriggerMode.AutoInitial() || mt.State.StartedFirstBuild() {
 		// default to waiting unless this resource has auto_init=False and has never
@@ -232,7 +237,8 @@ func (r *Reconciler) genericRuntimeTarget(mt *store.ManifestTarget, holds buildc
 			StartTime: apis.NewMicroTime(mt.State.LastSuccessfulDeployTime),
 			// generic resources have no readiness concept so they're just ready by default
 			// (this also applies to Docker Compose, since we don't support its health checks)
-			Ready: true,
+			Ready:         true,
+			LastReadyTime: apis.NewMicroTime(mt.State.LastSuccessfulDeployTime),
 		}
 	case v1alpha1.RuntimeStatusError:
 		errMsg := errToString(mt.State.RuntimeState.RuntimeStatusError())
