@@ -6215,6 +6215,12 @@ func schema_pkg_apis_core_v1alpha1_SessionCISpec(ref common.ReferenceCallback) c
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
 						},
 					},
+					"readinessTimeout": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Timeout for a resource to become ready before the CI pipeline fails. Measured from the time the resource is started. Defaults to 5m.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
+						},
+					},
 				},
 			},
 		},
@@ -6598,8 +6604,14 @@ func schema_pkg_apis_core_v1alpha1_TargetStateActive(ref common.ReferenceCallbac
 							Format:      "",
 						},
 					},
+					"lastReadyTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "LastReadyTime is when the target last passed readiness checks.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+						},
+					},
 				},
-				Required: []string{"startTime", "ready"},
+				Required: []string{"startTime", "ready", "lastReadyTime"},
 			},
 		},
 		Dependencies: []string{

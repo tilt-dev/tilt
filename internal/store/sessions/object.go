@@ -33,7 +33,7 @@ func FromTiltfile(tf *v1alpha1.Tiltfile, tlr *tiltfile.TiltfileLoadResult, ciTim
 	}
 
 	if mode == store.EngineModeCI {
-		s.Spec.CI = &v1alpha1.SessionCISpec{Timeout: &metav1.Duration{Duration: time.Duration(ciTimeoutFlag)}}
+		s.Spec.CI = model.DefaultSessionCISpec(ciTimeoutFlag)
 	}
 
 	// TLR may be nil if the tiltfile hasn't finished loading yet.

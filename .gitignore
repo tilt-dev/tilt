@@ -62,3 +62,4 @@ yarn-error.log*
 
 # http caches from running kubectl in integration tests
 integration/.kube
+.aider*

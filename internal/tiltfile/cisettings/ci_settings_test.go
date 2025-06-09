@@ -70,6 +70,21 @@ ci_settings()
 	require.Equal(t, 3*time.Minute, ci.Timeout.Duration)
 }
 
+func TestReadinessTimeout(t *testing.T) {
+	f := newFixture(t)
+	f.File("Tiltfile", `
+ci_settings(readiness_timeout='2m')
+ci_settings()
+`)
+
+	result, err := f.ExecFile("Tiltfile")
+	require.NoError(t, err)
+
+	ci, err := GetState(result)
+	require.NoError(t, err)
+	require.Equal(t, 2*time.Minute, ci.ReadinessTimeout.Duration)
+}
+
 func newFixture(t testing.TB) *starkit.Fixture {
 	return starkit.NewFixture(t, NewPlugin(model.CITimeoutFlag(model.CITimeoutDefault)))
 }

@@ -25,9 +25,7 @@ func NewPlugin(ciTimeoutFlag model.CITimeoutFlag) Plugin {
 }
 
 func (e Plugin) NewState() interface{} {
-	return &v1alpha1.SessionCISpec{
-		Timeout: &metav1.Duration{Duration: time.Duration(e.ciTimeoutFlag)},
-	}
+	return model.DefaultSessionCISpec(e.ciTimeoutFlag)
 }
 
 func (e Plugin) OnStart(env *starkit.Environment) error {
@@ -37,9 +35,11 @@ func (e Plugin) OnStart(env *starkit.Environment) error {
 func (e *Plugin) ciSettings(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var k8sGracePeriod value.Duration = -1
 	var timeout value.Duration = -1
+	var readinessTimeout value.Duration = -1
 	if err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs,
 		"k8s_grace_period?", &k8sGracePeriod,
-		"timeout?", &timeout); err != nil {
+		"timeout?", &timeout,
+		"readiness_timeout?", &readinessTimeout); err != nil {
 		return nil, err
 	}
 
@@ -51,6 +51,10 @@ func (e *Plugin) ciSettings(thread *starlark.Thread, fn *starlark.Builtin, args 
 		if timeout != -1 {
 			settings = settings.DeepCopy()
 			settings.Timeout = &metav1.Duration{Duration: time.Duration(timeout)}
+		}
+		if readinessTimeout != -1 {
+			settings = settings.DeepCopy()
+			settings.ReadinessTimeout = &metav1.Duration{Duration: time.Duration(readinessTimeout)}
 		}
 		return settings
 	})
