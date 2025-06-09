@@ -302,8 +302,9 @@ func TestLogReconnection(t *testing.T) {
 
 	// simulate 15s since we last read a log; this triggers a reconnect
 	f.clock.Advance(15 * time.Second)
-	time.Sleep(20 * time.Millisecond)
-	assert.Error(t, f.kClient.LastPodLogContext.Err())
+	assert.Eventually(t, func() bool {
+		return f.kClient.LastPodLogContext.Err() != nil
+	}, time.Second, time.Millisecond)
 	require.NoError(t, writer.Close())
 
 	f.AssertOutputContains("goodbye world!")
