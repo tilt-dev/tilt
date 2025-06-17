@@ -1,7 +1,6 @@
 import moment from "moment"
 import React from "react"
 import styled from "styled-components"
-import { AnalyticsType } from "./analytics"
 import { usePathBuilder } from "./PathBuilder"
 import { useSnapshotAction } from "./snapshot"
 import { Color, FontSize, SizeUnit } from "./style-helpers"
@@ -18,7 +17,7 @@ const SnapshotBanner = styled.div`
   /* There's a small layout shift in the header
   bar on Detail View because of the scrollbar,
   so offset it on Table View */
-  &.is-${AnalyticsType.Grid} {
+  &.is-grid {
     margin-bottom: -2px;
   }
 `

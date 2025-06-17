@@ -9,7 +9,6 @@ import React, { ChangeEvent, useEffect, useState } from "react"
 import { useHistory, useLocation } from "react-router"
 import styled from "styled-components"
 import { Alert } from "./alerts"
-import { AnalyticsAction, incr } from "./analytics"
 import { ApiButton, ButtonSet } from "./ApiButton"
 import { ReactComponent as AlertSvg } from "./assets/svg/alert.svg"
 import { ReactComponent as CheckmarkSvg } from "./assets/svg/checkmark.svg"
@@ -424,19 +423,13 @@ export function FilterRadioButton(props: FilterRadioButtonProps) {
 
   return (
     <ButtonPill className={props.className}>
-      <ButtonLeftPill
-        className={leftClassName}
-        onClick={onClick}
-        analyticsName="ui.web.filterLevel"
-        analyticsTags={{ level: level, source: props.filterSet.source }}
-      >
+      <ButtonLeftPill className={leftClassName} onClick={onClick}>
         {leftText}
       </ButtonLeftPill>
       <ButtonRightPill
         style={rightStyle}
         className={rightClassName}
         onClick={onMenuOpen}
-        analyticsName="ui.web.filterSourceMenu"
         aria-label={`Select ${level} log sources`}
       >
         {rightText}
@@ -537,10 +530,7 @@ export function FilterTermField({ termFromUrl }: { termFromUrl: FilterTerm }) {
   if (filterTerm) {
     const endAdornment = (
       <InputAdornment position="end">
-        <ClearFilterTermTextButton
-          analyticsName="ui.web.clearFilterTerm"
-          onClick={() => setTerm(EMPTY_TERM, false)}
-        >
+        <ClearFilterTermTextButton onClick={() => setTerm(EMPTY_TERM, false)}>
           <SrOnly>Clear filter term</SrOnly>
           <CloseSvg fill={Color.grayLightest} role="presentation" />
         </ClearFilterTermTextButton>
@@ -568,7 +558,6 @@ export function FilterTermField({ termFromUrl }: { termFromUrl: FilterTerm }) {
         placeholder="Filter by text or /regexp/"
         value={filterTerm}
         variant="outlined"
-        analyticsName="ui.web.filterTerm"
       />
       <SrOnly component="label" htmlFor={FILTER_FIELD_ID}>
         Filter resource logs by text or /regexp/
@@ -619,7 +608,7 @@ export function CopyButton(props: CopyButtonProps) {
   )
 
   return (
-    <ButtonRoot onClick={copyClick} analyticsName="ui.web.actionBar.copyPodID">
+    <ButtonRoot onClick={copyClick}>
       {icon}
       <TruncateText style={{ marginLeft: "8px" }}>
         {props.podId} Pod ID
@@ -739,9 +728,6 @@ export default function OverviewActionBar(props: OverviewActionBarProps) {
       let url = resolveURL(ep.url || "")
       endpointEls.push(
         <Endpoint
-          onClick={() =>
-            void incr("ui.web.endpoint", { action: AnalyticsAction.Click })
-          }
           href={url}
           // We use ep.url as the target, so that clicking the link re-uses the tab.
           target={url}

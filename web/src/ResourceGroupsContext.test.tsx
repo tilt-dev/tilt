@@ -1,12 +1,6 @@
 import { act, render } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import React from "react"
-import { AnalyticsAction, AnalyticsType } from "./analytics"
-import {
-  cleanupMockAnalyticsCalls,
-  expectIncrs,
-  mockAnalyticsCalls,
-} from "./analytics_test_helpers"
 import {
   DEFAULT_GROUP_STATE,
   ResourceGroupsContextProvider,
@@ -31,11 +25,7 @@ const TestConsumer = (props: { labelName?: string }) => {
       )}
       {/* Display a button to toggle the label state if a specific label is present */}
       {props.labelName && (
-        <button
-          onClick={() =>
-            toggleGroupExpanded(props.labelName || "", AnalyticsType.Grid)
-          }
-        />
+        <button onClick={() => toggleGroupExpanded(props.labelName || "")} />
       )}
     </>
   )
@@ -55,12 +45,10 @@ describe("ResourceGroupsContext", () => {
 
   beforeEach(() => {
     localStorage.clear()
-    mockAnalyticsCalls()
   })
 
   afterEach(() => {
     localStorage.clear()
-    cleanupMockAnalyticsCalls()
   })
 
   it("defaults to an empty state with no groups", () => {
@@ -107,23 +95,6 @@ describe("ResourceGroupsContext", () => {
       clickButton()
 
       expect(labelState()).toBe(JSON.stringify({ expanded: false }))
-    })
-
-    it("makes an analytics call with the right payload", () => {
-      const testValues = { test: { expanded: true } }
-      wrapper = renderContainer(
-        <ResourceGroupsContextProvider initialValuesForTesting={testValues}>
-          <TestConsumer labelName="test" />
-        </ResourceGroupsContextProvider>
-      )
-      clickButton()
-      // Expect the "collapse" action value because the test label group is expanded
-      // when it's clicked on and the "grid" type value because it's hardcoded in the
-      // test component
-      expectIncrs({
-        name: "ui.web.resourceGroup",
-        tags: { action: AnalyticsAction.Collapse, type: AnalyticsType.Grid },
-      })
     })
   })
 
@@ -177,7 +148,7 @@ describe("ResourceGroupsContext", () => {
     rerender(tree())
     expect(renderCount).toEqual(1)
 
-    act(() => toggleGroupExpanded("frontend", ""))
+    act(() => toggleGroupExpanded("frontend"))
     expect(renderCount).toEqual(2)
   })
 })

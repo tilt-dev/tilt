@@ -1,7 +1,6 @@
 import React from "react"
 import { Link } from "react-router-dom"
 import styled from "styled-components"
-import { AnalyticsType } from "./analytics"
 import { ReactComponent as DetailViewSvg } from "./assets/svg/detail-view-icon.svg"
 import { ReactComponent as LogoWordmarkSvg } from "./assets/svg/logo-wordmark.svg"
 import { ReactComponent as TableViewSvg } from "./assets/svg/table-view-icon.svg"
@@ -104,10 +103,15 @@ const ViewLinkSection = styled.div`
   margin-right: ${SizeUnit(1)};
 `
 
+export enum HeaderBarPage {
+  Grid = "grid",
+  Detail = "resource-detail",
+}
+
 type HeaderBarProps = {
   view: Proto.webviewView
+  currentPage: HeaderBarPage
   isSocketConnected: boolean
-  currentPage?: AnalyticsType.Detail | AnalyticsType.Grid
 }
 
 export default function HeaderBar({
@@ -134,9 +138,9 @@ export default function HeaderBar({
   const pb = usePathBuilder()
 
   const tableViewLinkClass =
-    currentPage === AnalyticsType.Grid ? "isCurrent" : ""
+    currentPage === HeaderBarPage.Grid ? "isCurrent" : ""
   const detailViewLinkClass =
-    currentPage === AnalyticsType.Detail ? "isCurrent" : ""
+    currentPage === HeaderBarPage.Detail ? "isCurrent" : ""
 
   // TODO (lizz): Consider refactoring nav to use more semantic pattern of ul + li
   return (
@@ -150,7 +154,7 @@ export default function HeaderBar({
           <ViewLink
             to="/overview"
             aria-label="Table view"
-            aria-current={currentPage === AnalyticsType.Grid}
+            aria-current={currentPage == HeaderBarPage.Grid}
           >
             <TableViewIcon className={tableViewLinkClass} role="presentation" />
             <ViewLinkText>Table</ViewLinkText>
@@ -159,7 +163,7 @@ export default function HeaderBar({
           <ViewLink
             to={pb.encpath`/r/(all)/overview`}
             aria-label="Detail view"
-            aria-current={currentPage === AnalyticsType.Detail}
+            aria-current={currentPage == HeaderBarPage.Detail}
           >
             <DetailViewIcon
               className={detailViewLinkClass}

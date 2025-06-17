@@ -1,5 +1,4 @@
 import React, { Component } from "react"
-import { AnalyticsAction, incr } from "./analytics"
 import { ResourceNav, useResourceNav } from "./ResourceNav"
 import { isTargetEditable } from "./shortcut"
 import SidebarItem from "./SidebarItem"
@@ -66,10 +65,6 @@ class SidebarKeyboardShortcuts extends Component<Props> {
         }
         let item = items.find((item) => item.name == selected)
         this.props.onStartBuild()
-        incr("ui.web.triggerResource", {
-          action: AnalyticsAction.Shortcut,
-          target: item?.targetType || "",
-        })
         e.preventDefault()
         break
     }

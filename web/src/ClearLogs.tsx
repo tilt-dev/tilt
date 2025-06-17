@@ -43,11 +43,7 @@ const ClearLogs: React.FC<ClearLogsProps> = ({ resourceName }) => {
   const label = all ? "Clear All Logs" : "Clear Logs"
 
   return (
-    <ClearLogsButton
-      onClick={() => clearLogs(logStore, resourceName)}
-      analyticsName="ui.web.clearLogs"
-      analyticsTags={{ all: all.toString() }}
-    >
+    <ClearLogsButton onClick={() => clearLogs(logStore, resourceName)}>
       {label}
     </ClearLogsButton>
   )

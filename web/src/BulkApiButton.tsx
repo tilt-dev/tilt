@@ -2,7 +2,6 @@ import { ButtonClassKey, ButtonGroup, ButtonProps } from "@material-ui/core"
 import { ClassNameMap } from "@material-ui/styles"
 import React, { useLayoutEffect, useMemo, useState } from "react"
 import styled from "styled-components"
-import { AnalyticsType, Tags } from "./analytics"
 import {
   ApiButtonToggleState,
   ApiButtonType,
@@ -44,8 +43,6 @@ type BulkApiButtonElementProps = ButtonProps & {
   text: string
   confirming: boolean
   disabled: boolean
-  analyticsTags: Tags
-  analyticsName: string
 }
 
 // Styles
@@ -161,24 +158,11 @@ async function bulkUpdateButtonStatus(uiButtons: UIButton[]) {
 }
 
 function BulkSubmitButton(props: BulkApiButtonElementProps) {
-  const {
-    analyticsName,
-    analyticsTags,
-    confirming,
-    disabled,
-    onClick,
-    text,
-    ...buttonProps
-  } = props
+  const { confirming, disabled, onClick, text, ...buttonProps } = props
 
   // Determine display text and accessible button label based on confirmation state
   const displayButtonText = confirming ? "Confirm" : text
   const ariaLabel = confirming ? `Confirm ${text}` : `Trigger ${text}`
-
-  const tags = { ...analyticsTags }
-  if (confirming) {
-    tags.confirm = "true"
-  }
 
   const isConfirmingClass = confirming ? "confirming leftButtonInGroup" : ""
   const classes: Partial<ClassNameMap<ButtonClassKey>> = {
@@ -187,8 +171,6 @@ function BulkSubmitButton(props: BulkApiButtonElementProps) {
 
   return (
     <BulkButtonElementRoot
-      analyticsName={analyticsName}
-      analyticsTags={tags}
       aria-label={ariaLabel}
       classes={classes}
       disabled={disabled}
@@ -201,14 +183,7 @@ function BulkSubmitButton(props: BulkApiButtonElementProps) {
 }
 
 function BulkCancelButton(props: BulkApiButtonElementProps) {
-  const {
-    analyticsName,
-    analyticsTags,
-    confirming,
-    onClick,
-    text,
-    ...buttonProps
-  } = props
+  const { confirming, onClick, text, ...buttonProps } = props
 
   // Don't display the cancel confirmation button if the button
   // group's state isn't confirming
@@ -222,9 +197,7 @@ function BulkCancelButton(props: BulkApiButtonElementProps) {
 
   return (
     <BulkButtonElementRoot
-      analyticsName={analyticsName}
       aria-label={`Cancel ${text}`}
-      analyticsTags={{ confirm: "false", ...analyticsTags }}
       classes={classes}
       onClick={onClick}
       {...buttonProps}
@@ -251,26 +224,6 @@ export function BulkApiButton(props: BulkApiButtonProps) {
   const [confirming, setConfirming] = useState(false)
 
   let buttonCount = String(uiButtons.length)
-  const analyticsTags: Tags = useMemo(() => {
-    let tags: Tags = {
-      component: ApiButtonType.Global,
-      type: AnalyticsType.Grid,
-      bulkCount: buttonCount,
-      bulkAction,
-    }
-
-    if (targetToggleState) {
-      // The `toggleValue` reflects the value of the buttons
-      // when they are clicked, not their updated values
-      tags.toggleValue =
-        targetToggleState === ApiButtonToggleState.On
-          ? ApiButtonToggleState.Off
-          : ApiButtonToggleState.On
-    }
-
-    return tags
-  }, [buttonCount, bulkAction, targetToggleState])
-
   const bulkActionDisabled = !canBulkButtonBeToggled(
     uiButtons,
     targetToggleState
@@ -328,8 +281,6 @@ export function BulkApiButton(props: BulkApiButtonProps) {
       disabled={disabled}
     >
       <BulkSubmitButton
-        analyticsName="ui.web.bulkButton"
-        analyticsTags={analyticsTags}
         confirming={confirming}
         disabled={disabled}
         onClick={onClick}
@@ -337,8 +288,6 @@ export function BulkApiButton(props: BulkApiButtonProps) {
         {...buttonProps}
       ></BulkSubmitButton>
       <BulkCancelButton
-        analyticsName="ui.web.bulkButton"
-        analyticsTags={analyticsTags}
         confirming={confirming}
         disabled={disabled}
         onClick={() => setConfirming(false)}

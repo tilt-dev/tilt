@@ -15,7 +15,6 @@ import { useSidebarContext } from "./SidebarContext"
 import { AnimDuration, Color, Font, FontSize, SizeUnit } from "./style-helpers"
 import { Tooltip } from "@material-ui/core"
 import { mixinResetButtonStyle } from "./style-helpers"
-import { AnalyticsAction } from "./analytics"
 
 let SidebarToggleRoot = styled.div`
   display: flex;
@@ -50,7 +49,6 @@ export function OverviewSidebarToggle() {
         placement={isSidebarOpen ? "right" : "bottom"}
       >
         <ToggleSidebarButton
-          analyticsName="ui.web.sidebarToggle"
           aria-label={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
           onClick={() =>
             isSidebarOpen ? setSidebarClosed() : setSidebarOpen()

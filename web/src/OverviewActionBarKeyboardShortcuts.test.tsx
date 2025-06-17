@@ -1,12 +1,6 @@
 import { render, RenderResult } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import React from "react"
-import { AnalyticsAction } from "./analytics"
-import {
-  cleanupMockAnalyticsCalls,
-  expectIncrs,
-  mockAnalyticsCalls,
-} from "./analytics_test_helpers"
 import { logLinesToString } from "./logs"
 import LogStore from "./LogStore"
 import OverviewActionBarKeyboardShortcuts from "./OverviewActionBarKeyboardShortcuts"
@@ -22,7 +16,6 @@ describe("Detail View keyboard shortcuts", () => {
   let logStore: LogStore
 
   beforeEach(() => {
-    mockAnalyticsCalls()
     logStore = new LogStore()
     openEndpointMock = jest.fn()
     rerender = render(
@@ -35,9 +28,7 @@ describe("Detail View keyboard shortcuts", () => {
     ).rerender
   })
 
-  afterEach(() => {
-    cleanupMockAnalyticsCalls()
-  })
+  afterEach(() => {})
 
   describe("open endpoints", () => {
     it("does NOT open any endpoints if there aren't any", () => {
@@ -79,20 +70,12 @@ describe("Detail View keyboard shortcuts", () => {
       userEvent.keyboard("{Meta>}{Backspace}")
 
       expect(logLinesToString(logStore.allLog(), false)).toEqual("")
-      expectIncrs({
-        name: "ui.web.clearLogs",
-        tags: { action: AnalyticsAction.Shortcut, all: "false" },
-      })
     })
 
     it("clears logs when the CTRL + BACKSPACE keys are pressed", () => {
       userEvent.keyboard("{Control>}{Backspace}")
 
       expect(logLinesToString(logStore.allLog(), false)).toEqual("")
-      expectIncrs({
-        name: "ui.web.clearLogs",
-        tags: { action: AnalyticsAction.Shortcut, all: "false" },
-      })
     })
   })
 })

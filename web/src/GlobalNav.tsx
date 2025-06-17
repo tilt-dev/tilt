@@ -1,6 +1,5 @@
 import React, { Component, useMemo, useRef, useState } from "react"
 import styled from "styled-components"
-import { AnalyticsAction, AnalyticsType, incr } from "./analytics"
 import { ReactComponent as ClusterErrorIcon } from "./assets/svg/close.svg"
 import { ReactComponent as ClusterIcon } from "./assets/svg/cluster-icon.svg"
 import { ReactComponent as HelpIcon } from "./assets/svg/help.svg"
@@ -183,13 +182,6 @@ enum NavDialog {
   Update = "update",
 }
 
-const DIALOG_TO_ANALYTICS_TYPE = {
-  [NavDialog.Account]: AnalyticsType.Account,
-  [NavDialog.Cluster]: AnalyticsType.Cluster,
-  [NavDialog.Help]: AnalyticsType.Shortcut,
-  [NavDialog.Update]: AnalyticsType.Update,
-}
-
 export function GlobalNav(props: GlobalNavProps) {
   const helpButton = useRef<HTMLButtonElement | null>(null)
   const accountButton = useRef<HTMLButtonElement | null>(null)
@@ -206,11 +198,8 @@ export function GlobalNav(props: GlobalNavProps) {
     return null
   }
 
-  function toggleDialog(name: NavDialog, action = AnalyticsAction.Click) {
+  function toggleDialog(name: NavDialog) {
     const dialogIsOpen = openDialog === name
-    if (!dialogIsOpen) {
-      incr("ui.web.menu", { type: DIALOG_TO_ANALYTICS_TYPE[name], action })
-    }
 
     const nextDialogState = dialogIsOpen ? null : name
     setOpenDialog(nextDialogState)
@@ -322,9 +311,7 @@ export function GlobalNav(props: GlobalNavProps) {
         isNewInterface={true}
       />
       <GlobalNavShortcuts
-        toggleHelpDialog={() =>
-          toggleDialog(NavDialog.Help, AnalyticsAction.Shortcut)
-        }
+        toggleHelpDialog={() => toggleDialog(NavDialog.Help)}
         snapshot={props.snapshot}
       />
     </GlobalNavRoot>

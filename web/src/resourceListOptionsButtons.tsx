@@ -1,6 +1,5 @@
 import React, { useCallback, useMemo } from "react"
 import styled from "styled-components"
-import { AnalyticsType } from "./analytics"
 import { ReactComponent as CollapseSvg } from "./assets/svg/collapse.svg"
 import { ReactComponent as ExpandSvg } from "./assets/svg/expand.svg"
 import { InstrumentedButton } from "./instrumentedComponents"
@@ -43,25 +42,13 @@ const CollapseButtonRoot = styled(InstrumentedButton)`
   border-left: 1px solid ${Color.gray50};
 `
 
-const analyticsTags = { type: AnalyticsType.Detail }
-
-export function ExpandButton(props: {
-  disabled: boolean
-  analyticsType: AnalyticsType
-}) {
+export function ExpandButton(props: { disabled: boolean }) {
   let { expandAll } = useResourceGroups()
-  let { analyticsType } = props
-  let analyticsTags = useMemo(() => {
-    return { type: analyticsType }
-  }, [analyticsType])
-
   return (
     <ExpandButtonRoot
       title={"Expand All"}
       variant={"text"}
       onClick={expandAll}
-      analyticsName={"ui.web.expandAllGroups"}
-      analyticsTags={analyticsTags}
       disabled={props.disabled}
     >
       <ExpandSvg width="16px" height="16px" />
@@ -69,29 +56,19 @@ export function ExpandButton(props: {
   )
 }
 
-export function CollapseButton(props: {
-  groups: string[]
-  disabled: boolean
-  analyticsType: AnalyticsType
-}) {
+export function CollapseButton(props: { groups: string[]; disabled: boolean }) {
   let { collapseAll } = useResourceGroups()
-  let { groups, analyticsType } = props
+  let { groups } = props
 
   let onClick = useCallback(() => {
     collapseAll(groups)
   }, [groups, collapseAll])
-
-  let analyticsTags = useMemo(() => {
-    return { type: analyticsType }
-  }, [analyticsType])
 
   return (
     <CollapseButtonRoot
       title={"Collapse All"}
       variant={"text"}
       onClick={onClick}
-      analyticsName={"ui.web.collapseAllGroups"}
-      analyticsTags={analyticsTags}
       disabled={props.disabled}
     >
       <CollapseSvg width="16px" height="16px" />

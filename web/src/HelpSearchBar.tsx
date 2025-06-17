@@ -90,7 +90,6 @@ export function HelpSearchBar(props: { className?: string }) {
       <InputAdornment position="end">
         <ClearHelpSearchBarButton
           onClick={onClearClick}
-          analyticsName="ui.web.clearHelpSearchBar"
           aria-label="Clear search term"
         >
           <CloseSvg role="presentation" fill={Color.grayLightest} />
@@ -106,7 +105,6 @@ export function HelpSearchBar(props: { className?: string }) {
       placeholder="Search Tilt Docs..."
       InputProps={inputProps}
       variant="outlined"
-      analyticsName="ui.web.helpSearchBar"
       onKeyPress={handleKeyPress}
       onChange={handleChange}
     />

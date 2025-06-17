@@ -1,7 +1,6 @@
 import { FormControlLabel } from "@material-ui/core"
 import React, { useCallback, useMemo } from "react"
 import styled from "styled-components"
-import { AnalyticsType } from "./analytics"
 import { Flag, useFeatures } from "./feature"
 import { InstrumentedCheckbox } from "./instrumentedComponents"
 import { getResourceLabels, TILTFILE_LABEL, UNLABELED_LABEL } from "./labels"
@@ -66,8 +65,6 @@ function toGroups(
   return groups
 }
 
-let analyticsTags = { type: AnalyticsType.Grid }
-
 export function OverviewTableDisplayOptions(props: {
   resources?: UIResource[]
 }) {
@@ -99,8 +96,6 @@ export function OverviewTableDisplayOptions(props: {
       <FormControlLabel
         control={
           <DisplayOptionCheckbox
-            analyticsName="ui.web.disabledResourcesToggle"
-            analyticsTags={analyticsTags}
             size="small"
             checked={options.showDisabledResources}
             onClick={toggleDisabledResources}
@@ -108,15 +103,8 @@ export function OverviewTableDisplayOptions(props: {
         }
         label="Show disabled resources"
       />
-      <ExpandButton
-        disabled={!displayResourceGroups}
-        analyticsType={AnalyticsType.Grid}
-      />
-      <CollapseButton
-        groups={groups}
-        disabled={!displayResourceGroups}
-        analyticsType={AnalyticsType.Grid}
-      />
+      <ExpandButton disabled={!displayResourceGroups} />
+      <CollapseButton groups={groups} disabled={!displayResourceGroups} />
     </DisplayOptions>
   )
 }

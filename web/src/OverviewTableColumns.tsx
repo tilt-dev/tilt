@@ -2,7 +2,6 @@ import React, { ChangeEvent, useCallback, useMemo, useState } from "react"
 import { CellProps, Column, HeaderProps, Row } from "react-table"
 import TimeAgo from "react-timeago"
 import styled from "styled-components"
-import { AnalyticsAction, AnalyticsType, incr, Tags } from "./analytics"
 import { ApiButton, ApiIcon, ButtonSet } from "./ApiButton"
 import { ReactComponent as CheckmarkSvg } from "./assets/svg/checkmark.svg"
 import { ReactComponent as CopySvg } from "./assets/svg/copy.svg"
@@ -64,7 +63,6 @@ export type RowValues = {
   endpoints: UILink[]
   mode: TriggerMode
   buttons: ButtonSet
-  analyticsTags: Tags
   selectable: boolean
 }
 
@@ -278,15 +276,9 @@ export function ResourceSelectionHeader({
     }
   }
 
-  const analyticsTags: Tags = {
-    type: AnalyticsType.Grid,
-  }
-
   return (
     <SelectionCheckbox
       aria-label="Resource group selection"
-      analyticsName={"ui.web.checkbox.resourceGroupSelection"}
-      analyticsTags={analyticsTags}
       checked={checked}
       aria-checked={checked}
       indeterminate={indeterminate}
@@ -302,12 +294,7 @@ export function ResourceSelectionHeader({
 export function TableStarColumn({ row }: CellProps<RowValues>) {
   let ctx = useStarredResources()
   return (
-    <OverviewTableStarResourceButton
-      resourceName={row.values.name}
-      analyticsName="ui.web.overviewStarButton"
-      analyticsTags={row.values.analyticsTags}
-      ctx={ctx}
-    />
+    <OverviewTableStarResourceButton resourceName={row.values.name} ctx={ctx} />
   )
 }
 
@@ -336,13 +323,6 @@ export function TableSelectionColumn({ row }: CellProps<RowValues>) {
     [checked, selections]
   )
 
-  const analyticsTags = useMemo(() => {
-    return {
-      ...row.original.analyticsTags,
-      type: AnalyticsType.Grid,
-    }
-  }, [row.original.analyticsTags])
-
   let disabled = !row.original.selectable
   let label = row.original.selectable
     ? "Select resource"
@@ -350,8 +330,6 @@ export function TableSelectionColumn({ row }: CellProps<RowValues>) {
 
   return (
     <SelectionCheckbox
-      analyticsName={"ui.web.checkbox.resourceSelection"}
-      analyticsTags={analyticsTags}
       checked={checked}
       aria-checked={checked}
       onChange={onChange}
@@ -386,7 +364,6 @@ export function TableBuildButtonColumn({ row }: CellProps<RowValues>) {
         isBuilding={trigger.isBuilding}
         triggerMode={row.values.mode}
         isQueued={trigger.isQueued}
-        analyticsTags={row.values.analyticsTags}
         onStartBuild={onStartBuild}
         stopBuildButton={row.original.buttons.stopBuild}
       />
@@ -487,11 +464,7 @@ export function TablePodIDColumn({ row }: CellProps<RowValues>) {
         readOnly={true}
         onClick={() => selectPodIdInput()}
       />
-      <PodIdCopy
-        onClick={copyClick}
-        analyticsName="ui.web.overview.copyPodID"
-        title="Copy Pod ID"
-      >
+      <PodIdCopy onClick={copyClick} title="Copy Pod ID">
         {icon}
       </PodIdCopy>
     </PodId>
@@ -508,9 +481,6 @@ export function TableEndpointColumn({ row }: CellProps<RowValues>) {
     let url = resolveURL(ep.url || "")
     return (
       <Endpoint
-        onClick={() =>
-          void incr("ui.web.endpoint", { action: AnalyticsAction.Click })
-        }
         href={url}
         // We use ep.url as the target, so that clicking the link re-uses the tab.
         target={url}

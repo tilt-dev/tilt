@@ -6,7 +6,6 @@ import {
 import React, { ChangeEvent, useCallback, useState } from "react"
 import { Link } from "react-router-dom"
 import styled from "styled-components"
-import { AnalyticsType, Tags } from "./analytics"
 import {
   DEFAULT_RESOURCE_LIST_LIMIT,
   RESOURCE_LIST_MULTIPLIER,
@@ -271,7 +270,6 @@ const ShowMoreRow = styled.li`
   align-items: center;
   justify-content: right;
 `
-const DETAIL_TYPE_TAGS: Tags = { type: AnalyticsType.Detail }
 
 function SidebarListSectionItems(props: SidebarSectionProps) {
   let [maxItems, setMaxItems] = useState(DEFAULT_RESOURCE_LIST_LIMIT)
@@ -291,7 +289,6 @@ function SidebarListSectionItems(props: SidebarSectionProps) {
       <ShowMoreRow>
         <ShowMoreButton
           onClick={showMore}
-          analyticsTags={DETAIL_TYPE_TAGS}
           currentListSize={maxItems}
           itemCount={props.items.length}
         />
@@ -340,8 +337,7 @@ function SidebarGroupListSection(props: { label: string } & SidebarProps) {
     expanded = true
   }
 
-  const handleChange = (_e: ChangeEvent<{}>) =>
-    toggleGroupExpanded(props.label, AnalyticsType.Detail)
+  const handleChange = (_e: ChangeEvent<{}>) => toggleGroupExpanded(props.label)
 
   // TODO (lizz): Improve the accessibility interface for accordion feature by adding focus styles
   // according to https://www.w3.org/TR/wai-aria-practices-1.1/examples/accordion/accordion.html

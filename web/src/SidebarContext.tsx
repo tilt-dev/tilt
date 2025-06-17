@@ -1,5 +1,4 @@
 import React, { PropsWithChildren, useContext, useState } from "react"
-import { AnalyticsAction, incr } from "./analytics"
 
 export type SidebarContext = {
   isSidebarOpen: boolean

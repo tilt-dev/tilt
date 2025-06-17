@@ -23,7 +23,6 @@ import React, {
 import { convertFromNode, convertFromString } from "react-from-dom"
 import { Link } from "react-router-dom"
 import styled from "styled-components"
-import { Tags } from "./analytics"
 import { annotations } from "./annotations"
 import { ReactComponent as CloseSvg } from "./assets/svg/close.svg"
 import { usePersistentState } from "./BrowserStorage"
@@ -66,7 +65,6 @@ type ApiButtonInputProps = {
   status: UIInputStatus | undefined
   value: any | undefined
   setValue: (name: string, value: any) => void
-  analyticsTags: Tags
 }
 
 type ApiButtonElementProps = ButtonProps & {
@@ -75,8 +73,6 @@ type ApiButtonElementProps = ButtonProps & {
   disabled: boolean
   iconName?: string
   iconSVG?: string
-  analyticsTags: Tags
-  analyticsName: string
 }
 
 // UIButtons for a location, sorted into types
@@ -258,8 +254,6 @@ function ApiButtonInput(props: ApiButtonInputProps) {
           placeholder={props.spec.text?.placeholder}
           value={props.value ?? props.spec.text?.defaultValue ?? ""}
           onChange={(e) => props.setValue(props.spec.name!, e.target.value)}
-          analyticsName="ui.web.uibutton.inputValue"
-          analyticsTags={{ inputType: "text", ...props.analyticsTags }}
           variant="outlined"
           fullWidth
         />
@@ -270,12 +264,7 @@ function ApiButtonInput(props: ApiButtonInputProps) {
     return (
       <ApiButtonInputFormControlLabel
         control={
-          <ApiButtonInputCheckbox
-            id={props.spec.name}
-            checked={isChecked}
-            analyticsName="ui.web.uibutton.inputValue"
-            analyticsTags={{ inputType: "bool", ...props.analyticsTags }}
-          />
+          <ApiButtonInputCheckbox id={props.spec.name} checked={isChecked} />
         }
         label={props.spec.label ?? props.spec.name}
         onChange={(_, checked) => props.setValue(props.spec.name!, checked)}
@@ -325,7 +314,6 @@ function ApiButtonInput(props: ApiButtonInputProps) {
 
 type ApiButtonFormProps = {
   uiButton: UIButton
-  analyticsTags: Tags
   setInputValue: (name: string, value: any) => void
   getInputValue: (name: string) => any | undefined
 }
@@ -346,7 +334,6 @@ export function ApiButtonForm(props: ApiButtonFormProps) {
             status={status}
             value={value}
             setValue={props.setInputValue}
-            analyticsTags={props.analyticsTags}
           />
         )
       })}
@@ -358,7 +345,6 @@ export function ApiButtonForm(props: ApiButtonFormProps) {
 type ApiButtonWithOptionsProps = {
   submit: JSX.Element
   uiButton: UIButton
-  analyticsTags: Tags
   setInputValue: (name: string, value: any) => void
   getInputValue: (name: string) => any | undefined
   className?: string
@@ -375,7 +361,6 @@ function ApiButtonWithOptions(props: ApiButtonWithOptionsProps & ButtonProps) {
     setInputValue,
     getInputValue,
     text,
-    analyticsTags,
     ...buttonProps
   } = props
 
@@ -394,8 +379,6 @@ function ApiButtonWithOptions(props: ApiButtonWithOptionsProps & ButtonProps) {
           onClick={() => {
             setOpen((prevOpen) => !prevOpen)
           }}
-          analyticsName="ui.web.uibutton.inputMenu"
-          analyticsTags={analyticsTags}
           aria-label={`Open ${text} options`}
         >
           <ArrowDropDownIcon />
@@ -492,63 +475,8 @@ export async function updateButtonStatus(
   await tiltApiPut("uibuttons", "status", toUpdate)
 }
 
-function getButtonTags(button: UIButton): Tags {
-  const tags: Tags = {}
-
-  // The location of the button in the UI
-  const component = button.spec?.location?.componentType as ApiButtonType
-  if (component !== undefined) {
-    tags.component = component
-  }
-
-  const buttonAnnotations = annotations(button)
-
-  // A unique hash of the button text to help identify which button was clicked
-  const specHash = buttonAnnotations[UIBUTTON_SPEC_HASH]
-  if (specHash !== undefined) {
-    tags.specHash = specHash
-  }
-
-  // Tilt-specific button annotation, currently only used to differentiate disable toggles
-  const buttonType = buttonAnnotations[UIBUTTON_ANNOTATION_TYPE]
-  if (buttonType !== undefined) {
-    tags.buttonType = buttonType
-  }
-
-  // A toggle button will have a hidden input field with the current value of the toggle
-  // e.g., when a disable button is clicked, the hidden input will be "on" because that's
-  // the toggle's value when it's clicked, _not_ the value it's being toggled to.
-  let toggleInput: UIInputSpec | undefined
-  if (button.spec?.inputs) {
-    toggleInput = button.spec.inputs.find(
-      (input) => input.name === UIBUTTON_TOGGLE_INPUT_NAME
-    )
-  }
-
-  if (toggleInput !== undefined) {
-    const toggleValue = toggleInput.hidden?.value
-    // Only use values defined in `ApiButtonToggleState`, so no user-specific information is saved.
-    // When toggle buttons are exposed in the button extension, this mini allowlist can be revisited.
-    if (
-      toggleValue === ApiButtonToggleState.On ||
-      toggleValue === ApiButtonToggleState.Off
-    ) {
-      tags.toggleValue = toggleValue
-    }
-  }
-
-  return tags
-}
-
 export function ApiCancelButton(props: ApiButtonElementProps) {
-  const {
-    confirming,
-    onClick,
-    analyticsTags,
-    text,
-    analyticsName,
-    ...buttonProps
-  } = props
+  const { confirming, onClick, text, ...buttonProps } = props
 
   // Don't display the cancel confirmation button if the button
   // group's state isn't confirming
@@ -563,9 +491,7 @@ export function ApiCancelButton(props: ApiButtonElementProps) {
 
   return (
     <ApiButtonElementRoot
-      analyticsName={analyticsName}
       aria-label={`Cancel ${text}`}
-      analyticsTags={{ confirm: "false", ...analyticsTags }}
       classes={classes}
       onClick={onClick}
       {...buttonProps}
@@ -613,8 +539,6 @@ export function ApiSubmitButton(
   props: PropsWithChildren<ApiButtonElementProps>
 ) {
   const {
-    analyticsName,
-    analyticsTags,
     confirming,
     disabled,
     onClick,
@@ -628,11 +552,6 @@ export function ApiSubmitButton(
   const displayButtonText = confirming ? "Confirm" : text
   const ariaLabel = confirming ? `Confirm ${text}` : `Trigger ${text}`
 
-  const tags = { ...analyticsTags }
-  if (confirming) {
-    tags.confirm = "true"
-  }
-
   // To pass classes to a MUI component, it's necessary to use `classes`, instead of `className`
   const isConfirmingClass = confirming ? "confirming leftButtonInGroup" : ""
   const classes: Partial<ClassNameMap<ButtonClassKey>> = {
@@ -642,8 +561,6 @@ export function ApiSubmitButton(
   // Note: button text is not included in analytics name since that can be user data
   return (
     <ApiButtonElementRoot
-      analyticsName={analyticsName}
-      analyticsTags={tags}
       aria-label={ariaLabel}
       classes={classes}
       disabled={disabled}
@@ -685,7 +602,6 @@ export function ApiButton(props: PropsWithChildren<ApiButtonProps>) {
   // Reset the confirmation state when the button's name changes
   useLayoutEffect(() => setConfirming(false), [buttonName])
 
-  const tags = useMemo(() => getButtonTags(uiButton), [uiButton])
   const componentType = uiButton.spec?.location?.componentType as ApiButtonType
   const disabled = loading || uiButton.spec?.disabled || false
   const buttonText = uiButton.spec?.text || "Button"
@@ -748,8 +664,6 @@ export function ApiButton(props: PropsWithChildren<ApiButtonProps>) {
       iconName={uiButton.spec?.iconName}
       iconSVG={uiButton.spec?.iconSVG}
       onClick={onClick}
-      analyticsName="ui.web.uibutton"
-      analyticsTags={tags}
       {...buttonProps}
     >
       {props.children}
@@ -773,7 +687,6 @@ export function ApiButton(props: PropsWithChildren<ApiButtonProps>) {
         setInputValue={setInputValue}
         getInputValue={getInputValue}
         aria-label={buttonText}
-        analyticsTags={tags}
         // use-case-wise, it'd probably be better to leave the options button enabled
         // regardless of the submit button's state.
         // However, that's currently a low-impact difference, and this is a really
@@ -793,8 +706,6 @@ export function ApiButton(props: PropsWithChildren<ApiButtonProps>) {
       >
         {submitButton}
         <ApiCancelButton
-          analyticsName="ui.web.uibutton"
-          analyticsTags={tags}
           text={buttonText}
           confirming={confirming}
           disabled={disabled}

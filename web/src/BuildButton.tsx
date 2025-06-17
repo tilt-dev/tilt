@@ -1,6 +1,5 @@
 import React, { useCallback } from "react"
 import styled from "styled-components"
-import { Tags } from "./analytics"
 import { ApiButton } from "./ApiButton"
 import { ReactComponent as StartBuildButtonManualSvg } from "./assets/svg/start-build-button-manual.svg"
 import { ReactComponent as StartBuildButtonSvg } from "./assets/svg/start-build-button.svg"
@@ -18,7 +17,6 @@ export type StartBuildButtonProps = {
   hasPendingChanges: boolean
   isQueued: boolean
   onStartBuild: () => void
-  analyticsTags: Tags
   className?: string
 }
 
@@ -142,8 +140,6 @@ function StartBuildButton(props: StartBuildButtonProps) {
           className={classes.join(" ")}
           disabled={!clickable}
           aria-label={tooltip}
-          analyticsName={"ui.web.triggerResource"}
-          analyticsTags={props.analyticsTags}
         >
           {isEmphasized ? (
             <StartBuildButtonManualSvg

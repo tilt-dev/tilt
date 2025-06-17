@@ -1,6 +1,5 @@
 import React, { MouseEventHandler } from "react"
 import styled from "styled-components"
-import { Tags } from "./analytics"
 import { InstrumentedButton } from "./instrumentedComponents"
 import {
   AnimDuration,
@@ -35,11 +34,9 @@ export function ShowMoreButton({
   itemCount,
   currentListSize,
   onClick,
-  analyticsTags,
 }: {
   itemCount: number
   currentListSize: number
-  analyticsTags: Tags
   onClick: MouseEventHandler
 }) {
   if (itemCount <= currentListSize) {
@@ -50,13 +47,7 @@ export function ShowMoreButton({
 
   return (
     <>
-      <ShowMoreButtonRoot
-        analyticsName="ui.web.showMore"
-        analyticsTags={analyticsTags}
-        onClick={onClick}
-      >
-        …Show more
-      </ShowMoreButtonRoot>
+      <ShowMoreButtonRoot onClick={onClick}>…Show more</ShowMoreButtonRoot>
       <ShowMoreCount aria-label={`${remainingCount} hidden resources`}>
         ({remainingCount})
       </ShowMoreCount>

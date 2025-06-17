@@ -1,5 +1,4 @@
 import { createContext, PropsWithChildren, useContext, useMemo } from "react"
-import { AnalyticsAction, AnalyticsType, incr } from "./analytics"
 import { usePersistentState } from "./BrowserStorage"
 
 export type GroupState = { expanded: boolean }
@@ -11,7 +10,7 @@ export type GroupsState = {
 type ResourceGroupsContext = {
   groups: GroupsState
   getGroup: (groupLabel: string) => GroupState
-  toggleGroupExpanded: (groupLabel: string, page: AnalyticsType) => void
+  toggleGroupExpanded: (groupLabel: string) => void
   expandAll: () => void
   collapseAll: (groups: string[]) => void
 }
@@ -48,17 +47,12 @@ export function ResourceGroupsContextProvider(
   )
 
   const value: ResourceGroupsContext = useMemo(() => {
-    function toggleGroupExpanded(groupLabel: string, page: AnalyticsType) {
+    function toggleGroupExpanded(groupLabel: string) {
       const currentGroupState = groups[groupLabel] ?? { ...DEFAULT_GROUP_STATE }
       const nextGroupState = {
         ...currentGroupState,
         expanded: !currentGroupState.expanded,
       }
-
-      const action = nextGroupState.expanded
-        ? AnalyticsAction.Expand
-        : AnalyticsAction.Collapse
-      incr("ui.web.resourceGroup", { action, type: page })
 
       setGroups((prevState) => {
         return {

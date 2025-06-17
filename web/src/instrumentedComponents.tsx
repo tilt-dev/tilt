@@ -8,25 +8,17 @@ import {
   TextFieldProps,
 } from "@material-ui/core"
 import React, { useMemo } from "react"
-import { AnalyticsAction, incr, Tags } from "./analytics"
 
 // Shared components that implement analytics
 // 1. Saves callers from having to implement/test analytics for every interactive
 //    component.
 // 2. Allows wrappers to cheaply require analytics params.
 
-type InstrumentationProps = {
-  analyticsName: string
-  analyticsTags?: Tags
-}
+type InstrumentationProps = {}
 
 export function InstrumentedButton(props: ButtonProps & InstrumentationProps) {
-  const { analyticsName, analyticsTags, onClick, ...buttonProps } = props
+  const { onClick, ...buttonProps } = props
   const instrumentedOnClick: typeof onClick = (e) => {
-    incr(analyticsName, {
-      action: AnalyticsAction.Click,
-      ...(analyticsTags ?? {}),
-    })
     if (onClick) {
       onClick(e)
     }
@@ -52,23 +44,9 @@ export const textFieldEditDebounceMilliseconds = 5000
 export function InstrumentedTextField(
   props: TextFieldProps & InstrumentationProps
 ) {
-  const { analyticsName, analyticsTags, onChange, ...textFieldProps } = props
-
-  // we have to memoize the debounced function so that incrs reuse the same debounce timer
-  const debouncedIncr = useMemo(
-    () =>
-      // debounce so we don't send analytics for every single keypress
-      debounce((name: string, tags?: Tags) => {
-        incr(name, {
-          action: AnalyticsAction.Edit,
-          ...(tags ?? {}),
-        })
-      }, textFieldEditDebounceMilliseconds),
-    []
-  )
+  const { onChange, ...textFieldProps } = props
 
   const instrumentedOnChange: typeof onChange = (e) => {
-    debouncedIncr(analyticsName, analyticsTags)
     if (onChange) {
       onChange(e)
     }
@@ -80,12 +58,8 @@ export function InstrumentedTextField(
 export function InstrumentedCheckbox(
   props: CheckboxProps & InstrumentationProps
 ) {
-  const { analyticsName, analyticsTags, onChange, ...checkboxProps } = props
+  const { onChange, ...checkboxProps } = props
   const instrumentedOnChange: typeof onChange = (e, checked) => {
-    incr(analyticsName, {
-      action: AnalyticsAction.Edit,
-      ...(analyticsTags ?? {}),
-    })
     if (onChange) {
       onChange(e, checked)
     }

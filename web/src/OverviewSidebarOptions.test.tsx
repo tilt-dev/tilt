@@ -2,12 +2,6 @@ import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import React, { ReactElement } from "react"
 import { MemoryRouter } from "react-router"
-import { AnalyticsAction, AnalyticsType } from "./analytics"
-import {
-  cleanupMockAnalyticsCalls,
-  expectIncrs,
-  mockAnalyticsCalls,
-} from "./analytics_test_helpers"
 import { accessorsForTesting, tiltfileKeyContext } from "./BrowserStorage"
 import Features, { FeaturesTestProvider, Flag } from "./feature"
 import {
@@ -75,12 +69,9 @@ function assertSidebarItemsAndOptions(
   }
 }
 
-beforeEach(() => {
-  mockAnalyticsCalls()
-})
+beforeEach(() => {})
 
 afterEach(() => {
-  cleanupMockAnalyticsCalls()
   localStorage.clear()
   resourceListOptionsAccessor.set({
     ...DEFAULT_OPTIONS,
@@ -157,26 +148,4 @@ it("toggles/untoggles Alerts On Top sorting when button clicked", () => {
 
   userEvent.click(aotToggle)
   assertSidebarItemsAndOptions(container, origOrder, false)
-})
-
-describe("expand-all button", () => {
-  it("sends analytics onclick", () => {
-    const container = renderContainer(<TenResourcesWithLabels />)
-    userEvent.click(screen.getByTitle("Expand All"))
-    expectIncrs({
-      name: "ui.web.expandAllGroups",
-      tags: { action: AnalyticsAction.Click, type: AnalyticsType.Detail },
-    })
-  })
-})
-
-describe("collapse-all button", () => {
-  it("sends analytics onclick", () => {
-    const container = renderContainer(<TenResourcesWithLabels />)
-    userEvent.click(screen.getByTitle("Collapse All"))
-    expectIncrs({
-      name: "ui.web.collapseAllGroups",
-      tags: { action: AnalyticsAction.Click, type: AnalyticsType.Detail },
-    })
-  })
 })

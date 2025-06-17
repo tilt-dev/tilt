@@ -5,10 +5,6 @@ import {
 } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import React from "react"
-import {
-  cleanupMockAnalyticsCalls,
-  mockAnalyticsCalls,
-} from "./analytics_test_helpers"
 import { buttonsByComponent } from "./ApiButton"
 import { mockUIButtonUpdates } from "./ApiButton.testhelpers"
 import Features, { FeaturesTestProvider } from "./feature"
@@ -45,13 +41,10 @@ const OverviewTableBulkActionsTestWrapper = (props: {
 
 describe("OverviewTableBulkActions", () => {
   beforeEach(() => {
-    mockAnalyticsCalls()
     mockUIButtonUpdates()
   })
 
-  afterEach(() => {
-    cleanupMockAnalyticsCalls()
-  })
+  afterEach(() => {})
 
   describe("when there are NO resources selected", () => {
     it("does NOT display", () => {

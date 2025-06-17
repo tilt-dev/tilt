@@ -2,9 +2,8 @@ import React, { useEffect, useState } from "react"
 import SplitPane from "react-split-pane"
 import styled from "styled-components"
 import { Alert, combinedAlerts } from "./alerts"
-import { AnalyticsType } from "./analytics"
 import { ApiButtonType, buttonsForComponent } from "./ApiButton"
-import HeaderBar from "./HeaderBar"
+import HeaderBar, { HeaderBarPage } from "./HeaderBar"
 import { LogUpdateAction, LogUpdateEvent, useLogStore } from "./LogStore"
 import OverviewResourceDetails from "./OverviewResourceDetails"
 import OverviewResourceSidebar from "./OverviewResourceSidebar"
@@ -123,7 +122,7 @@ export default function OverviewResourcePane(props: OverviewResourcePaneProps) {
     <OverviewResourcePaneRoot>
       <HeaderBar
         view={props.view}
-        currentPage={AnalyticsType.Detail}
+        currentPage={HeaderBarPage.Detail}
         isSocketConnected={props.isSocketConnected}
       />
       <StarredResourceBar

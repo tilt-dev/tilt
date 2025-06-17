@@ -26,7 +26,6 @@ import {
 } from "react-table"
 import styled from "styled-components"
 import { buildAlerts, runtimeAlerts } from "./alerts"
-import { AnalyticsType, Tags } from "./analytics"
 import { ApiButtonType, buttonsForComponent } from "./ApiButton"
 import {
   DEFAULT_RESOURCE_LIST_LIMIT,
@@ -278,7 +277,6 @@ export const OverviewGroupName = styled.span`
 export const OverviewGroupDetails = styled(AccordionDetails)`
   ${AccordionDetailsStyleResetMixin}
 `
-const TABLE_TYPE_TAGS: Tags = { type: AnalyticsType.Grid }
 
 const GROUP_INFO_TOOLTIP_ID = "table-groups-info"
 
@@ -408,7 +406,6 @@ function uiResourceToCell(
     ApiButtonType.Resource,
     r.metadata?.name
   )
-  let analyticsTags = { target: resourceTargetType(r) }
   // Consider a resource `selectable` if it can be disabled
   const selectable = !!buttons.toggleDisable
 
@@ -434,7 +431,6 @@ function uiResourceToCell(
     endpoints: res.endpointLinks ?? [],
     mode: res.triggerMode ?? TriggerMode.TriggerModeAuto,
     buttons: buttons,
-    analyticsTags: analyticsTags,
     selectable,
   }
 }
@@ -620,7 +616,6 @@ function ShowMoreResourcesRow({
           itemCount={itemCount}
           currentListSize={pageSize}
           onClick={onClick}
-          analyticsTags={TABLE_TYPE_TAGS}
         />
       </ResourceTableData>
     </ResourceTableRow>
@@ -737,8 +732,7 @@ function TableGroup(props: TableGroupProps) {
 
   const { getGroup, toggleGroupExpanded } = useResourceGroups()
   const { expanded } = getGroup(label)
-  const handleChange = (_e: ChangeEvent<{}>) =>
-    toggleGroupExpanded(label, AnalyticsType.Grid)
+  const handleChange = (_e: ChangeEvent<{}>) => toggleGroupExpanded(label)
 
   return (
     <OverviewGroup expanded={expanded} onChange={handleChange}>
