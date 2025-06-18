@@ -72,7 +72,6 @@ func TestShutdownOnCancel(t *testing.T) {
 function cleanup()
 {
   echo "cleanup time!"
-  exit 1
 }
 
 trap cleanup EXIT
@@ -80,8 +79,6 @@ sleep 100
 `
 	f.start(cmd)
 	f.cancel()
-
-	time.Sleep(time.Second)
 	f.waitForStatus(Done)
 	f.assertLogContains("cleanup time")
 }
