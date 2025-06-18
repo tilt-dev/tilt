@@ -94,8 +94,6 @@ export default function OverviewTableTriggerModeToggle(
       className={isManualTriggerMode ? "is-manual" : ""}
       onClick={onClick}
       title={titleText(isManualTriggerMode)}
-      analyticsName="ui.web.toggleTriggerMode"
-      analyticsTags={{ toMode: desiredMode.toString() }}
     >
       <TriggerModeButtonSvg />
     </StyledTriggerModeToggle>

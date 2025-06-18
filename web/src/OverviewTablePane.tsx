@@ -1,7 +1,6 @@
 import React from "react"
 import styled from "styled-components"
-import { AnalyticsType } from "./analytics"
-import HeaderBar from "./HeaderBar"
+import HeaderBar, { HeaderBarPage } from "./HeaderBar"
 import OverviewTable from "./OverviewTable"
 import { OverviewTableBulkActions } from "./OverviewTableBulkActions"
 import { OverviewTableDisplayOptions } from "./OverviewTableDisplayOptions"
@@ -59,7 +58,7 @@ export default function OverviewTablePane(props: OverviewTablePaneProps) {
       <OverviewTableStickyNav>
         <HeaderBar
           view={props.view}
-          currentPage={AnalyticsType.Grid}
+          currentPage={HeaderBarPage.Grid}
           isSocketConnected={props.isSocketConnected}
         />
         <StarredResourceBar {...starredResourcePropsFromView(props.view, "")} />

@@ -4,12 +4,6 @@ import { createMemoryHistory, MemoryHistory } from "history"
 import { SnackbarProvider } from "notistack"
 import React from "react"
 import { Router } from "react-router"
-import { AnalyticsAction } from "./analytics"
-import {
-  cleanupMockAnalyticsCalls,
-  expectIncrs,
-  mockAnalyticsCalls,
-} from "./analytics_test_helpers"
 import { ButtonSet } from "./ApiButton"
 import { EMPTY_FILTER_TERM, FilterLevel, FilterSource } from "./logfilters"
 import OverviewActionBar, {
@@ -43,13 +37,10 @@ function customRender(
 describe("OverviewActionBar", () => {
   let history: MemoryHistory
   beforeEach(() => {
-    cleanupMockAnalyticsCalls()
-    mockAnalyticsCalls()
     history = createMemoryHistory({ initialEntries: ["/"] })
   })
 
   afterEach(() => {
-    cleanupMockAnalyticsCalls()
     jest.useRealTimers()
   })
 
@@ -84,11 +75,6 @@ describe("OverviewActionBar", () => {
       userEvent.click(screen.getByRole("button", { name: /warnings/i }))
 
       expect(history.location.search).toEqual("?level=warn")
-
-      expectIncrs({
-        name: "ui.web.filterLevel",
-        tags: { action: AnalyticsAction.Click, level: "warn", source: "" },
-      })
     })
 
     it("navigates to build warning filter when both building and warning log filter buttons are clicked", () => {
@@ -98,11 +84,6 @@ describe("OverviewActionBar", () => {
       userEvent.click(screen.getByRole("menuitem", { name: /build/i }))
 
       expect(history.location.search).toEqual("?level=warn&source=build")
-
-      expectIncrs({
-        name: "ui.web.filterSourceMenu",
-        tags: { action: AnalyticsAction.Click },
-      })
     })
   })
 

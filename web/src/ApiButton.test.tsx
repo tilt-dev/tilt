@@ -10,13 +10,6 @@ import fetchMock from "fetch-mock"
 import { SnackbarProvider } from "notistack"
 import React, { PropsWithChildren } from "react"
 import { MemoryRouter } from "react-router"
-import { AnalyticsAction } from "./analytics"
-import {
-  cleanupMockAnalyticsCalls,
-  expectIncrs,
-  mockAnalyticsCalls,
-  nonAnalyticsCalls,
-} from "./analytics_test_helpers"
 import {
   ApiButton,
   ApiButtonType,
@@ -78,15 +71,13 @@ function customRender(
 describe("ApiButton", () => {
   beforeEach(() => {
     localStorage.clear()
-    fetchMock.reset()
-    mockAnalyticsCalls()
     mockUIButtonUpdates()
     Date.now = jest.fn(() => 1482363367071)
   })
 
   afterEach(() => {
     localStorage.clear()
-    cleanupMockAnalyticsCalls()
+    fetchMock.reset()
   })
 
   it("renders a simple button", () => {
@@ -101,29 +92,11 @@ describe("ApiButton", () => {
     expect(screen.getByText(uibutton.spec!.iconName!)).toBeInTheDocument()
   })
 
-  it("sends analytics when clicked", async () => {
-    const uibutton = oneUIButton({})
-    customRender(<ApiButton uiButton={uibutton} />)
-
-    userEvent.click(screen.getByRole("button"))
-
-    await waitFor(() => {
-      expectIncrs({
-        name: "ui.web.uibutton",
-        tags: {
-          action: AnalyticsAction.Click,
-          component: ApiButtonType.Global,
-        },
-      })
-    })
-  })
-
   it("sets a hud error when the api request fails", async () => {
     // To add a mocked error response, reset the current mock
     // for UIButton API call and add back the mock for analytics calls
     // Reset the current mock for UIButton to add fake error response
     fetchMock.reset()
-    mockAnalyticsCalls()
     fetchMock.put(
       (url) => url.startsWith("/proxy/apis/tilt.dev/v1alpha1/uibuttons"),
       { throws: "broken!" }
@@ -208,38 +181,6 @@ describe("ApiButton", () => {
       expect(screen.getByLabelText("text_field_with_default")).toHaveValue("")
     })
 
-    it("propagates analytics tags to text inputs", async () => {
-      // Open the options dialog first
-      const optionButton = screen.getByLabelText(
-        `Open ${uibutton.spec!.text!} options`
-      )
-      userEvent.click(optionButton)
-
-      const booleanInput = screen.getByLabelText("bool_field")
-      userEvent.click(booleanInput)
-
-      expect(screen.getByLabelText("bool_field")).toBeChecked()
-      await waitFor(() => {
-        expectIncrs(
-          {
-            name: "ui.web.uibutton.inputMenu",
-            tags: {
-              action: AnalyticsAction.Click,
-              component: ApiButtonType.Global,
-            },
-          },
-          {
-            name: "ui.web.uibutton.inputValue",
-            tags: {
-              action: AnalyticsAction.Edit,
-              component: ApiButtonType.Global,
-              inputType: "bool",
-            },
-          }
-        )
-      })
-    })
-
     it("submits the current options when the submit button is clicked", async () => {
       // Open the options dialog first
       const optionButton = screen.getByLabelText(
@@ -266,7 +207,7 @@ describe("ApiButton", () => {
             .toBeDisabled
       )
 
-      const calls = nonAnalyticsCalls()
+      const calls = fetchMock.calls()
       expect(calls.length).toEqual(1)
       const call = calls[0]
       expect(call[0]).toEqual(
@@ -330,7 +271,7 @@ describe("ApiButton", () => {
             .toBeDisabled
       )
 
-      const calls = nonAnalyticsCalls()
+      const calls = fetchMock.calls()
       expect(calls.length).toEqual(1)
       const call = calls[0]
       expect(call[0]).toEqual(
@@ -486,7 +427,7 @@ describe("ApiButton", () => {
       userEvent.click(screen.getByLabelText(`Trigger ${uibutton.spec!.text!}`))
 
       // Expect that it should not have submitted the click to the backend
-      expect(nonAnalyticsCalls().length).toEqual(0)
+      expect(fetchMock.calls().length).toEqual(0)
 
       // Click the confirm submit button
       userEvent.click(screen.getByLabelText(`Confirm ${uibutton.spec!.text!}`))
@@ -500,7 +441,7 @@ describe("ApiButton", () => {
       )
 
       // Expect that the click was submitted and the button text resets
-      expect(nonAnalyticsCalls().length).toEqual(1)
+      expect(fetchMock.calls().length).toEqual(1)
       expect(
         screen.getByLabelText(`Trigger ${uibutton.spec!.text!}`)
       ).toHaveTextContent(uibutton.spec!.text!)
@@ -511,13 +452,13 @@ describe("ApiButton", () => {
       userEvent.click(screen.getByLabelText(`Trigger ${uibutton.spec!.text!}`))
 
       // Expect that it should not have submitted the click to the backend
-      expect(nonAnalyticsCalls().length).toEqual(0)
+      expect(fetchMock.calls().length).toEqual(0)
 
       // Click the cancel submit button
       userEvent.click(screen.getByLabelText(`Cancel ${uibutton.spec!.text!}`))
 
       // Expect that NO click was submitted and the button text resets
-      expect(nonAnalyticsCalls().length).toEqual(0)
+      expect(fetchMock.calls().length).toEqual(0)
       expect(
         screen.getByLabelText(`Trigger ${uibutton.spec!.text!}`)
       ).toHaveTextContent(uibutton.spec!.text!)

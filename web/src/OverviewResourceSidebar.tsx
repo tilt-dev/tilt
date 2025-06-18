@@ -15,7 +15,6 @@ import { useSidebarContext } from "./SidebarContext"
 import { AnimDuration, Color, Font, FontSize, SizeUnit } from "./style-helpers"
 import { Tooltip } from "@material-ui/core"
 import { mixinResetButtonStyle } from "./style-helpers"
-import { AnalyticsAction } from "./analytics"
 import { OverviewSidebarToggle } from "./OverviewSidebarToggle"
 
 type OverviewResourceSidebarProps = {

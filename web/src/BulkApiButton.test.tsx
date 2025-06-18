@@ -1,13 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { AnalyticsAction, AnalyticsType } from "./analytics"
-import {
-  cleanupMockAnalyticsCalls,
-  expectIncrs,
-  mockAnalyticsCalls,
-  nonAnalyticsCalls,
-} from "./analytics_test_helpers"
 import { ApiButtonToggleState, ApiButtonType } from "./ApiButton"
+import fetchMock from "fetch-mock"
 import {
   getUIButtonDataFromCall,
   mockUIButtonUpdates,
@@ -33,12 +27,11 @@ const TEST_UIBUTTONS = [
 
 describe("BulkApiButton", () => {
   beforeEach(() => {
-    mockAnalyticsCalls()
     mockUIButtonUpdates()
   })
 
   afterEach(() => {
-    cleanupMockAnalyticsCalls()
+    fetchMock.reset()
   })
 
   it("is disabled when there are no UIButtons", () => {
@@ -133,7 +126,7 @@ describe("BulkApiButton", () => {
     })
 
     it("triggers all buttons that can be toggled when it's clicked", () => {
-      const buttonUpdateCalls = nonAnalyticsCalls()
+      const buttonUpdateCalls = fetchMock.calls()
 
       // Out of the three test buttons, only two of them can be toggled to the target toggle state
       expect(buttonUpdateCalls.length).toBe(2)
@@ -146,20 +139,6 @@ describe("BulkApiButton", () => {
         DISABLE_BUTTON_DB.metadata?.name,
         DISABLE_BUTTON_FRONTEND.metadata?.name,
       ])
-    })
-
-    it("generates the correct analytics payload", () => {
-      expectIncrs({
-        name: "ui.web.bulkButton",
-        tags: {
-          action: AnalyticsAction.Click,
-          bulkAction: BulkAction.Disable,
-          bulkCount: "3",
-          toggleValue: ApiButtonToggleState.On,
-          component: ApiButtonType.Global,
-          type: AnalyticsType.Grid,
-        },
-      })
     })
 
     it("calls a specified onClick callback", () => {
@@ -200,7 +179,7 @@ describe("BulkApiButton", () => {
 
       await waitFor(flushPromises)
 
-      const buttonUpdateCalls = nonAnalyticsCalls()
+      const buttonUpdateCalls = fetchMock.calls()
       expect(buttonUpdateCalls.length).toBe(3)
 
       const buttonUpdateNames = buttonUpdateCalls.map(
@@ -225,67 +204,6 @@ describe("BulkApiButton", () => {
       expect(
         screen.getByLabelText("Trigger Click everything when I'm sure")
       ).toBeTruthy()
-    })
-
-    it("generates the correct analytics payload for confirmation", async () => {
-      userEvent.click(
-        screen.getByLabelText("Confirm Click everything when I'm sure")
-      )
-      await waitFor(flushPromises)
-
-      expectIncrs(
-        {
-          name: "ui.web.bulkButton",
-          tags: {
-            action: AnalyticsAction.Click,
-            bulkAction: BulkAction.Disable,
-            bulkCount: "3",
-            component: ApiButtonType.Global,
-            type: AnalyticsType.Grid,
-          },
-        },
-        {
-          name: "ui.web.bulkButton",
-          tags: {
-            action: AnalyticsAction.Click,
-            bulkAction: BulkAction.Disable,
-            bulkCount: "3",
-            confirm: "true",
-            component: ApiButtonType.Global,
-            type: AnalyticsType.Grid,
-          },
-        }
-      )
-    })
-
-    it("generates the correct analytics payload for cancelation", () => {
-      userEvent.click(
-        screen.getByLabelText("Cancel Click everything when I'm sure")
-      )
-
-      expectIncrs(
-        {
-          name: "ui.web.bulkButton",
-          tags: {
-            action: AnalyticsAction.Click,
-            bulkAction: BulkAction.Disable,
-            bulkCount: "3",
-            component: ApiButtonType.Global,
-            type: AnalyticsType.Grid,
-          },
-        },
-        {
-          name: "ui.web.bulkButton",
-          tags: {
-            action: AnalyticsAction.Click,
-            bulkAction: BulkAction.Disable,
-            bulkCount: "3",
-            confirm: "false",
-            component: ApiButtonType.Global,
-            type: AnalyticsType.Grid,
-          },
-        }
-      )
     })
   })
 

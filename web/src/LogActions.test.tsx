@@ -1,12 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import React from "react"
-import { AnalyticsAction } from "./analytics"
-import {
-  cleanupMockAnalyticsCalls,
-  expectIncrs,
-  mockAnalyticsCalls,
-} from "./analytics_test_helpers"
 import {
   LogFontSizeScaleCSSProperty,
   LogFontSizeScaleLocalStorageKey,
@@ -18,12 +12,10 @@ describe("LogsFontSize", () => {
   beforeEach(() => {
     // CSS won't be loaded in test context, so just explicitly set it
     document.documentElement.style.setProperty("--log-font-scale", "100%")
-    mockAnalyticsCalls()
   })
   afterEach(() => {
     localStorage.clear()
     document.documentElement.style.removeProperty("--log-font-scale")
-    cleanupMockAnalyticsCalls()
   })
 
   const getCSSValue = () =>
@@ -51,10 +43,6 @@ describe("LogsFontSize", () => {
       expect(getCSSValue()).toEqual("95%")
     })
     expect(getLocalStorageValue()).toEqual(`95%`) // JSON serialized
-    expectIncrs({
-      name: "ui.web.zoomLogs",
-      tags: { action: AnalyticsAction.Click, dir: "out" },
-    })
   })
 
   it("has a minimum font scale", async () => {
@@ -76,9 +64,5 @@ describe("LogsFontSize", () => {
       expect(getCSSValue()).toEqual("105%")
     })
     expect(getLocalStorageValue()).toEqual(`105%`)
-    expectIncrs({
-      name: "ui.web.zoomLogs",
-      tags: { action: AnalyticsAction.Click, dir: "in" },
-    })
   })
 })

@@ -1,10 +1,9 @@
 import { StylesProvider } from "@material-ui/core/styles"
-import { History, UnregisterCallback } from "history"
+import { History } from "history"
 import React, { Component } from "react"
 import ReactOutlineManager from "react-outline-manager"
 import { useHistory } from "react-router"
 import { Route, RouteComponentProps, Switch } from "react-router-dom"
-import { incr, navigationToTags } from "./analytics"
 import AnalyticsNudge from "./AnalyticsNudge"
 import AppController from "./AppController"
 import { tiltfileKeyContext } from "./BrowserStorage"
@@ -53,20 +52,13 @@ export default class HUD extends Component<HudProps, HudState> {
   private pathBuilder: PathBuilder
   private controller: AppController
   private history: History
-  private unlisten: UnregisterCallback
 
   constructor(props: HudProps) {
     super(props)
 
-    incr("ui.web.init", { ua: window.navigator.userAgent })
-
     this.pathBuilder = new PathBuilder(window.location)
     this.controller = new AppController(this.pathBuilder, this)
     this.history = props.history
-    this.unlisten = this.history.listen((location, action) => {
-      let tags = navigationToTags(location, action)
-      incr("ui.web.navigation", tags)
-    })
 
     this.state = {
       view: {},
@@ -103,7 +95,6 @@ export default class HUD extends Component<HudProps, HudState> {
 
   componentWillUnmount() {
     this.controller.dispose()
-    this.unlisten()
   }
 
   onAppChange<K extends keyof HudState>(stateUpdates: Pick<HudState, K>) {

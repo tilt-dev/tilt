@@ -88,7 +88,6 @@ export function LocalSnapshotDialog(props: DownloadSnapshotModalProps) {
       </p>
 
       <SaveSnapshotButton
-        analyticsName="ui.web.downloadSnapshot"
         onClick={() => downloadSnapshot(getSnapshot())}
         startIcon={<CameraAlt />}
       >

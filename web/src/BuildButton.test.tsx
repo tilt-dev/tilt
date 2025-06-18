@@ -9,12 +9,6 @@ import fetchMock from "fetch-mock"
 import { SnackbarProvider } from "notistack"
 import React from "react"
 import { MemoryRouter } from "react-router"
-import { AnalyticsAction } from "./analytics"
-import {
-  cleanupMockAnalyticsCalls,
-  expectIncrs,
-  mockAnalyticsCalls,
-} from "./analytics_test_helpers"
 import BuildButton, { StartBuildButtonProps } from "./BuildButton"
 import { oneUIButton } from "./testdata"
 import { BuildButtonTooltip, startBuild } from "./trigger"
@@ -67,7 +61,6 @@ function customRender(
       isQueued={buttonProps.isQueued ?? false}
       hasPendingChanges={buttonProps.hasPendingChanges ?? false}
       triggerMode={buttonProps.triggerMode ?? TriggerMode.TriggerModeAuto}
-      analyticsTags={buttonProps.analyticsTags ?? {}}
     />,
     {
       wrapper: ({ children }) => (
@@ -82,12 +75,11 @@ function customRender(
 
 describe("SidebarBuildButton", () => {
   beforeEach(() => {
-    mockAnalyticsCalls()
     fetchMock.mock("/api/trigger", JSON.stringify({}))
   })
 
   afterEach(() => {
-    cleanupMockAnalyticsCalls()
+    fetchMock.reset()
   })
 
   describe("start builds", () => {
@@ -95,7 +87,6 @@ describe("SidebarBuildButton", () => {
       customRender({
         onStartBuild: () => startBuild("doggos"),
         hasBuilt: true,
-        analyticsTags: { target: "k8s" },
       })
 
       const buildButton = screen.getByLabelText(BuildButtonTooltip.Default)
@@ -113,15 +104,10 @@ describe("SidebarBuildButton", () => {
       expect(preventDefault).toHaveBeenCalled()
       expect(stopPropagation).toHaveBeenCalled()
 
-      expectIncrs({
-        name: "ui.web.triggerResource",
-        tags: { action: AnalyticsAction.Click, target: "k8s" },
-      })
-
-      expect(fetchMock.calls().length).toEqual(2)
-      expect(fetchMock.calls()[1][0]).toEqual("/api/trigger")
-      expect(fetchMock.calls()[1][1]?.method).toEqual("post")
-      expect(fetchMock.calls()[1][1]?.body).toEqual(
+      expect(fetchMock.calls().length).toEqual(1)
+      expect(fetchMock.calls()[0][0]).toEqual("/api/trigger")
+      expect(fetchMock.calls()[0][1]?.method).toEqual("post")
+      expect(fetchMock.calls()[0][1]?.body).toEqual(
         JSON.stringify({
           manifest_names: ["doggos"],
           build_reason: 16 /* BuildReasonFlagTriggerWeb */,

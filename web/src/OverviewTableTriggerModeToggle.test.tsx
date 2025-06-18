@@ -1,11 +1,6 @@
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import fetchMock from "fetch-mock"
-import {
-  cleanupMockAnalyticsCalls,
-  mockAnalyticsCalls,
-  nonAnalyticsCalls,
-} from "./analytics_test_helpers"
 import OverviewTableTriggerModeToggle, {
   ToggleTriggerModeTooltip,
 } from "./OverviewTableTriggerModeToggle"
@@ -20,13 +15,11 @@ function mockTriggerModeCalls() {
 
 describe("OverviewTableTriggerModeToggle", () => {
   beforeEach(() => {
-    fetchMock.reset()
-    mockAnalyticsCalls()
     mockTriggerModeCalls()
   })
 
   afterEach(() => {
-    cleanupMockAnalyticsCalls()
+    fetchMock.reset()
   })
 
   test.each([TriggerMode.TriggerModeManual, TriggerMode.TriggerModeAuto])(
@@ -46,7 +39,7 @@ describe("OverviewTableTriggerModeToggle", () => {
       const triggerModeButton = screen.getByTitle(tooltipText)
       userEvent.click(triggerModeButton)
 
-      const calls = nonAnalyticsCalls()
+      const calls = fetchMock.calls()
       expect(calls.length).toEqual(1)
       const call = calls[0]
       expect(call[0]).toEqual("/api/override/trigger_mode")

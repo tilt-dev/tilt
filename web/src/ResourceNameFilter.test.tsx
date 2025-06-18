@@ -2,12 +2,6 @@ import { render, RenderOptions, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import React from "react"
 import { MemoryRouter } from "react-router"
-import { AnalyticsAction } from "./analytics"
-import {
-  cleanupMockAnalyticsCalls,
-  expectIncrs,
-  mockAnalyticsCalls,
-} from "./analytics_test_helpers"
 import { accessorsForTesting, tiltfileKeyContext } from "./BrowserStorage"
 import {
   DEFAULT_OPTIONS,
@@ -36,13 +30,11 @@ function customRender(component: JSX.Element, options?: RenderOptions) {
 
 describe("ResourceNameFilter", () => {
   beforeEach(() => {
-    mockAnalyticsCalls()
     sessionStorage.clear()
     localStorage.clear()
   })
 
   afterEach(() => {
-    cleanupMockAnalyticsCalls()
     sessionStorage.clear()
     localStorage.clear()
   })
@@ -61,21 +53,6 @@ describe("ResourceNameFilter", () => {
     customRender(<ResourceNameFilter />)
 
     expect(screen.queryByLabelText("Clear name filter")).toBeNull()
-  })
-
-  it("reports analytics when input is cleared", () => {
-    resourceListOptionsAccessor.set({
-      ...DEFAULT_OPTIONS,
-      resourceNameFilter: "wow again",
-    })
-    customRender(<ResourceNameFilter />)
-
-    userEvent.click(screen.getByLabelText("Clear name filter"))
-
-    expectIncrs({
-      name: "ui.web.clearResourceNameFilter",
-      tags: { action: AnalyticsAction.Click },
-    })
   })
 
   describe("persistent state", () => {

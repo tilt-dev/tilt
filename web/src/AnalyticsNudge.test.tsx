@@ -3,10 +3,6 @@ import userEvent from "@testing-library/user-event"
 import fetchMock, { MockResponseObject } from "fetch-mock"
 import React from "react"
 import AnalyticsNudge, { NUDGE_TIMEOUT_MS } from "./AnalyticsNudge"
-import {
-  cleanupMockAnalyticsCalls,
-  mockAnalyticsCalls,
-} from "./analytics_test_helpers"
 
 function mockAnalyticsOptInOnce(optIn = true, error = false) {
   const response: MockResponseObject = error ? { status: 500 } : {}
@@ -17,9 +13,7 @@ function mockAnalyticsOptInOnce(optIn = true, error = false) {
 }
 
 describe("AnalyticsNudge", () => {
-  beforeEach(() => mockAnalyticsCalls())
-
-  afterEach(() => cleanupMockAnalyticsCalls())
+  afterEach(() => fetchMock.reset())
 
   it("shows nudge if `needNudge` is true and no request has been made", () => {
     render(<AnalyticsNudge needsNudge={true} />)

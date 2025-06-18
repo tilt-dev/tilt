@@ -110,12 +110,7 @@ export function TiltInfoTooltip(
     content = (
       <>
         <div>{title}</div>
-        <DismissButton
-          size="small"
-          analyticsName={"ui.web.dismissTooltip"}
-          analyticsTags={{ tooltip: props.dismissId }}
-          onClick={() => setDismissed(true)}
-        >
+        <DismissButton size="small" onClick={() => setDismissed(true)}>
           Don't show this tip
         </DismissButton>
       </>

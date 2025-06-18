@@ -215,14 +215,12 @@ export function StarredResource(props: {
           onClick={() => {
             history.push(href)
           }}
-          analyticsName="ui.web.starredResourceBarResource"
         >
           {starredResourceIcon}
           <StarredResourceLabel>{props.resource.name}</StarredResourceLabel>
         </ResourceButton>
         <StarButton
           onClick={onClick}
-          analyticsName="ui.web.starredResourceBarUnstar"
           aria-label={`Unstar ${props.resource.name}`}
         >
           <StarIcon />
@@ -251,7 +249,6 @@ function StarredResourceAggregate(props: { isSelected: boolean }) {
           onClick={() => {
             history.push(href)
           }}
-          analyticsName="ui.web.starredResourcesAggregatedLogs"
         >
           <StarredResourceLabel>All Starred</StarredResourceLabel>
         </ResourceButton>

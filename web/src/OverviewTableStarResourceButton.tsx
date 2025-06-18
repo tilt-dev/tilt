@@ -1,6 +1,5 @@
 import React from "react"
 import styled from "styled-components"
-import { Tags } from "./analytics"
 import { ReactComponent as StarSvg } from "./assets/svg/star.svg"
 import { InstrumentedButton } from "./instrumentedComponents"
 import { StarredResourcesContext } from "./StarredResourcesContext"
@@ -39,15 +38,13 @@ let StyledStarSvg = styled(StarSvg)`
 
 type StarResourceButtonProps = {
   resourceName: string
-  analyticsName: string
   ctx: StarredResourcesContext
-  analyticsTags: Tags
 }
 
 export default function OverviewTableStarResourceButton(
   props: StarResourceButtonProps
 ): JSX.Element {
-  let { ctx, resourceName, analyticsTags } = props
+  let { ctx, resourceName } = props
   let isStarred =
     ctx.starredResources && ctx.starredResources.includes(resourceName)
 
@@ -67,11 +64,6 @@ export default function OverviewTableStarResourceButton(
     <StyledTableStarResourceButton
       title={title}
       onClick={() => ctx.toggleStarResource(resourceName)}
-      analyticsName={props.analyticsName}
-      analyticsTags={{
-        newStarState: (!isStarred).toString(),
-        ...analyticsTags,
-      }}
     >
       <StyledStarSvg className={classes} />
     </StyledTableStarResourceButton>

@@ -4,7 +4,6 @@ import React, {
   useEffect,
   useState,
 } from "react"
-import { AnalyticsAction, incr } from "./analytics"
 import { usePersistentState } from "./BrowserStorage"
 
 export type StarredResourcesContext = {
@@ -76,22 +75,11 @@ export function StarredResourcesContextProvider(
     props.initialValueForTesting ?? []
   )
 
-  useEffect(() => {
-    incr("ui.web.star", {
-      starCount: starredResources.length.toString(),
-      action: AnalyticsAction.Load,
-    })
-    // empty deps because we only want to report the loaded star count once per app load
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  useEffect(() => {}, [])
 
   function starResource(name: string) {
     setStarredResources((prevState) => {
       const ret = prevState.includes(name) ? prevState : [...prevState, name]
-      incr("ui.web.star", {
-        starCount: ret.length.toString(),
-        action: AnalyticsAction.Star,
-      })
       return ret
     })
   }
@@ -99,10 +87,6 @@ export function StarredResourcesContextProvider(
   function unstarResource(name: string) {
     setStarredResources((prevState) => {
       const ret = prevState.filter((n) => n !== name)
-      incr("ui.web.star", {
-        starCount: ret.length.toString(),
-        action: AnalyticsAction.Unstar,
-      })
       return ret
     })
   }

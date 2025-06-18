@@ -3,10 +3,6 @@ import userEvent from "@testing-library/user-event"
 import { SnackbarProvider } from "notistack"
 import React, { ReactElement } from "react"
 import { MemoryRouter } from "react-router"
-import {
-  cleanupMockAnalyticsCalls,
-  mockAnalyticsCalls,
-} from "./analytics_test_helpers"
 import { ApiButtonRoot } from "./ApiButton"
 import Features, { FeaturesTestProvider, Flag } from "./feature"
 import { GroupByLabelView, TILTFILE_LABEL, UNLABELED_LABEL } from "./labels"
@@ -359,13 +355,11 @@ describe("overview table with groups", () => {
       new LogStore()
     )
 
-    mockAnalyticsCalls()
     sessionStorage.clear()
     localStorage.clear()
   })
 
   afterEach(() => {
-    cleanupMockAnalyticsCalls()
     sessionStorage.clear()
     localStorage.clear()
   })

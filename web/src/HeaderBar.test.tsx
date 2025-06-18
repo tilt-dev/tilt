@@ -3,8 +3,7 @@ import userEvent from "@testing-library/user-event"
 import React from "react"
 import { act } from "react-dom/test-utils"
 import { MemoryRouter } from "react-router-dom"
-import { AnalyticsType } from "./analytics"
-import HeaderBar from "./HeaderBar"
+import HeaderBar, { HeaderBarPage } from "./HeaderBar"
 import { SnapshotActionTestProvider } from "./snapshot"
 import { nResourceView } from "./testdata"
 
@@ -25,7 +24,7 @@ describe("HeaderBar", () => {
           <SnapshotActionTestProvider value={snapshotAction}>
             <HeaderBar
               view={nResourceView(2)}
-              currentPage={AnalyticsType.Detail}
+              currentPage={HeaderBarPage.Detail}
               isSocketConnected={true}
             />
           </SnapshotActionTestProvider>

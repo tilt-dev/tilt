@@ -1,7 +1,6 @@
 import React from "react"
 import { MemoryRouter } from "react-router"
-import { AnalyticsType } from "./analytics"
-import HeaderBar from "./HeaderBar"
+import HeaderBar, { HeaderBarPage } from "./HeaderBar"
 import {
   clusterConnection,
   nResourceView,
@@ -26,7 +25,7 @@ export default {
 export const TwoResources = () => (
   <HeaderBar
     view={twoResourceView()}
-    currentPage={AnalyticsType.Detail}
+    currentPage={HeaderBarPage.Detail}
     isSocketConnected={true}
   />
 )
@@ -34,7 +33,7 @@ export const TwoResources = () => (
 export const TenResources = () => (
   <HeaderBar
     view={tenResourceView()}
-    currentPage={AnalyticsType.Detail}
+    currentPage={HeaderBarPage.Detail}
     isSocketConnected={true}
   />
 )
@@ -47,7 +46,7 @@ export const TenResourcesErrorsAndWarnings = () => {
   return (
     <HeaderBar
       view={view}
-      currentPage={AnalyticsType.Grid}
+      currentPage={HeaderBarPage.Grid}
       isSocketConnected={true}
     />
   )
@@ -56,7 +55,7 @@ export const TenResourcesErrorsAndWarnings = () => {
 export const OneHundredResources = () => (
   <HeaderBar
     view={nResourceView(100)}
-    currentPage={AnalyticsType.Grid}
+    currentPage={HeaderBarPage.Grid}
     isSocketConnected={true}
   />
 )
@@ -70,7 +69,7 @@ export const UpgradeAvailable = () => {
   return (
     <HeaderBar
       view={view}
-      currentPage={AnalyticsType.Detail}
+      currentPage={HeaderBarPage.Detail}
       isSocketConnected={true}
     />
   )
@@ -84,7 +83,7 @@ export const HealthyClusterConnection = () => {
   return (
     <HeaderBar
       view={view}
-      currentPage={AnalyticsType.Detail}
+      currentPage={HeaderBarPage.Detail}
       isSocketConnected={true}
     />
   )
@@ -100,7 +99,7 @@ export const UnhealthyClusterConnection = () => {
   return (
     <HeaderBar
       view={view}
-      currentPage={AnalyticsType.Detail}
+      currentPage={HeaderBarPage.Detail}
       isSocketConnected={true}
     />
   )

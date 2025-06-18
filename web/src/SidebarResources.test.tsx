@@ -9,12 +9,6 @@ import {
 import userEvent from "@testing-library/user-event"
 import React from "react"
 import { MemoryRouter } from "react-router"
-import { AnalyticsAction } from "./analytics"
-import {
-  cleanupMockAnalyticsCalls,
-  expectIncrs,
-  mockAnalyticsCalls,
-} from "./analytics_test_helpers"
 import { accessorsForTesting, tiltfileKeyContext } from "./BrowserStorage"
 import Features, { FeaturesTestProvider, Flag } from "./feature"
 import LogStore from "./LogStore"
@@ -103,13 +97,11 @@ function customRender(
 
 describe("SidebarResources", () => {
   beforeEach(() => {
-    mockAnalyticsCalls()
     sessionStorage.clear()
     localStorage.clear()
   })
 
   afterEach(() => {
-    cleanupMockAnalyticsCalls()
     sessionStorage.clear()
     localStorage.clear()
   })
@@ -128,25 +120,6 @@ describe("SidebarResources", () => {
       await waitFor(() => {
         expect(starredItemsAccessor.get()).toEqual([itemToStar])
       })
-
-      expectIncrs(
-        {
-          name: "ui.web.star",
-          tags: { starCount: "0", action: AnalyticsAction.Load },
-        },
-        {
-          name: "ui.web.sidebarStarButton",
-          tags: {
-            action: AnalyticsAction.Click,
-            newStarState: "true",
-            target: "k8s",
-          },
-        },
-        {
-          name: "ui.web.star",
-          tags: { starCount: "1", action: AnalyticsAction.Star },
-        }
-      )
     })
 
     it("removes items from the starred list when items are unstarred", async () => {
@@ -160,25 +133,6 @@ describe("SidebarResources", () => {
       await waitFor(() => {
         expect(starredItemsAccessor.get()).toEqual([items[0].name])
       })
-
-      expectIncrs(
-        {
-          name: "ui.web.star",
-          tags: { starCount: "2", action: AnalyticsAction.Load },
-        },
-        {
-          name: "ui.web.sidebarStarButton",
-          tags: {
-            action: AnalyticsAction.Click,
-            newStarState: "false",
-            target: "k8s",
-          },
-        },
-        {
-          name: "ui.web.star",
-          tags: { starCount: "1", action: AnalyticsAction.Unstar },
-        }
-      )
     })
   })
 

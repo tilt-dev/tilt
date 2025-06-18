@@ -2,12 +2,6 @@ import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import React from "react"
 import { MemoryRouter } from "react-router"
-import { AnalyticsAction, AnalyticsType } from "./analytics"
-import {
-  cleanupMockAnalyticsCalls,
-  expectIncrs,
-  mockAnalyticsCalls,
-} from "./analytics_test_helpers"
 import Features, { FeaturesTestProvider, Flag } from "./feature"
 import { OverviewTableDisplayOptions } from "./OverviewTableDisplayOptions"
 import { ResourceGroupsContextProvider } from "./ResourceGroupsContext"
@@ -43,23 +37,11 @@ const DisplayOptions = ({
   )
 }
 
-beforeEach(() => {
-  mockAnalyticsCalls()
-})
-
-afterEach(() => {
-  cleanupMockAnalyticsCalls()
-})
-
 describe("expand-all button", () => {
   it("sends analytics onclick", () => {
     let view = nResourceWithLabelsView(3)
     const { container } = render(DisplayOptions({ view }))
     userEvent.click(screen.getByTitle("Expand All"))
-    expectIncrs({
-      name: "ui.web.expandAllGroups",
-      tags: { action: AnalyticsAction.Click, type: AnalyticsType.Grid },
-    })
   })
 })
 
@@ -68,9 +50,5 @@ describe("collapse-all button", () => {
     let view = nResourceWithLabelsView(3)
     const { container } = render(DisplayOptions({ view }))
     userEvent.click(screen.getByTitle("Collapse All"))
-    expectIncrs({
-      name: "ui.web.collapseAllGroups",
-      tags: { action: AnalyticsAction.Click, type: AnalyticsType.Grid },
-    })
   })
 })

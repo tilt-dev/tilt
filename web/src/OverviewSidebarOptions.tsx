@@ -1,7 +1,6 @@
 import { FormControlLabel } from "@material-ui/core"
 import React, { useCallback, useMemo } from "react"
 import styled from "styled-components"
-import { AnalyticsType } from "./analytics"
 import { Flag, useFeatures } from "./feature"
 import { InstrumentedCheckbox } from "./instrumentedComponents"
 import { TILTFILE_LABEL, UNLABELED_LABEL } from "./labels"
@@ -129,8 +128,6 @@ export function OverviewSidebarOptions(props: { items?: SidebarItem[] }) {
     <SidebarOptionsLabel
       control={
         <CheckboxToggle
-          analyticsName="ui.web.disabledResourcesToggle"
-          analyticsTags={{ type: AnalyticsType.Detail }}
           size="small"
           checked={options.showDisabledResources}
           onClick={toggleDisabledResources}
@@ -150,7 +147,6 @@ export function OverviewSidebarOptions(props: { items?: SidebarItem[] }) {
         <SidebarOptionsLabel
           control={
             <CheckboxToggle
-              analyticsName="ui.web.alertsOnTopToggle"
               size="small"
               checked={options.alertsOnTop}
               onClick={(_e) =>
@@ -161,15 +157,8 @@ export function OverviewSidebarOptions(props: { items?: SidebarItem[] }) {
           label="Alerts on top"
         />
         <div>
-          <ExpandButton
-            disabled={!displayResourceGroups}
-            analyticsType={AnalyticsType.Detail}
-          />
-          <CollapseButton
-            groups={groups}
-            disabled={!displayResourceGroups}
-            analyticsType={AnalyticsType.Detail}
-          />
+          <ExpandButton disabled={!displayResourceGroups} />
+          <CollapseButton groups={groups} disabled={!displayResourceGroups} />
         </div>
       </OverviewSidebarOptionsButtonRow>
       {disabledResourcesToggle}

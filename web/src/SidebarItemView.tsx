@@ -299,17 +299,12 @@ export function DisabledSidebarItemView(props: SidebarItemViewProps) {
   const { item, selected, groupView } = props
   const isSelectedClass = selected ? "isSelected" : ""
   const groupViewIndentClass = groupView ? "groupViewIndent" : ""
-  let analyticsTags = { target: item.targetType }
 
   return (
     <SidebarItemRoot
       className={`u-showStarOnHover ${isSelectedClass} ${groupViewIndentClass} isDisabled`}
     >
-      <StarResourceButton
-        resourceName={item.name}
-        analyticsName="ui.web.sidebarStarButton"
-        analyticsTags={analyticsTags}
-      />
+      <StarResourceButton resourceName={item.name} />
       <DisabledSidebarItemBox
         className={`${isSelectedClass}`}
         onClick={(_e) => openResource(item.name)}
@@ -336,7 +331,6 @@ export function EnabledSidebarItemView(props: SidebarItemViewProps) {
   let isBuildingClass = building ? "isBuilding" : ""
   let onStartBuild = startBuild.bind(null, item.name)
   const groupViewIndentClass = props.groupView ? "groupViewIndent" : ""
-  let analyticsTags = { target: item.targetType }
   let ref: MutableRefObject<HTMLLIElement | null> = useRef(null)
 
   useEffect(() => {
@@ -351,11 +345,7 @@ export function EnabledSidebarItemView(props: SidebarItemViewProps) {
       key={item.name}
       className={`u-showStarOnHover u-showTriggerModeOnHover ${isSelectedClass} ${isBuildingClass} ${groupViewIndentClass}`}
     >
-      <StarResourceButton
-        resourceName={item.name}
-        analyticsName="ui.web.sidebarStarButton"
-        analyticsTags={analyticsTags}
-      />
+      <StarResourceButton resourceName={item.name} />
       <SidebarItemBox
         className={`${isSelectedClass} ${isBuildingClass}`}
         tabIndex={-1}
@@ -381,7 +371,6 @@ export function EnabledSidebarItemView(props: SidebarItemViewProps) {
               triggerMode={item.triggerMode}
               isQueued={item.queued}
               onStartBuild={onStartBuild}
-              analyticsTags={analyticsTags}
               stopBuildButton={item.stopBuildButton}
             />
           </SidebarItemRuntimeBox>
