@@ -2,24 +2,15 @@
 // source: internal/shared/otlp/otlpmetric/oconf/options.go.tmpl
 
 // Copyright The OpenTelemetry Authors
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// SPDX-License-Identifier: Apache-2.0
 
 package oconf // import "go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc/internal/oconf"
 
 import (
 	"crypto/tls"
 	"fmt"
+	"net/http"
+	"net/url"
 	"path"
 	"strings"
 	"time"
@@ -30,8 +21,8 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/encoding/gzip"
 
-	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc/internal/retry"
+	"go.opentelemetry.io/otel/internal/global"
 	"go.opentelemetry.io/otel/sdk/metric"
 )
 
@@ -52,6 +43,10 @@ const (
 )
 
 type (
+	// HTTPTransportProxyFunc is a function that resolves which URL to use as proxy for a given request.
+	// This type is compatible with `http.Transport.Proxy` and can be used to set a custom proxy function to the OTLP HTTP client.
+	HTTPTransportProxyFunc func(*http.Request) (*url.URL, error)
+
 	SignalConfig struct {
 		Endpoint    string
 		Insecure    bool
@@ -66,6 +61,8 @@ type (
 
 		TemporalitySelector metric.TemporalitySelector
 		AggregationSelector metric.AggregationSelector
+
+		Proxy HTTPTransportProxyFunc
 	}
 
 	Config struct {
@@ -122,7 +119,6 @@ func cleanPath(urlPath string, defaultPath string) string {
 // NewGRPCConfig returns a new Config with all settings applied from opts and
 // any unset setting using the default gRPC config values.
 func NewGRPCConfig(opts ...GRPCOption) Config {
-	userAgent := "OTel OTLP Exporter Go/" + otlpmetric.Version()
 	cfg := Config{
 		Metrics: SignalConfig{
 			Endpoint:    fmt.Sprintf("%s:%d", DefaultCollectorHost, DefaultCollectorGRPCPort),
@@ -134,7 +130,6 @@ func NewGRPCConfig(opts ...GRPCOption) Config {
 			AggregationSelector: metric.DefaultAggregationSelector,
 		},
 		RetryConfig: retry.DefaultConfig,
-		DialOptions: []grpc.DialOption{grpc.WithUserAgent(userAgent)},
 	}
 	cfg = ApplyGRPCEnvConfigs(cfg)
 	for _, opt := range opts {
@@ -144,7 +139,7 @@ func NewGRPCConfig(opts ...GRPCOption) Config {
 	if cfg.ServiceConfig != "" {
 		cfg.DialOptions = append(cfg.DialOptions, grpc.WithDefaultServiceConfig(cfg.ServiceConfig))
 	}
-	// Priroritize GRPCCredentials over Insecure (passing both is an error).
+	// Prioritize GRPCCredentials over Insecure (passing both is an error).
 	if cfg.Metrics.GRPCCredentials != nil {
 		cfg.DialOptions = append(cfg.DialOptions, grpc.WithTransportCredentials(cfg.Metrics.GRPCCredentials))
 	} else if cfg.Metrics.Insecure {
@@ -157,9 +152,6 @@ func NewGRPCConfig(opts ...GRPCOption) Config {
 	}
 	if cfg.Metrics.Compression == GzipCompression {
 		cfg.DialOptions = append(cfg.DialOptions, grpc.WithDefaultCallOptions(grpc.UseCompressor(gzip.Name)))
-	}
-	if len(cfg.DialOptions) != 0 {
-		cfg.DialOptions = append(cfg.DialOptions, cfg.DialOptions...)
 	}
 	if cfg.ReconnectionPeriod != 0 {
 		p := grpc.ConnectParams{
@@ -285,6 +277,22 @@ func WithEndpoint(endpoint string) GenericOption {
 	})
 }
 
+func WithEndpointURL(v string) GenericOption {
+	return newGenericOption(func(cfg Config) Config {
+		u, err := url.Parse(v)
+		if err != nil {
+			global.Error(err, "otlpmetric: parse endpoint url", "url", v)
+			return cfg
+		}
+
+		cfg.Metrics.Endpoint = u.Host
+		cfg.Metrics.URLPath = u.Path
+		cfg.Metrics.Insecure = u.Scheme != "https"
+
+		return cfg
+	})
+}
+
 func WithCompression(compression Compression) GenericOption {
 	return newGenericOption(func(cfg Config) Config {
 		cfg.Metrics.Compression = compression
@@ -354,6 +362,13 @@ func WithTemporalitySelector(selector metric.TemporalitySelector) GenericOption 
 func WithAggregationSelector(selector metric.AggregationSelector) GenericOption {
 	return newGenericOption(func(cfg Config) Config {
 		cfg.Metrics.AggregationSelector = selector
+		return cfg
+	})
+}
+
+func WithProxy(pf HTTPTransportProxyFunc) GenericOption {
+	return newGenericOption(func(cfg Config) Config {
+		cfg.Metrics.Proxy = pf
 		return cfg
 	})
 }

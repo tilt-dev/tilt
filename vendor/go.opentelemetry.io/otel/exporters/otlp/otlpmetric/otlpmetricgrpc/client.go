@@ -1,16 +1,5 @@
 // Copyright The OpenTelemetry Authors
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// SPDX-License-Identifier: Apache-2.0
 
 package otlpmetricgrpc // import "go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 
@@ -47,7 +36,7 @@ type client struct {
 }
 
 // newClient creates a new gRPC metric client.
-func newClient(ctx context.Context, cfg oconf.Config) (*client, error) {
+func newClient(_ context.Context, cfg oconf.Config) (*client, error) {
 	c := &client{
 		exportTimeout: cfg.Metrics.Timeout,
 		requestFunc:   cfg.RetryConfig.RequestFunc(retryable),
@@ -61,7 +50,11 @@ func newClient(ctx context.Context, cfg oconf.Config) (*client, error) {
 	if c.conn == nil {
 		// If the caller did not provide a ClientConn when the client was
 		// created, create one using the configuration they did provide.
-		conn, err := grpc.DialContext(ctx, cfg.Metrics.Endpoint, cfg.DialOptions...)
+		userAgent := "OTel Go OTLP over gRPC metrics exporter/" + Version()
+		dialOpts := []grpc.DialOption{grpc.WithUserAgent(userAgent)}
+		dialOpts = append(dialOpts, cfg.DialOptions...)
+
+		conn, err := grpc.NewClient(cfg.Metrics.Endpoint, dialOpts...)
 		if err != nil {
 			return nil, err
 		}
@@ -162,7 +155,12 @@ func (c *client) exportContext(parent context.Context) (context.Context, context
 	}
 
 	if c.metadata.Len() > 0 {
-		ctx = metadata.NewOutgoingContext(ctx, c.metadata)
+		md := c.metadata
+		if outMD, ok := metadata.FromOutgoingContext(ctx); ok {
+			md = metadata.Join(md, outMD)
+		}
+
+		ctx = metadata.NewOutgoingContext(ctx, md)
 	}
 
 	return ctx, cancel
@@ -172,28 +170,36 @@ func (c *client) exportContext(parent context.Context) (context.Context, context
 // duration to wait for if an explicit throttle time is included in err.
 func retryable(err error) (bool, time.Duration) {
 	s := status.Convert(err)
+	return retryableGRPCStatus(s)
+}
+
+func retryableGRPCStatus(s *status.Status) (bool, time.Duration) {
 	switch s.Code() {
 	case codes.Canceled,
 		codes.DeadlineExceeded,
-		codes.ResourceExhausted,
 		codes.Aborted,
 		codes.OutOfRange,
 		codes.Unavailable,
 		codes.DataLoss:
-		return true, throttleDelay(s)
+		// Additionally, handle RetryInfo.
+		_, d := throttleDelay(s)
+		return true, d
+	case codes.ResourceExhausted:
+		// Retry only if the server signals that the recovery from resource exhaustion is possible.
+		return throttleDelay(s)
 	}
 
 	// Not a retry-able error.
 	return false, 0
 }
 
-// throttleDelay returns a duration to wait for if an explicit throttle time
-// is included in the response status.
-func throttleDelay(s *status.Status) time.Duration {
+// throttleDelay returns if the status is RetryInfo
+// and the duration to wait for if an explicit throttle time is included.
+func throttleDelay(s *status.Status) (bool, time.Duration) {
 	for _, detail := range s.Details() {
 		if t, ok := detail.(*errdetails.RetryInfo); ok {
-			return t.RetryDelay.AsDuration()
+			return true, t.RetryDelay.AsDuration()
 		}
 	}
-	return 0
+	return false, 0
 }
