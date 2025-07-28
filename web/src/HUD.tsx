@@ -1,9 +1,8 @@
 import { StylesProvider } from "@material-ui/core/styles"
-import { History } from "history"
 import React, { Component } from "react"
 import ReactOutlineManager from "react-outline-manager"
-import { useHistory } from "react-router"
-import { Route, RouteComponentProps, Switch } from "react-router-dom"
+import { useLocation, useNavigate, Location } from "react-router-dom"
+import { Route, Routes } from "react-router-dom"
 import AnalyticsNudge from "./AnalyticsNudge"
 import AppController from "./AppController"
 import { tiltfileKeyContext } from "./BrowserStorage"
@@ -37,8 +36,9 @@ import {
 } from "./types"
 
 export type HudProps = {
-  history: History
   interfaceVersion: InterfaceVersion
+  navigate: ReturnType<typeof useNavigate>
+  location: Location
 }
 
 // Snapshot logs are capped to 1MB (max upload size is 4MB; this ensures between the rest of state and JSON overhead
@@ -51,14 +51,16 @@ export default class HUD extends Component<HudProps, HudState> {
   // The root of the HUD view, without the slash.
   private pathBuilder: PathBuilder
   private controller: AppController
-  private history: History
+  private navigate: ReturnType<typeof useNavigate>
+  private location: Location
 
   constructor(props: HudProps) {
     super(props)
 
     this.pathBuilder = new PathBuilder(window.location)
     this.controller = new AppController(this.pathBuilder, this)
-    this.history = props.history
+    this.navigate = props.navigate
+    this.location = props.location
 
     this.state = {
       view: {},
@@ -102,7 +104,7 @@ export default class HUD extends Component<HudProps, HudState> {
   }
 
   setHistoryLocation(path: string) {
-    this.props.history.replace(path)
+    this.props.navigate(path, { replace: true })
   }
 
   path(relPath: string) {
@@ -119,7 +121,7 @@ export default class HUD extends Component<HudProps, HudState> {
     }
     return {
       view: view,
-      path: this.props.history.location.pathname,
+      path: this.props.location.pathname,
       snapshotHighlight: state.snapshotHighlight,
       createdAt: new Date().toISOString(),
     }
@@ -226,27 +228,28 @@ export default class HUD extends Component<HudProps, HudState> {
               <ResourceGroupsContextProvider>
                 <ResourceListOptionsProvider>
                   <ResourceSelectionProvider>
-                    <Switch>
+                    <Routes>
                       <Route
                         path={this.path("/r/:name/overview")}
-                        render={(_props: RouteComponentProps<any>) => (
+                        element={
                           <SidebarContextProvider>
                             <OverviewResourcePane
                               view={this.state.view}
                               isSocketConnected={isSocketConnected}
                             />
                           </SidebarContextProvider>
-                        )}
+                        }
                       />
                       <Route
-                        render={() => (
+                        path="*"
+                        element={
                           <OverviewTablePane
                             view={this.state.view}
                             isSocketConnected={isSocketConnected}
                           />
-                        )}
+                        }
                       />
-                    </Switch>
+                    </Routes>
                   </ResourceSelectionProvider>
                 </ResourceListOptionsProvider>
               </ResourceGroupsContextProvider>
@@ -304,12 +307,18 @@ export default class HUD extends Component<HudProps, HudState> {
 }
 
 export function HUDFromContext(props: React.PropsWithChildren<{}>) {
-  let history = useHistory()
-  let interfaceVersion = useInterfaceVersion()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const interfaceVersion = useInterfaceVersion()
+
   return (
     /* allow Styled Components to override MUI - https://material-ui.com/guides/interoperability/#controlling-priority-3*/
     <StylesProvider injectFirst>
-      <HUD history={history} interfaceVersion={interfaceVersion} />
+      <HUD
+        interfaceVersion={interfaceVersion}
+        navigate={navigate}
+        location={location}
+      />
     </StylesProvider>
   )
 }

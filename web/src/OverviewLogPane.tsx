@@ -1,6 +1,5 @@
-import { History } from "history"
 import React, { Component } from "react"
-import { useHistory, useLocation } from "react-router"
+import { useNavigate, useLocation } from "react-router-dom"
 import styled, { keyframes } from "styled-components"
 import {
   FilterLevel,
@@ -33,7 +32,7 @@ type OverviewLogComponentProps = {
   logStore: LogStore
   raf: RafContext
   filterSet: FilterSet
-  history: History
+  navigate: ReturnType<typeof useNavigate>
   scrollToStoredLineIndex: number | null
   starredResources: string[]
 }
@@ -633,10 +632,9 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
     div.innerHTML = "… (more) …"
     div.onclick = (e) => {
       let storedLineIndex = line.storedLineIndex
-      let history = this.props.history
-      history.push(
+      this.props.navigate(
         this.props.pathBuilder.encpath`/r/${line.manifestName}/overview`,
-        { storedLineIndex }
+        { state: { storedLineIndex } }
       )
     }
     return div
@@ -749,12 +747,13 @@ type OverviewLogPaneProps = {
 }
 
 export default function OverviewLogPane(props: OverviewLogPaneProps) {
-  let history = useHistory()
+  const navigate = useNavigate()
   let location = useLocation() as any
   let pathBuilder = usePathBuilder()
   let logStore = useLogStore()
   let raf = useRaf()
   let starredContext = useStarredResources()
+
   return (
     <OverviewLogComponent
       manifestName={props.manifestName}
@@ -762,7 +761,7 @@ export default function OverviewLogPane(props: OverviewLogPaneProps) {
       logStore={logStore}
       raf={raf}
       filterSet={props.filterSet}
-      history={history}
+      navigate={navigate}
       scrollToStoredLineIndex={location?.state?.storedLineIndex}
       starredResources={starredContext.starredResources}
     />

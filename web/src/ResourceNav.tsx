@@ -5,7 +5,7 @@ import React, {
   useMemo,
   useState,
 } from "react"
-import { matchPath, useHistory, useLocation } from "react-router-dom"
+import { matchPath, useNavigate, useLocation } from "react-router-dom"
 import { usePathBuilder } from "./PathBuilder"
 import { ResourceName } from "./types"
 
@@ -50,7 +50,7 @@ export function ResourceNavProvider(
     [props.validateResource]
   )
 
-  let history = useHistory()
+  const navigate = useNavigate()
   let location = useLocation()
   let pb = usePathBuilder()
   let selectedResource = ""
@@ -59,9 +59,9 @@ export function ResourceNavProvider(
   )
   let invalidResource = ""
 
-  let matchResource = matchPath(location.pathname, {
-    path: pb.path("/r/:name"),
-  })
+  let matchResource =
+    matchPath({ path: pb.path("/r/:name") }, location.pathname) ||
+    matchPath({ path: pb.path("/r/:name/*") }, location.pathname)
   let candidateResource = decodeURIComponent(
     (matchResource?.params as any)?.name || ""
   )
@@ -96,9 +96,9 @@ export function ResourceNavProvider(
       // We're not sure if this is the right behavior, and do not
       // store it in any sort of persistent store.
       let storedFilter = filterByResource[name] || ""
-      history.push(url + storedFilter)
+      navigate(url + storedFilter)
     },
-    [history, filterByResource]
+    [navigate, filterByResource]
   )
 
   let resourceNav = useMemo(() => {

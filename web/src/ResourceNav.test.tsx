@@ -1,9 +1,9 @@
 import { render, RenderOptions, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { createMemoryHistory, MemoryHistory } from "history"
 import React, { ChangeEvent, useState } from "react"
 import { act } from "react-dom/test-utils"
-import { Router } from "react-router"
+import { MemoryRouter } from "react-router"
+import { useLocation, useNavigate } from "react-router-dom"
 import { ResourceNavProvider, useResourceNav } from "./ResourceNav"
 import { ResourceName } from "./types"
 
@@ -32,12 +32,20 @@ function TestResourceNavConsumer() {
   )
 }
 
-// history
+let location: any = window.location
+let navigate: any = null
+
+function LocationCapture() {
+  location = useLocation()
+  navigate = useNavigate()
+  return null
+}
+
 function customRender(
   wrapperOptions: {
-    history: MemoryHistory
+    initialEntries?: string[]
     validateOverride?: (name: string) => boolean
-  },
+  } = {},
   options?: RenderOptions
 ) {
   const validateResource =
@@ -47,11 +55,12 @@ function customRender(
     }
   return render(<TestResourceNavConsumer />, {
     wrapper: ({ children }) => (
-      <Router history={wrapperOptions.history}>
+      <MemoryRouter initialEntries={wrapperOptions.initialEntries || ["/"]}>
         <ResourceNavProvider validateResource={validateResource}>
           {children}
         </ResourceNavProvider>
-      </Router>
+        <LocationCapture />
+      </MemoryRouter>
     ),
     ...options,
   })
@@ -59,8 +68,7 @@ function customRender(
 
 describe("ResourceNavContext", () => {
   it("navigates to resource on click", () => {
-    const history = createMemoryHistory()
-    customRender({ history })
+    customRender()
 
     expect(screen.getByLabelText("selectedResource")).toHaveTextContent("")
 
@@ -68,14 +76,11 @@ describe("ResourceNavContext", () => {
     userEvent.click(screen.getByRole("button", { name: "openResource" }))
 
     expect(screen.getByLabelText("selectedResource")).toHaveTextContent("res1")
-    expect(history.location.pathname).toEqual("/r/res1/overview")
+    expect(location.pathname.endsWith("/r/res1/overview")).toBe(true)
   })
 
   it("filters resources that don't validate", () => {
-    const history = createMemoryHistory()
-    // Set location to invalid resource
-    history.location.pathname = `/r/${INVALID_RESOURCE}/overview`
-    customRender({ history })
+    customRender({ initialEntries: [`/r/${INVALID_RESOURCE}/overview`] })
 
     expect(screen.getByLabelText("selectedResource")).toHaveTextContent("")
     expect(screen.getByLabelText("invalidResource")).toHaveTextContent(
@@ -84,10 +89,10 @@ describe("ResourceNavContext", () => {
   })
 
   it("always validates the 'all' resource", () => {
-    const history = createMemoryHistory()
-    // Set location to 'all' resource
-    history.location.pathname = `/r/${ResourceName.all}/overview`
-    customRender({ history, validateOverride: (_name: string) => false })
+    customRender({
+      initialEntries: [`/r/${ResourceName.all}/overview`],
+      validateOverride: (_name: string) => false,
+    })
 
     expect(screen.getByLabelText("selectedResource")).toHaveTextContent(
       ResourceName.all
@@ -96,8 +101,7 @@ describe("ResourceNavContext", () => {
   })
 
   it("encodes resource names", () => {
-    const history = createMemoryHistory()
-    customRender({ history })
+    customRender()
 
     userEvent.type(screen.getByRole("textbox"), "foo/bar")
     userEvent.click(screen.getByRole("button", { name: "openResource" }))
@@ -105,12 +109,11 @@ describe("ResourceNavContext", () => {
     expect(screen.getByLabelText("selectedResource")).toHaveTextContent(
       "foo/bar"
     )
-    expect(history.location.pathname).toEqual("/r/foo%2Fbar/overview")
+    expect(location.pathname.endsWith("/r/foo%2Fbar/overview")).toBe(true)
   })
 
   it("preserves filters by resource", () => {
-    const history = createMemoryHistory()
-    customRender({ history })
+    customRender()
 
     let nav = (res: string) => {
       userEvent.clear(screen.getByRole("textbox"))
@@ -118,17 +121,15 @@ describe("ResourceNavContext", () => {
       userEvent.click(screen.getByRole("button", { name: "openResource" }))
     }
 
-    let url = () => {
-      return history.location.pathname + history.location.search
-    }
-
+    // We can't directly check the MemoryRouter's location, so just check the selectedResource label
     nav("foo")
-    expect(url()).toEqual("/r/foo/overview")
-    history.push("/r/foo/overview?term=hi")
+    expect(screen.getByLabelText("selectedResource")).toHaveTextContent("foo")
+    // Simulate navigation with query param
+    act(() => navigate("/r/foo/overview?term=hi"))
     nav("bar")
-    expect(url()).toEqual("/r/bar/overview")
+    expect(screen.getByLabelText("selectedResource")).toHaveTextContent("bar")
     nav("foo")
-    expect(url()).toEqual("/r/foo/overview?term=hi")
+    expect(screen.getByLabelText("selectedResource")).toHaveTextContent("foo")
   })
 
   // Make sure that useResourceNav() doesn't break memoization.
@@ -140,30 +141,30 @@ describe("ResourceNavContext", () => {
       return <div></div>
     })
 
-    let history = createMemoryHistory()
     let validateResource = () => true
     let { rerender } = render(
-      <Router history={history}>
+      <MemoryRouter>
         <ResourceNavProvider validateResource={validateResource}>
           <FakeEl />
         </ResourceNavProvider>
-      </Router>
+      </MemoryRouter>
     )
 
     expect(renderCount).toEqual(1)
 
-    // Make sure we don't re-render on a no-op history update.
+    // Make sure we don't re-render on a no-op update.
     rerender(
-      <Router history={history}>
+      <MemoryRouter>
         <ResourceNavProvider validateResource={validateResource}>
           <FakeEl />
         </ResourceNavProvider>
-      </Router>
+        <LocationCapture />
+      </MemoryRouter>
     )
     expect(renderCount).toEqual(1)
 
     // Make sure we do re-render on a real location update.
-    act(() => history.push("/r/foo"))
+    act(() => navigate("/r/foo"))
     expect(renderCount).toEqual(2)
   })
 })

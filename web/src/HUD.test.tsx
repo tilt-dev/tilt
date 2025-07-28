@@ -1,7 +1,7 @@
-import { createMemoryHistory } from "history"
-import React from "react"
+import React, { Component } from "react"
 import { findRenderedComponentWithType } from "react-dom/test-utils"
 import ReactModal from "react-modal"
+import { useNavigate, useLocation } from "react-router-dom"
 import { MemoryRouter } from "react-router"
 import HUD, { mergeAppUpdate } from "./HUD"
 import LogStore from "./LogStore"
@@ -21,14 +21,28 @@ import { SocketState } from "./types"
 // be set as the app root so that accessibility features are set correctly
 ReactModal.setAppElement(document.body)
 
-const fakeHistory = createMemoryHistory()
 const interfaceVersion = { isNewDefault: () => false, toggleDefault: () => {} }
-const emptyHUD = () => {
+
+let InjectHUD = () => {
+  let navigate = useNavigate()
+  let location = useLocation()
   return (
-    <MemoryRouter initialEntries={["/"]}>
-      <HUD history={fakeHistory} interfaceVersion={interfaceVersion} />
-    </MemoryRouter>
+    <HUD
+      navigate={navigate}
+      location={location}
+      interfaceVersion={interfaceVersion}
+    />
   )
+}
+
+class RouterHUD extends Component {
+  render() {
+    return (
+      <MemoryRouter initialEntries={["/"]}>
+        <InjectHUD />
+      </MemoryRouter>
+    )
+  }
 }
 
 beforeEach(() => {
@@ -36,7 +50,7 @@ beforeEach(() => {
 })
 
 it("renders reconnecting bar", async () => {
-  const { rootTree, container } = renderTestComponent<HUD>(emptyHUD())
+  const { rootTree, container } = renderTestComponent(<RouterHUD />)
   expect(container.textContent).toEqual(expect.stringContaining("Loading"))
 
   const hud = findRenderedComponentWithType(rootTree, HUD)
@@ -54,7 +68,7 @@ it("renders reconnecting bar", async () => {
 })
 
 it("loads logs incrementally", async () => {
-  const { rootTree } = renderTestComponent<HUD>(emptyHUD())
+  const { rootTree } = renderTestComponent(<RouterHUD />)
   const hud = findRenderedComponentWithType(rootTree, HUD)
 
   let now = new Date().toString()
@@ -101,7 +115,7 @@ it("loads logs incrementally", async () => {
 })
 
 it("renders logs to snapshot", async () => {
-  const { rootTree } = renderTestComponent<HUD>(emptyHUD())
+  const { rootTree } = renderTestComponent(<RouterHUD />)
   const hud = findRenderedComponentWithType(rootTree, HUD)
 
   let now = new Date().toString()

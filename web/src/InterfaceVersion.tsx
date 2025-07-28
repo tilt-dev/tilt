@@ -1,6 +1,6 @@
 import Cookies from "js-cookie"
 import React, { PropsWithChildren, useContext, useState } from "react"
-import { useHistory } from "react-router"
+import { useNavigate } from "react-router-dom"
 import { usePathBuilder } from "./PathBuilder"
 
 export type InterfaceVersion = {
@@ -19,7 +19,6 @@ export function useInterfaceVersion(): InterfaceVersion {
 
 export function InterfaceVersionProvider(props: PropsWithChildren<{}>) {
   let pathBuilder = usePathBuilder()
-  let history = useHistory()
   let [isNew, setNew] = useState((): boolean => {
     return Cookies.get("tilt-interface-version") !== "legacy"
   })
