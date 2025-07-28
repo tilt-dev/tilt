@@ -1,9 +1,15 @@
-import { render, RenderOptions, screen, within } from "@testing-library/react"
+import {
+  act,
+  render,
+  RenderOptions,
+  screen,
+  within,
+} from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { createMemoryHistory, MemoryHistory } from "history"
+import { MemoryRouter } from "react-router"
+import { useLocation } from "react-router-dom"
 import { SnackbarProvider } from "notistack"
 import React from "react"
-import { Router } from "react-router"
 import { ButtonSet } from "./ApiButton"
 import { EMPTY_FILTER_TERM, FilterLevel, FilterSource } from "./logfilters"
 import OverviewActionBar, {
@@ -19,33 +25,37 @@ const DEFAULT_FILTER_SET = {
   term: EMPTY_FILTER_TERM,
 }
 
+let location: any = window.location
+
+function LocationCapture() {
+  location = useLocation()
+  return null
+}
+
+// Helper to extract search params from the rendered MemoryRouter
+function getSearch() {
+  return location.search
+}
+
 function customRender(
   component: JSX.Element,
-  wrapperProps: { history: MemoryHistory },
+  wrapperProps: { initialEntries?: string[] } = {},
   options?: RenderOptions
 ) {
   return render(component, {
     wrapper: ({ children }) => (
-      <Router history={wrapperProps.history}>
+      <MemoryRouter initialEntries={wrapperProps.initialEntries || ["/"]}>
         <SnackbarProvider>{children}</SnackbarProvider>
-      </Router>
+        <LocationCapture />
+      </MemoryRouter>
     ),
     ...options,
   })
 }
 
 describe("OverviewActionBar", () => {
-  let history: MemoryHistory
-  beforeEach(() => {
-    history = createMemoryHistory({ initialEntries: ["/"] })
-  })
-
-  afterEach(() => {
-    jest.useRealTimers()
-  })
-
   it("renders the top row with endpoints", () => {
-    customRender(<FullBar />, { history })
+    customRender(<FullBar />)
 
     expect(
       screen.getByLabelText(/links and custom buttons/i)
@@ -54,7 +64,7 @@ describe("OverviewActionBar", () => {
   })
 
   it("renders the top row with pod ID", () => {
-    customRender(<FullBar />, { history })
+    customRender(<FullBar />)
 
     expect(
       screen.getByLabelText(/links and custom buttons/i)
@@ -63,18 +73,18 @@ describe("OverviewActionBar", () => {
   })
 
   it("does NOT render the top row when there are no endpoints, pods, or buttons", () => {
-    customRender(<EmptyBar />, { history })
+    customRender(<EmptyBar />)
 
     expect(screen.queryByLabelText(/links and custom buttons/i)).toBeNull()
   })
 
   describe("log filters", () => {
-    beforeEach(() => customRender(<FullBar />, { history }))
+    beforeEach(() => customRender(<FullBar />))
 
     it("navigates to warning filter when warning log filter button is clicked", () => {
       userEvent.click(screen.getByRole("button", { name: /warnings/i }))
 
-      expect(history.location.search).toEqual("?level=warn")
+      expect(getSearch()).toEqual("?level=warn")
     })
 
     it("navigates to build warning filter when both building and warning log filter buttons are clicked", () => {
@@ -83,7 +93,7 @@ describe("OverviewActionBar", () => {
       )
       userEvent.click(screen.getByRole("menuitem", { name: /build/i }))
 
-      expect(history.location.search).toEqual("?level=warn&source=build")
+      expect(getSearch()).toEqual("?level=warn&source=build")
     })
   })
 
@@ -101,8 +111,7 @@ describe("OverviewActionBar", () => {
           resource={resource}
           filterSet={DEFAULT_FILTER_SET}
           buttons={buttonSet}
-        />,
-        { history }
+        />
       )
     })
 
@@ -144,8 +153,7 @@ describe("OverviewActionBar", () => {
         <OverviewActionBar
           filterSet={DEFAULT_FILTER_SET}
           buttons={{ default: customButtons, toggleDisable }}
-        />,
-        { history }
+        />
       )
     })
     it("disables a button that should be disabled", () => {
@@ -172,7 +180,7 @@ describe("OverviewActionBar", () => {
 
   describe("term filter input", () => {
     it("renders with no initial value if there is no existing term filter", () => {
-      customRender(<FullBar />, { history })
+      customRender(<FullBar />)
 
       expect(
         screen.getByRole("textbox", { name: /filter resource logs/i })
@@ -180,12 +188,7 @@ describe("OverviewActionBar", () => {
     })
 
     it("renders with an initial value if there is an existing term filter", () => {
-      history.push({
-        pathname: "/",
-        search: createLogSearch("", { term: "bleep bloop" }).toString(),
-      })
-
-      customRender(<FullBar />, { history })
+      customRender(<FullBar />, { initialEntries: ["/?term=bleep+bloop"] })
 
       expect(
         screen.getByRole("textbox", { name: /filter resource logs/i })
@@ -195,53 +198,51 @@ describe("OverviewActionBar", () => {
     it("changes the global term filter state when its value changes", () => {
       jest.useFakeTimers()
 
-      customRender(<FullBar />, { history })
+      customRender(<FullBar />)
 
       userEvent.type(screen.getByRole("textbox"), "docker")
 
       jest.advanceTimersByTime(FILTER_INPUT_DEBOUNCE)
 
-      expect(history.location.search.toString()).toEqual("?term=docker")
+      expect(getSearch()).toEqual("?term=docker")
     })
 
     it("uses debouncing to update the global term filter state", () => {
       jest.useFakeTimers()
 
-      customRender(<FullBar />, { history })
+      customRender(<FullBar />)
 
       userEvent.type(screen.getByRole("textbox"), "doc")
 
       jest.advanceTimersByTime(FILTER_INPUT_DEBOUNCE / 2)
 
       // The debouncing time hasn't passed yet, so we don't expect to see any changes
-      expect(history.location.search.toString()).toEqual("")
+      expect(getSearch()).toEqual("")
 
       userEvent.type(screen.getByRole("textbox"), "ker")
 
       // The debouncing time hasn't passed yet, so we don't expect to see any changes
-      expect(history.location.search.toString()).toEqual("")
+      expect(getSearch()).toEqual("")
 
       jest.advanceTimersByTime(FILTER_INPUT_DEBOUNCE)
 
       // Since the debouncing time has passed, we expect to see the final
       // change reflected
-      expect(history.location.search.toString()).toEqual("?term=docker")
+      expect(getSearch()).toEqual("?term=docker")
     })
 
     it("retains any current level and source filters when its value changes", () => {
       jest.useFakeTimers()
 
-      history.push({ pathname: "/", search: "level=warn&source=build" })
-
-      customRender(<FullBar />, { history })
+      customRender(<FullBar />, {
+        initialEntries: ["/?level=warn&source=build"],
+      })
 
       userEvent.type(screen.getByRole("textbox"), "help")
 
       jest.advanceTimersByTime(FILTER_INPUT_DEBOUNCE)
 
-      expect(history.location.search.toString()).toEqual(
-        "?level=warn&source=build&term=help"
-      )
+      expect(getSearch()).toEqual("?level=warn&source=build&term=help")
     })
   })
 

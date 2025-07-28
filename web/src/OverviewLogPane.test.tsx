@@ -182,22 +182,26 @@ describe("OverviewLogPane", () => {
     const initLineCount = 2 * renderWindow
 
     let fakeRaf: TestRafContext
-    let rootTree: Component<OverviewLogComponent>
+    let rootTree: Component<any>
     let container: HTMLDivElement
     let component: OverviewLogComponent
 
     beforeEach(() => {
       fakeRaf = newFakeRaf()
-      const componentWrapper = (
-        <MemoryRouter initialEntries={["/"]}>
-          <RafProvider value={fakeRaf}>
-            <ManyLines count={initLineCount} />
-          </RafProvider>
-        </MemoryRouter>
-      )
 
-      const testHelpers =
-        renderTestComponent<OverviewLogComponent>(componentWrapper)
+      class ManyLinesWrapper extends Component {
+        render() {
+          return (
+            <MemoryRouter initialEntries={["/"]}>
+              <RafProvider value={fakeRaf}>
+                <ManyLines count={initLineCount} />
+              </RafProvider>
+            </MemoryRouter>
+          )
+        }
+      }
+
+      const testHelpers = renderTestComponent(<ManyLinesWrapper />)
       rootTree = testHelpers.rootTree
       container = testHelpers.container
       component = findRenderedComponentWithType(rootTree, OverviewLogComponent)
