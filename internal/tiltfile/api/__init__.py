@@ -515,7 +515,7 @@ def k8s_resource(workload: str = "", new_name: str = "",
     # first two object selectors specify both 'name' and 'kind',
     # since just the string "bar" does not uniquely specify a single object.
     # As the object name "bar-password" is unique, "bar-password" suffices as
-    # an object selector (though a more more qualified object selector
+    # an object selector (though a more qualified object selector
     # like "bar-password:secret" or "bar-password:secret:default" would
     # be accepted as well).
     k8s_resource(
