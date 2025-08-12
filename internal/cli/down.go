@@ -24,6 +24,7 @@ import (
 type downCmd struct {
 	fileName         string
 	deleteNamespaces bool
+	deleteVolumes bool
 	downDepsProvider func(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, subcommand model.TiltSubcommand) (DownDeps, error)
 }
 
@@ -51,6 +52,8 @@ Specify additional flags and arguments to control which resources are deleted.
 
 Namespaces are not deleted by default. Use --delete-namespaces to change that.
 
+Docker Volumes are not deleted by default. Use --delete-volumes to change that.
+
 Kubernetes resources with the annotation 'tilt.dev/down-policy: keep' are not deleted.
 
 For more complex cases, the Tiltfile has APIs to add additional flags and arguments to the Tilt CLI.
@@ -63,6 +66,7 @@ See https://docs.tilt.dev/tiltfile_config.html for examples.
 	addKubeContextFlag(cmd)
 	addNamespaceFlag(cmd)
 	cmd.Flags().BoolVar(&c.deleteNamespaces, "delete-namespaces", false, "delete namespaces defined in the Tiltfile (by default, don't)")
+	cmd.Flags().BoolVar(&c.deleteVolumes, "delete-volumes", false, "delete docker volumes defined in the Tiltfile (by default, don't)")
 
 	return cmd
 }
@@ -106,7 +110,7 @@ func (c *downCmd) down(ctx context.Context, downDeps DownDeps, args []string) er
 
 	for _, dcProject := range dcProjects {
 		dcc := downDeps.dcClient
-		err = dcc.Down(ctx, dcProject, logger.Get(ctx).Writer(logger.InfoLvl), logger.Get(ctx).Writer(logger.InfoLvl))
+		err = dcc.Down(ctx, dcProject, logger.Get(ctx).Writer(logger.InfoLvl), logger.Get(ctx).Writer(logger.InfoLvl), c.deleteVolumes)
 		if err != nil {
 			return errors.Wrap(err, "Running `docker-compose down`")
 		}

@@ -72,7 +72,7 @@ func (c *FakeDCClient) Up(ctx context.Context, spec v1alpha1.DockerComposeServic
 	return nil
 }
 
-func (c *FakeDCClient) Down(ctx context.Context, proj v1alpha1.DockerComposeProject, stdout, stderr io.Writer) error {
+func (c *FakeDCClient) Down(ctx context.Context, proj v1alpha1.DockerComposeProject, stdout, stderr io.Writer, deleteVolumes bool) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
