@@ -4260,6 +4260,68 @@ local('echo hi')
 	}
 }
 
+func TestLocalSafeParameter(t *testing.T) {
+	for _, test := range []struct {
+		name        string
+		contextName k8s.KubeContext
+		env         clusterid.Product
+		safe        bool
+		expectError bool
+	}{
+		{"production-context-without-safe", "production", clusterid.ProductGKE, false, true},
+		{"production-context-with-safe", "production", clusterid.ProductGKE, true, false},
+		{"safe-context-without-safe", "minikube", clusterid.ProductMinikube, false, false},
+		{"safe-context-with-safe", "minikube", clusterid.ProductMinikube, true, false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			f := newFixture(t)
+
+			safeParam := ""
+			if test.safe {
+				safeParam = ", safe=True"
+			}
+
+			tiltfileContent := fmt.Sprintf("local('echo hello'%s)", safeParam)
+			f.file("Tiltfile", tiltfileContent)
+
+			f.setupFoo()
+			f.k8sContext = test.contextName
+			f.k8sEnv = test.env
+
+			if test.expectError {
+				f.loadErrString("Refusing to run 'local'", string(test.contextName), "allow_k8s_contexts")
+			} else {
+				f.load()
+				assert.Contains(t, f.out.String(), "local: echo hello")
+				assert.Contains(t, f.out.String(), " → hello")
+			}
+		})
+	}
+}
+
+func TestLocalSafeParameterWithOtherArgs(t *testing.T) {
+	f := newFixture(t)
+
+	f.file("Tiltfile", `
+# Test that safe parameter works with other parameters
+result1 = local('echo hello', quiet=True, safe=True)
+result2 = local('echo world', echo_off=True, safe=True)
+result3 = local('echo env', env={'TEST_VAR': 'test_value'}, safe=True)
+`)
+
+	f.setupFoo()
+	f.k8sContext = "production"
+	f.k8sEnv = clusterid.ProductGKE
+
+	f.load()
+
+	// All commands should execute despite production context because safe=True
+	assert.Contains(t, f.out.String(), "local: echo hello")    // quiet=True shows command but suppresses output
+	assert.NotContains(t, f.out.String(), "local: echo world") // echo_off=True suppresses command logging
+	assert.Contains(t, f.out.String(), "local: echo env")
+	assert.NotContains(t, f.out.String(), " → hello") // quiet=True suppresses output logging
+}
+
 func TestLocalResourceOnlyUpdateCmd(t *testing.T) {
 	f := newFixture(t)
 

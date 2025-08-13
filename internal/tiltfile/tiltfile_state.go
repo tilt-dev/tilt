@@ -476,38 +476,6 @@ func (s *tiltfileState) OnExec(t *starlark.Thread, tiltfilePath string, contents
 	return nil
 }
 
-// wrap a builtin such that it's only allowed to run when we have a known safe k8s context
-// (none (e.g., docker-compose), local, or specified by `allow_k8s_contexts`)
-func (s *tiltfileState) potentiallyK8sUnsafeBuiltin(f starkit.Function) starkit.Function {
-	return func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-		tf, err := starkit.StartTiltfileFromThread(thread)
-		if err != nil {
-			return nil, err
-		}
-
-		model, err := starkit.ModelFromThread(thread)
-		if err != nil {
-			return nil, err
-		}
-
-		k8sContextState, err := k8scontext.GetState(model)
-		if err != nil {
-			return nil, err
-		}
-
-		isAllowed := k8sContextState.IsAllowed(tf)
-		if !isAllowed {
-			kubeContext := k8sContextState.KubeContext()
-			return nil, fmt.Errorf(`Refusing to run '%s' because %s might be a production kube context.
-If you're sure you want to continue add:
-	allow_k8s_contexts('%s')
-before this function call in your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, fn.Name(), kubeContext, kubeContext)
-		}
-
-		return f(thread, fn, args, kwargs)
-	}
-}
-
 func (s *tiltfileState) unpackArgs(fnname string, args starlark.Tuple, kwargs []starlark.Tuple, pairs ...interface{}) error {
 	err := starlark.UnpackArgs(fnname, args, kwargs, pairs...)
 	if err == nil {
@@ -545,7 +513,7 @@ func (s *tiltfileState) OnStart(e *starkit.Environment) error {
 		name    string
 		builtin starkit.Function
 	}{
-		{localN, s.potentiallyK8sUnsafeBuiltin(s.local)},
+		{localN, s.local},
 		{dockerBuildN, s.dockerBuild},
 		{customBuildN, s.customBuild},
 		{defaultRegistryN, s.defaultRegistry},

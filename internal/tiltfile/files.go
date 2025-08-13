@@ -12,6 +12,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/localexec"
 	tiltfile_io "github.com/tilt-dev/tilt/internal/tiltfile/io"
+	"github.com/tilt-dev/tilt/internal/tiltfile/k8scontext"
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 	"github.com/tilt-dev/tilt/internal/tiltfile/value"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -24,6 +25,35 @@ import (
 )
 
 const localLogPrefix = " → "
+
+// checkK8sContextSafety verifies that the current Kubernetes context is safe to use.
+func (s *tiltfileState) checkK8sContextSafety(thread *starlark.Thread, fn *starlark.Builtin) error {
+	tf, err := starkit.StartTiltfileFromThread(thread)
+	if err != nil {
+		return err
+	}
+
+	model, err := starkit.ModelFromThread(thread)
+	if err != nil {
+		return err
+	}
+
+	k8sContextState, err := k8scontext.GetState(model)
+	if err != nil {
+		return err
+	}
+
+	isAllowed := k8sContextState.IsAllowed(tf)
+	if !isAllowed {
+		kubeContext := k8sContextState.KubeContext()
+		return fmt.Errorf(`Refusing to run '%s' because %s might be a production kube context.
+If you're sure you want to continue add:
+	allow_k8s_contexts('%s')
+before this function call in your Tiltfile. Otherwise, switch k8s contexts and restart Tilt.`, fn.Name(), kubeContext, kubeContext)
+	}
+
+	return nil
+}
 
 type execCommandOptions struct {
 	// logOutput writes stdout and stderr to logs if true.
@@ -42,6 +72,7 @@ func (s *tiltfileState) local(thread *starlark.Thread, fn *starlark.Builtin, arg
 	var stdin value.Stringable
 	quiet := false
 	echoOff := false
+	safe := false
 	err := s.unpackArgs(fn.Name(), args, kwargs,
 		"command", &commandValue,
 		"quiet?", &quiet,
@@ -50,9 +81,17 @@ func (s *tiltfileState) local(thread *starlark.Thread, fn *starlark.Builtin, arg
 		"env", &commandEnv,
 		"dir?", &commandDirValue,
 		"stdin?", &stdin,
+		"safe?", &safe,
 	)
 	if err != nil {
 		return nil, err
+	}
+
+	// Apply K8s safety checks unless safe=True
+	if !safe {
+		if err := s.checkK8sContextSafety(thread, fn); err != nil {
+			return nil, err
+		}
 	}
 
 	cmd, err := value.ValueGroupToCmdHelper(thread, commandValue, commandBatValue, commandDirValue, commandEnv)

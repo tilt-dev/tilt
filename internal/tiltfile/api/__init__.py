@@ -679,7 +679,8 @@ def local(command: Union[str, List[str]],
           echo_off: bool = False,
           env: Dict[str, str] = {},
           dir: str = "",
-          stdin: Union[str, Blob, None] = None) -> Blob:
+          stdin: Union[str, Blob, None] = None,
+          safe: bool = False) -> Blob:
   """Runs a command on the *host* machine, waits for it to finish, and returns its stdout as a ``Blob``
 
   Args:
@@ -693,6 +694,7 @@ def local(command: Union[str, List[str]],
     env: Environment variables to pass to the executed ``command``. Values specified here will override any variables passed to the Tilt parent process.
     dir: Working directory for ``command``. Defaults to the Tiltfile's location.
     stdin: If not ``None``, will be written to ``command``'s stdin.
+    safe: If set to ``True``, bypasses Kubernetes context safety checks. Use with extreme caution. When ``True``, this function will execute commands even when connected to production Kubernetes clusters without requiring ``allow_k8s_contexts()`` to be called first. Only use this when you are certain the commands are safe to run in any environment.
   """
   pass
 
