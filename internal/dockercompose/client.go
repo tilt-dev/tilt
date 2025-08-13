@@ -159,7 +159,7 @@ func (c *cmdDCClient) Down(ctx context.Context, p v1alpha1.DockerComposeProject,
 
 	args = append(args, "down", "--remove-orphans")
 	if deleteVolumes {
-	    args = append(args, "--volumes")
+		args = append(args, "--volumes")
 	}
 	cmd := c.dcCommand(ctx, args)
 	cmd.Stdin = strings.NewReader(p.YAML)

@@ -24,7 +24,7 @@ import (
 type downCmd struct {
 	fileName         string
 	deleteNamespaces bool
-	deleteVolumes bool
+	deleteVolumes    bool
 	downDepsProvider func(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, subcommand model.TiltSubcommand) (DownDeps, error)
 }
 
