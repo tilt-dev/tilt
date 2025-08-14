@@ -42,7 +42,7 @@ var dcProjectOptions = []compose.ProjectOptionsFn{
 
 type DockerComposeClient interface {
 	Up(ctx context.Context, spec v1alpha1.DockerComposeServiceSpec, shouldBuild bool, stdout, stderr io.Writer) error
-	Down(ctx context.Context, spec v1alpha1.DockerComposeProject, stdout, stderr io.Writer) error
+	Down(ctx context.Context, spec v1alpha1.DockerComposeProject, stdout, stderr io.Writer, deleteVolumes bool) error
 	Rm(ctx context.Context, specs []v1alpha1.DockerComposeServiceSpec, stdout, stderr io.Writer) error
 	StreamEvents(ctx context.Context, spec v1alpha1.DockerComposeProject) (<-chan string, error)
 	Project(ctx context.Context, spec v1alpha1.DockerComposeProject) (*types.Project, error)
@@ -146,7 +146,7 @@ func (c *cmdDCClient) Up(ctx context.Context, spec v1alpha1.DockerComposeService
 	return FormatError(cmd, nil, cmd.Run())
 }
 
-func (c *cmdDCClient) Down(ctx context.Context, p v1alpha1.DockerComposeProject, stdout, stderr io.Writer) error {
+func (c *cmdDCClient) Down(ctx context.Context, p v1alpha1.DockerComposeProject, stdout, stderr io.Writer, deleteVolumes bool) error {
 	// To be safe, we try not to run two docker-compose downs in parallel,
 	// because we know docker-compose up is not thread-safe.
 	c.mu.Lock()
@@ -158,6 +158,9 @@ func (c *cmdDCClient) Down(ctx context.Context, p v1alpha1.DockerComposeProject,
 	}
 
 	args = append(args, "down", "--remove-orphans")
+	if deleteVolumes {
+		args = append(args, "--volumes")
+	}
 	cmd := c.dcCommand(ctx, args)
 	cmd.Stdin = strings.NewReader(p.YAML)
 	cmd.Stdout = stdout
