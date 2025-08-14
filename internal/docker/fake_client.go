@@ -393,14 +393,14 @@ func (c *FakeClient) BuildCachePrune(ctx context.Context, opts types.BuildCacheP
 	return report, nil
 }
 
-func (c *FakeClient) ContainersPrune(ctx context.Context, pruneFilters filters.Args) (types.ContainersPruneReport, error) {
+func (c *FakeClient) ContainersPrune(ctx context.Context, pruneFilters filters.Args) (typescontainer.PruneReport, error) {
 	if err := c.ContainersPruneErr; err != nil {
 		c.ContainersPruneErr = nil
-		return types.ContainersPruneReport{}, err
+		return typescontainer.PruneReport{}, err
 	}
 
 	c.ContainersPruneFilters = pruneFilters.Clone()
-	report := types.ContainersPruneReport{
+	report := typescontainer.PruneReport{
 		ContainersDeleted: c.ContainersPruned,
 		SpaceReclaimed:    uint64(units.MB * len(c.ContainersPruned)), // 1MB per container pruned
 	}

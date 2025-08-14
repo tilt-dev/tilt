@@ -10,6 +10,7 @@ import (
 	"github.com/docker/go-units"
 
 	"github.com/docker/docker/api/types"
+	typescontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	typesimage "github.com/docker/docker/api/types/image"
 
@@ -262,7 +263,7 @@ func (dp *DockerPruner) filterOutMostRecentInspects(ctx context.Context, inspect
 	return result
 }
 
-func (dp *DockerPruner) deleteOldImages(ctx context.Context, maxAge time.Duration, keepRecent int, selectors []container.RefSelector) (types.ImagesPruneReport, error) {
+func (dp *DockerPruner) deleteOldImages(ctx context.Context, maxAge time.Duration, keepRecent int, selectors []container.RefSelector) (typesimage.PruneReport, error) {
 	opts := typesimage.ListOptions{
 		Filters: filters.NewArgs(
 			filters.Arg("label", gcEnabledSelector),
@@ -270,7 +271,7 @@ func (dp *DockerPruner) deleteOldImages(ctx context.Context, maxAge time.Duratio
 	}
 	imgs, err := dp.dCli.ImageList(ctx, opts)
 	if err != nil {
-		return types.ImagesPruneReport{}, err
+		return typesimage.PruneReport{}, err
 	}
 
 	inspects := dp.inspectImages(ctx, imgs)
@@ -294,7 +295,7 @@ func (dp *DockerPruner) deleteOldImages(ctx context.Context, maxAge time.Duratio
 		reclaimedBytes += uint64(inspect.Size)
 	}
 
-	return types.ImagesPruneReport{
+	return typesimage.PruneReport{
 		ImagesDeleted:  responseItems,
 		SpaceReclaimed: reclaimedBytes,
 	}, nil
@@ -305,7 +306,7 @@ func (dp *DockerPruner) sufficientVersionError() error {
 		"1.30", "image | container prune with filter: label")
 }
 
-func prettyPrintImagesPruneReport(report types.ImagesPruneReport, l logger.Logger) {
+func prettyPrintImagesPruneReport(report typesimage.PruneReport, l logger.Logger) {
 	if len(report.ImagesDeleted) == 0 && !l.Level().ShouldDisplay(logger.VerboseLvl) {
 		return
 	}
@@ -341,7 +342,7 @@ func prettyPrintCachePruneReport(report *types.BuildCachePruneReport, l logger.L
 	}
 }
 
-func prettyPrintContainersPruneReport(report types.ContainersPruneReport, l logger.Logger) {
+func prettyPrintContainersPruneReport(report typescontainer.PruneReport, l logger.Logger) {
 	if len(report.ContainersDeleted) == 0 && !l.Level().ShouldDisplay(logger.VerboseLvl) {
 		return
 	}
