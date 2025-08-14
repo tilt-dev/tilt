@@ -124,7 +124,7 @@ func (c *switchCli) NewVersionError(ctx context.Context, apiRequired, feature st
 func (c *switchCli) BuildCachePrune(ctx context.Context, opts types.BuildCachePruneOptions) (*types.BuildCachePruneReport, error) {
 	return c.client(ctx).BuildCachePrune(ctx, opts)
 }
-func (c *switchCli) ContainersPrune(ctx context.Context, pruneFilters filters.Args) (types.ContainersPruneReport, error) {
+func (c *switchCli) ContainersPrune(ctx context.Context, pruneFilters filters.Args) (typescontainer.PruneReport, error) {
 	return c.client(ctx).ContainersPrune(ctx, pruneFilters)
 }
 

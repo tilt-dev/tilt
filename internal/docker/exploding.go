@@ -89,8 +89,8 @@ func (c explodingClient) NewVersionError(ctx context.Context, apiRequired, featu
 func (c explodingClient) BuildCachePrune(ctx context.Context, opts types.BuildCachePruneOptions) (*types.BuildCachePruneReport, error) {
 	return nil, c.err
 }
-func (c explodingClient) ContainersPrune(ctx context.Context, pruneFilters filters.Args) (types.ContainersPruneReport, error) {
-	return types.ContainersPruneReport{}, c.err
+func (c explodingClient) ContainersPrune(ctx context.Context, pruneFilters filters.Args) (typescontainer.PruneReport, error) {
+	return typescontainer.PruneReport{}, c.err
 }
 
 var _ Client = &explodingClient{}

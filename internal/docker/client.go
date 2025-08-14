@@ -111,7 +111,7 @@ type Client interface {
 
 	NewVersionError(ctx context.Context, APIrequired, feature string) error
 	BuildCachePrune(ctx context.Context, opts types.BuildCachePruneOptions) (*types.BuildCachePruneReport, error)
-	ContainersPrune(ctx context.Context, pruneFilters filters.Args) (types.ContainersPruneReport, error)
+	ContainersPrune(ctx context.Context, pruneFilters filters.Args) (typescontainer.PruneReport, error)
 }
 
 // Add-on interface for a client that manages multiple clients transparently.
@@ -578,7 +578,7 @@ func (c *Cli) ContainerRestartNoWait(ctx context.Context, containerID string) er
 
 func (c *Cli) ExecInContainer(ctx context.Context, cID container.ID, cmd model.Cmd, in io.Reader, out io.Writer) error {
 	attachStdin := in != nil
-	cfg := types.ExecConfig{
+	cfg := typescontainer.ExecOptions{
 		Cmd:          cmd.Argv,
 		AttachStdout: true,
 		AttachStderr: true,
@@ -604,13 +604,13 @@ func (c *Cli) ExecInContainer(ctx context.Context, cID container.ID, cmd model.C
 		return errors.Wrap(err, "ExecInContainer#create")
 	}
 
-	connection, err := c.ContainerExecAttach(createCtx, execId.ID, types.ExecStartCheck{Tty: true})
+	connection, err := c.ContainerExecAttach(createCtx, execId.ID, typescontainer.ExecAttachOptions{Tty: true})
 	if err != nil {
 		return errors.Wrap(err, "ExecInContainer#attach")
 	}
 	defer connection.Close()
 
-	err = c.ContainerExecStart(createCtx, execId.ID, types.ExecStartCheck{})
+	err = c.ContainerExecStart(createCtx, execId.ID, typescontainer.ExecStartOptions{})
 	if err != nil {
 		return errors.Wrap(err, "ExecInContainer#start")
 	}
