@@ -1,5 +1,5 @@
 import React from "react"
-import { useHistory } from "react-router"
+import { useNavigate } from "react-router-dom"
 import styled from "styled-components"
 import { ReactComponent as DisabledSvg } from "./assets/svg/not-allowed.svg"
 import { ReactComponent as StarSvg } from "./assets/svg/star.svg"
@@ -191,7 +191,7 @@ export function StarredResource(props: {
 }) {
   const pb = usePathBuilder()
   const href = pb.encpath`/r/${props.resource.name}/overview`
-  const history = useHistory()
+  const navigate = useNavigate()
   const onClick = (e: any) => {
     props.unstar(props.resource.name)
     e.preventDefault()
@@ -213,7 +213,7 @@ export function StarredResource(props: {
       <StarredResourceRoot className={classes.join(" ")}>
         <ResourceButton
           onClick={() => {
-            history.push(href)
+            navigate(href)
           }}
         >
           {starredResourceIcon}
@@ -233,7 +233,7 @@ export function StarredResource(props: {
 function StarredResourceAggregate(props: { isSelected: boolean }) {
   const pb = usePathBuilder()
   const href = pb.encpath`/r/${ResourceName.starred}/overview`
-  const history = useHistory()
+  const navigate = useNavigate()
   let classes = [
     ClassNameFromResourceStatus(ResourceStatus.Healthy),
     "isStarredAggregate",
@@ -247,7 +247,7 @@ function StarredResourceAggregate(props: { isSelected: boolean }) {
       <StarredResourceRoot className={classes.join(" ")}>
         <ResourceButton
           onClick={() => {
-            history.push(href)
+            navigate(href)
           }}
         >
           <StarredResourceLabel>All Starred</StarredResourceLabel>
