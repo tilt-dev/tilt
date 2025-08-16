@@ -658,7 +658,11 @@ func (r *Reconciler) maybeSync(ctx context.Context, lu *v1alpha1.LiveUpdate, mon
 	// Visit all containers, apply changes, and return their statuses.
 	terminatedContainerPodName := ""
 	hasAnyFilesToSync := false
+	// Track if the anonymous function in visitSelectedContainers was ever invoked - for debug logs.
+	visitedAny := false
 	resource.visitSelectedContainers(func(pod v1alpha1.Pod, cInfo v1alpha1.Container) bool {
+		visitedAny = true
+
 		c := liveupdates.Container{
 			ContainerID:   container.ID(cInfo.ID),
 			ContainerName: container.Name(cInfo.Name),
@@ -805,6 +809,11 @@ func (r *Reconciler) maybeSync(ctx context.Context, lu *v1alpha1.LiveUpdate, mon
 		status.Containers = append(status.Containers, oneUpdateStatus.Containers...)
 		return false
 	})
+
+	// If no selected container matched, emit a debug log.
+	if !visitedAny {
+		logger.Get(ctx).Debugf("liveupdate[%s]: no containers matched selector", lu.Name)
+	}
 
 	// If the only containers we're connected to are terminated containers,
 	// there are two cases we need to worry about:
