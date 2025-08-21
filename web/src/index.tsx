@@ -9,7 +9,12 @@ import { InterfaceVersionProvider } from "./InterfaceVersion"
 ReactModal.setAppElement("#root")
 
 let app = (
-  <BrowserRouter>
+  <BrowserRouter
+    future={{
+      v7_relativeSplatPath: true,
+      v7_startTransition: true,
+    }}
+  >
     <InterfaceVersionProvider>
       <HUDFromContext />
     </InterfaceVersionProvider>

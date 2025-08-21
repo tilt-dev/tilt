@@ -26,23 +26,21 @@ export default {
         [Flag.Labels]: context?.args?.labelsEnabled ?? true,
       })
       return (
-        <MemoryRouter initialEntries={["/"]}>
-          <TiltSnackbarProvider>
-            <FeaturesTestProvider value={features}>
-              <ResourceGroupsContextProvider>
-                <ResourceListOptionsProvider>
-                  <StarredResourceMemoryProvider>
-                    <div style={{ margin: "-1rem", height: "80vh" }}>
-                      <StylesProvider injectFirst>
-                        <Story />
-                      </StylesProvider>
-                    </div>
-                  </StarredResourceMemoryProvider>
-                </ResourceListOptionsProvider>
-              </ResourceGroupsContextProvider>
-            </FeaturesTestProvider>
-          </TiltSnackbarProvider>
-        </MemoryRouter>
+        <TiltSnackbarProvider>
+          <FeaturesTestProvider value={features}>
+            <ResourceGroupsContextProvider>
+              <ResourceListOptionsProvider>
+                <StarredResourceMemoryProvider>
+                  <div style={{ margin: "-1rem", height: "80vh" }}>
+                    <StylesProvider injectFirst>
+                      <Story />
+                    </StylesProvider>
+                  </div>
+                </StarredResourceMemoryProvider>
+              </ResourceListOptionsProvider>
+            </ResourceGroupsContextProvider>
+          </FeaturesTestProvider>
+        </TiltSnackbarProvider>
       )
     },
   ],

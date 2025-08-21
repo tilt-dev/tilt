@@ -6,7 +6,7 @@ import { makeStyles } from "@material-ui/core/styles"
 import ExpandMoreIcon from "@material-ui/icons/ExpandMore"
 import { History } from "history"
 import React, { ChangeEvent, useEffect, useState } from "react"
-import { useHistory, useLocation } from "react-router"
+import { useNavigate, useLocation } from "react-router-dom"
 import styled from "styled-components"
 import { Alert } from "./alerts"
 import { ApiButton, ButtonSet } from "./ApiButton"
@@ -93,12 +93,12 @@ function FilterSourceMenu(props: FilterSourceMenuProps) {
   let alerts = props.alerts || []
 
   let classes = useMenuStyles()
-  let history = useHistory()
+  const navigate = useNavigate()
   let l = useLocation()
   let onClick = (e: any) => {
     let source = e.currentTarget.getAttribute("data-filter")
     const search = createLogSearch(l.search, { source, level })
-    history.push({
+    navigate({
       pathname: l.pathname,
       search: search.toString(),
     })
@@ -402,14 +402,14 @@ export function FilterRadioButton(props: FilterRadioButtonProps) {
     rightClassName += " isEnabled"
   }
 
-  let history = useHistory()
+  const navigate = useNavigate()
   let l = useLocation()
   let onClick = () => {
     const search = createLogSearch(l.search, {
       level,
       source: FilterSource.all,
     })
-    history.push({
+    navigate({
       pathname: l.pathname,
       search: search.toString(),
     })
@@ -473,15 +473,15 @@ const filterTermTooltipContent = (
   </>
 )
 
-const debounceFilterLogs = debounce((history: History, search: string) => {
+const debounceFilterLogs = debounce((navigate: any, search: string) => {
   // Navigate to filtered logs with search query
-  history.push({ search })
+  navigate({ search })
 }, FILTER_INPUT_DEBOUNCE)
 
 export function FilterTermField({ termFromUrl }: { termFromUrl: FilterTerm }) {
   const { input: initialTerm, state } = termFromUrl
   const location = useLocation()
-  const history = useHistory()
+  const navigate = useNavigate()
 
   const [filterTerm, setFilterTerm] = useState(initialTerm ?? EMPTY_TERM)
 
@@ -505,9 +505,9 @@ export function FilterTermField({ termFromUrl }: { termFromUrl: FilterTerm }) {
     const search = createLogSearch(location.search, { term })
 
     if (withDebounceDelay) {
-      debounceFilterLogs(history, search.toString())
+      debounceFilterLogs(navigate, search.toString())
     } else {
-      history.push({ search: search.toString() })
+      navigate({ search: search.toString() })
     }
   }
 

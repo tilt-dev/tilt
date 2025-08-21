@@ -1,6 +1,5 @@
-import { createMemoryHistory } from "history"
 import React from "react"
-import { Router } from "react-router"
+import { MemoryRouter } from "react-router"
 import { ButtonSet } from "./ApiButton"
 import { FilterLevel, FilterSource, useFilterSet } from "./logfilters"
 import OverviewActionBar from "./OverviewActionBar"
@@ -14,10 +13,9 @@ export default {
     (Story: any, context: any) => {
       let level = context?.args?.level || ""
       let source = context?.args?.source || ""
-      let history = createMemoryHistory()
-      history.location.search = `?level=${level}&source=${source}`
+      let initialEntries = [`/?level=${level}&source=${source}`]
       return (
-        <Router history={history}>
+        <MemoryRouter initialEntries={initialEntries}>
           <TiltSnackbarProvider>
             <StarredResourceMemoryProvider>
               <div style={{ margin: "-1rem", height: "80vh" }}>
@@ -25,7 +23,7 @@ export default {
               </div>
             </StarredResourceMemoryProvider>
           </TiltSnackbarProvider>
-        </Router>
+        </MemoryRouter>
       )
     },
   ],
