@@ -12,8 +12,8 @@
     "js-cookie": "^2.2.1",
     "moment": "^2.29.4",
     "notistack": "^1.0.10",
-    "react": "^16.9.0",
-    "react-dom": "^16.9.0",
+    "react": "^17.0.2",
+    "react-dom": "^17.0.2",
     "react-from-dom": "^0.6.0",
     "react-modal": "^3.14.4",
     "react-outline-manager": "^1.2.2",
@@ -64,8 +64,8 @@
     "@types/js-cookie": "^2.2.2",
     "@types/jsdom": "^16.2.13",
     "@types/node": "^16.11.7",
-    "@types/react": "^16.9.0",
-    "@types/react-dom": "^16.9.0",
+    "@types/react": "^17.0.2",
+    "@types/react-dom": "^17.0.2",
     "@types/react-modal": "^3.13.1",
     "@types/react-router-dom": "^5.3.3",
     "@types/react-table": "^7.7.8",
@@ -91,5 +91,5 @@
   "engines": {
     "node": ">=20"
   },
-  "packageManager": "yarn@4.1.0"
+  "packageManager": "yarn@4.9.3"
 }

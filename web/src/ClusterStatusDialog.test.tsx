@@ -87,7 +87,7 @@ describe("ClusterStatusDialog", () => {
     )
 
     expect(screen.getByTestId("healthy-icon")).toBeTruthy()
-    expect(screen.findByText(CLUSTER_STATUS_HEALTHY)).toBeTruthy()
+    expect(screen.getByText(CLUSTER_STATUS_HEALTHY)).toBeTruthy()
     expect(screen.queryByTestId("unhealthy-icon")).toBeNull()
   })
 
