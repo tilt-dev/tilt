@@ -32,7 +32,6 @@ func HandleUIResourceUpsertAction(state *store.EngineState, action UIResourceUps
 		}
 
 		ms, ok := state.ManifestState(model.ManifestName(n))
-
 		if ok {
 			ms.DisableState = uir.Status.DisableStatus.State
 			if len(uir.Status.DisableStatus.Sources) > 0 {
@@ -40,8 +39,10 @@ func HandleUIResourceUpsertAction(state *store.EngineState, action UIResourceUps
 					// since file watches are disabled while a resource is disabled, we can't
 					// have confidence in any previous build state
 					ms.BuildHistory = nil
-					if len(ms.BuildStatuses) > 0 {
-						ms.BuildStatuses = make(map[model.TargetID]*store.BuildStatus)
+					if mt, ok := state.ManifestTargets[ms.Name]; ok {
+						ms.ResetBuildStatus(mt.Manifest)
+					} else if _, ok := state.TiltfileStates[ms.Name]; ok {
+						ms.ResetTiltfileBuildStatus(ms.Name)
 					}
 					state.RemoveFromTriggerQueue(ms.Name)
 				}

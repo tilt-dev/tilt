@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
@@ -23,7 +24,9 @@ func TestToJSON(t *testing.T) {
 	state := newState([]model.Manifest{m})
 
 	mState, _ := state.ManifestState("fe")
-	mState.MutableBuildStatus(m.K8sTarget().ID()).LastResult = NewK8sDeployResult(
+	bs, ok := mState.BuildStatus(m.K8sTarget().ID())
+	require.True(t, ok)
+	bs.LastResult = NewK8sDeployResult(
 		m.K8sTarget().ID(), &k8sconv.KubernetesApplyFilter{})
 
 	buf := bytes.NewBuffer(nil)

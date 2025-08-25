@@ -183,8 +183,8 @@ func (e *EngineState) BuildStatus(id model.TargetID) *BuildStatus {
 	mns := e.ManifestNamesForTargetID(id)
 	for _, mn := range mns {
 		ms := e.ManifestTargets[mn].State
-		bs := ms.BuildStatus(id)
-		if !bs.IsEmpty() {
+		bs, ok := ms.BuildStatus(id)
+		if ok && !bs.IsEmpty() {
 			return bs
 		}
 	}
@@ -576,12 +576,7 @@ func NewState() *EngineState {
 	// lots of tests assume tha main tiltfile state exists on initialization.
 	ret.TiltfileDefinitionOrder = []model.ManifestName{model.MainTiltfileManifestName}
 	ret.TiltfileStates = map[model.ManifestName]*ManifestState{
-		model.MainTiltfileManifestName: &ManifestState{
-			Name:          model.MainTiltfileManifestName,
-			BuildStatuses: make(map[model.TargetID]*BuildStatus),
-			DisableState:  v1alpha1.DisableStateEnabled,
-			CurrentBuilds: make(map[string]model.BuildRecord),
-		},
+		model.MainTiltfileManifestName: NewTiltfileManifestState(model.MainTiltfileManifestName),
 	}
 
 	if ok, _ := tiltanalytics.IsAnalyticsDisabledFromEnv(); ok {
@@ -607,14 +602,25 @@ func NewState() *EngineState {
 	return ret
 }
 
+func NewTiltfileManifestState(n model.ManifestName) *ManifestState {
+	ms := &ManifestState{
+		Name:          n,
+		DisableState:  v1alpha1.DisableStateEnabled,
+		CurrentBuilds: make(map[string]model.BuildRecord),
+	}
+	ms.ResetTiltfileBuildStatus(n)
+	return ms
+}
+
 func NewManifestState(m model.Manifest) *ManifestState {
 	mn := m.Name
 	ms := &ManifestState{
 		Name:          mn,
-		BuildStatuses: make(map[model.TargetID]*BuildStatus),
 		DisableState:  v1alpha1.DisableStatePending,
 		CurrentBuilds: make(map[string]model.BuildRecord),
 	}
+
+	ms.ResetBuildStatus(m)
 
 	if m.IsK8s() {
 		ms.RuntimeState = NewK8sRuntimeState(m)
@@ -627,27 +633,29 @@ func NewManifestState(m model.Manifest) *ManifestState {
 	return ms
 }
 
+func (ms *ManifestState) ResetTiltfileBuildStatus(n model.ManifestName) {
+	ms.BuildStatuses = make(map[model.TargetID]*BuildStatus)
+	ms.BuildStatuses[model.TargetID{
+		Type: model.TargetTypeConfigs,
+		Name: model.TargetName(n),
+	}] = newBuildStatus()
+}
+
+func (ms *ManifestState) ResetBuildStatus(m model.Manifest) {
+	ms.BuildStatuses = make(map[model.TargetID]*BuildStatus)
+	for _, spec := range m.TargetSpecs() {
+		ms.BuildStatuses[spec.ID()] = newBuildStatus()
+	}
+}
+
 func (ms *ManifestState) TargetID() model.TargetID {
 	return ms.Name.TargetID()
 }
 
-// Returns a copy of the build status. Any changes will not change the
-// engine. Allows for multiple simultaneous readers.
-func (ms *ManifestState) BuildStatus(id model.TargetID) *BuildStatus {
+// Returns the build status.
+func (ms *ManifestState) BuildStatus(id model.TargetID) (*BuildStatus, bool) {
 	result, ok := ms.BuildStatuses[id]
-	if !ok {
-		return &BuildStatus{}
-	}
-	return result
-}
-
-func (ms *ManifestState) MutableBuildStatus(id model.TargetID) *BuildStatus {
-	result, ok := ms.BuildStatuses[id]
-	if !ok {
-		result = newBuildStatus()
-		ms.BuildStatuses[id] = result
-	}
-	return result
+	return result, ok
 }
 
 func (ms *ManifestState) DCRuntimeState() dockercompose.State {
@@ -761,8 +769,10 @@ func (ms *ManifestState) AddPendingFileChange(targetID model.TargetID, file stri
 		}
 	}
 
-	bs := ms.MutableBuildStatus(targetID)
-	bs.FileChanges[file] = timestamp
+	bs, ok := ms.BuildStatus(targetID)
+	if ok {
+		bs.FileChanges[file] = timestamp
+	}
 }
 
 func (ms *ManifestState) HasPendingFileChanges() bool {
