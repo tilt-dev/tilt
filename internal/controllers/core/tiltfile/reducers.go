@@ -159,7 +159,7 @@ func HandleConfigsReloaded(
 			// Manifest has changed such that the current build is invalid;
 			// ensure we do an image build so that we apply the changes
 			ms := mt.State
-			ms.BuildStatuses = make(map[model.TargetID]*store.BuildStatus)
+			ms.ResetBuildStatus(m)
 			ms.PendingManifestChange = event.FinishTime
 			ms.ConfigFilesThatCausedChange = configFilesThatChanged
 		}
