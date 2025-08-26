@@ -47,7 +47,9 @@ func TestStateToViewRelativeEditPaths(t *testing.T) {
 			},
 		},
 	}
-	ms.MutableBuildStatus(m.ImageTargets[0].ID()).FileChanges =
+	bs, ok := ms.BuildStatus(m.ImageTargets[0].ID())
+	require.True(t, ok)
+	bs.FileChanges =
 		map[string]time.Time{
 			f.JoinPath("a", "b", "c", "foo"):    time.Now(),
 			f.JoinPath("a", "b", "c", "d", "e"): time.Now(),

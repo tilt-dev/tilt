@@ -61,7 +61,8 @@ func TestNextBuildReason(t *testing.T) {
 	mt := NewManifestTarget(m)
 
 	iTargetID := model.ImageID(container.MustParseSelector("sancho"))
-	status := mt.State.MutableBuildStatus(kTarget.ID())
+	status, ok := mt.State.BuildStatus(kTarget.ID())
+	require.True(t, ok)
 	assert.Equal(t, "Initial Build",
 		mt.NextBuildReason().String())
 

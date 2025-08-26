@@ -2,7 +2,6 @@ package tiltfiles
 
 import (
 	"github.com/tilt-dev/tilt/internal/store"
-	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -13,12 +12,7 @@ func HandleTiltfileUpsertAction(state *store.EngineState, action TiltfileUpsertA
 
 	_, ok := state.TiltfileStates[mn]
 	if !ok {
-		state.TiltfileStates[mn] = &store.ManifestState{
-			Name:          mn,
-			BuildStatuses: make(map[model.TargetID]*store.BuildStatus),
-			DisableState:  v1alpha1.DisableStateEnabled,
-			CurrentBuilds: make(map[string]model.BuildRecord),
-		}
+		state.TiltfileStates[mn] = store.NewTiltfileManifestState(mn)
 	}
 
 	if mn == model.MainTiltfileManifestName {

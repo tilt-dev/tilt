@@ -322,7 +322,9 @@ func TestLiveUpdateMainImageHold(t *testing.T) {
 	}
 	f.st.KubernetesResources["sancho"] = resource
 
-	sancho.State.MutableBuildStatus(sanchoImage.ID()).FileChanges[srcFile] = time.Now()
+	bs, ok := sancho.State.BuildStatus(sanchoImage.ID())
+	require.True(t, ok)
+	bs.FileChanges[srcFile] = time.Now()
 	f.assertNoTargetNextToBuild()
 	f.assertHold("sancho", store.HoldReasonReconciling)
 
@@ -338,7 +340,9 @@ func TestLiveUpdateMainImageHold(t *testing.T) {
 	f.assertNoTargetNextToBuild()
 
 	// If the base image has a change, we have to rebuild.
-	sancho.State.MutableBuildStatus(baseImage.ID()).FileChanges[srcFile] = time.Now()
+	bs, ok = sancho.State.BuildStatus(baseImage.ID())
+	require.True(t, ok)
+	bs.FileChanges[srcFile] = time.Now()
 	f.assertNextTargetToBuild("sancho")
 }
 
@@ -385,7 +389,9 @@ func TestLiveUpdateBaseImageHold(t *testing.T) {
 	}
 	f.st.KubernetesResources["sancho"] = resource
 
-	sancho.State.MutableBuildStatus(baseImage.ID()).FileChanges[srcFile] = time.Now()
+	bs, ok := sancho.State.BuildStatus(baseImage.ID())
+	require.True(t, ok)
+	bs.FileChanges[srcFile] = time.Now()
 	f.assertNoTargetNextToBuild()
 	f.assertHold("sancho", store.HoldReasonReconciling)
 
@@ -401,7 +407,9 @@ func TestLiveUpdateBaseImageHold(t *testing.T) {
 	f.assertNoTargetNextToBuild()
 
 	// If the deploy image has a change, we have to rebuild.
-	sancho.State.MutableBuildStatus(sanchoImage.ID()).FileChanges[srcFile] = time.Now()
+	bs, ok = sancho.State.BuildStatus(sanchoImage.ID())
+	require.True(t, ok)
+	bs.FileChanges[srcFile] = time.Now()
 	f.assertNextTargetToBuild("sancho")
 }
 
@@ -423,8 +431,12 @@ func TestTwoK8sTargetsWithBaseImagePrebuilt(t *testing.T) {
 		WithK8sYAML(testyaml.SanchoYAML).
 		Build())
 
-	sanchoOne.State.MutableBuildStatus(baseImage.ID()).LastResult = store.ImageBuildResult{}
-	sanchoTwo.State.MutableBuildStatus(baseImage.ID()).LastResult = store.ImageBuildResult{}
+	bs, ok := sanchoOne.State.BuildStatus(baseImage.ID())
+	require.True(t, ok)
+	bs.LastResult = store.ImageBuildResult{}
+	bs, ok = sanchoTwo.State.BuildStatus(baseImage.ID())
+	require.True(t, ok)
+	bs.LastResult = store.ImageBuildResult{}
 
 	f.assertNextTargetToBuild("sancho-one")
 
@@ -470,8 +482,8 @@ func TestHoldForDeploy(t *testing.T) {
 	})
 	f.assertNoTargetNextToBuild()
 
-	status := sancho.State.MutableBuildStatus(sanchoImage.ID())
-
+	status, ok := sancho.State.BuildStatus(sanchoImage.ID())
+	require.True(t, ok)
 	status.FileChanges[objFile] = time.Now().Add(-2 * time.Second)
 	f.assertNextTargetToBuild("sancho")
 	status.ConsumedChanges = time.Now().Add(-2 * time.Second)
@@ -542,7 +554,8 @@ func TestHoldForManualLiveUpdate(t *testing.T) {
 	f.assertNoTargetNextToBuild()
 
 	// This shouldn't trigger a full-build, because it will be handled by the live-updater.
-	status := sancho.State.MutableBuildStatus(sanchoImage.ID())
+	status, ok := sancho.State.BuildStatus(sanchoImage.ID())
+	require.True(t, ok)
 	f.st.AppendToTriggerQueue(sancho.Manifest.Name, model.BuildReasonFlagTriggerCLI)
 	status.FileChanges[srcFile] = time.Now()
 	f.assertNoTargetNextToBuild()

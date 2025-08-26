@@ -215,7 +215,11 @@ func buildStateSet(ctx context.Context, manifest model.Manifest,
 
 	for _, spec := range specs {
 		id := spec.ID()
-		status := ms.BuildStatus(id)
+		status, ok := ms.BuildStatus(id)
+		if !ok {
+			continue
+		}
+
 		filesChanged := status.PendingFileChangesSorted()
 
 		var depsChanged []model.TargetID

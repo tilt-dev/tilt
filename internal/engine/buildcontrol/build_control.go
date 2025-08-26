@@ -187,7 +187,12 @@ func HoldTargetsWithBuildingComponents(state store.EngineState, mts []*store.Man
 			building[mt.Manifest.ID()] = true
 
 			for _, spec := range mt.Manifest.TargetSpecs() {
-				if canReuseImageTargetHeuristic(spec, mt.State.BuildStatus(spec.ID())) {
+				bs, ok := mt.State.BuildStatus(spec.ID())
+				if !ok {
+					continue
+				}
+
+				if canReuseImageTargetHeuristic(spec, bs) {
 					continue
 				}
 
@@ -207,7 +212,12 @@ func HoldTargetsWithBuildingComponents(state store.EngineState, mts []*store.Man
 		}
 
 		for _, spec := range m.TargetSpecs() {
-			if canReuseImageTargetHeuristic(spec, mt.State.BuildStatus(spec.ID())) {
+			bs, ok := mt.State.BuildStatus(spec.ID())
+			if !ok {
+				continue
+			}
+
+			if canReuseImageTargetHeuristic(spec, bs) {
 				continue
 			}
 

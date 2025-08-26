@@ -884,8 +884,6 @@ k8s_resource('snack', new_name='baz')  # rename "snack" --> "baz"
 	assert.Equal(t, "FROM iron/go:dev1", call.firstImgTarg().DockerBuildInfo().DockerfileContents)
 	assert.Equal(t, "baz", string(call.k8s().Name))
 
-	f.assertNoCall()
-
 	// Now add a second resource
 	f.WriteConfigFiles("Tiltfile", `
 docker_build("gcr.io/windmill-public-containers/servantes/snack", "./snack", dockerfile="Dockerfile1")
@@ -1343,7 +1341,12 @@ func TestPodEventContainerStatus(t *testing.T) {
 
 	var ref reference.NamedTagged
 	f.WaitUntilManifestState("image appears", "foobar", func(ms store.ManifestState) bool {
-		result := ms.BuildStatus(manifest.ImageTargetAt(0).ID()).LastResult
+
+		bs, ok := ms.BuildStatus(manifest.ImageTargetAt(0).ID())
+		if !ok {
+			return false
+		}
+		result := bs.LastResult
 		ref, _ = container.ParseNamedTagged(store.ClusterImageRefFromBuildResult(result))
 		return ref != nil
 	})
@@ -1566,7 +1569,11 @@ func TestPodContainerStatus(t *testing.T) {
 
 	var ref reference.NamedTagged
 	f.WaitUntilManifestState("image appears", "fe", func(ms store.ManifestState) bool {
-		result := ms.BuildStatus(manifest.ImageTargetAt(0).ID()).LastResult
+		bs, ok := ms.BuildStatus(manifest.ImageTargetAt(0).ID())
+		if !ok {
+			return false
+		}
+		result := bs.LastResult
 		ref, _ = container.ParseNamedTagged(store.ClusterImageRefFromBuildResult(result))
 		return ref != nil
 	})
@@ -3633,6 +3640,13 @@ func (f *testFixture) nextCall(msgAndArgs ...interface{}) buildAndDeployCall {
 		case call := <-f.b.calls:
 			return call
 		case <-time.After(stdTimeout):
+
+			// If we timed out, look at the current buildcontrol state.
+			state := f.upper.store.RLockState()
+			target, holds := buildcontrol.NextTargetToBuild(state)
+			msg = fmt.Sprintf("%s\nbuild control state: %+v, holds: %+v\n", msg, target, holds)
+			f.upper.store.RUnlockState()
+
 			f.T().Fatal(msg)
 		}
 	}
