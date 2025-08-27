@@ -396,19 +396,17 @@ func (c *Cli) ServerVersion(ctx context.Context) (types.Version, error) {
 
 type encodedAuth string
 
-func (c *Cli) authInfo(ctx context.Context, repoInfo *registry.RepositoryInfo, cmdName string) (encodedAuth, types.RequestPrivilegeFunc, error) {
+func (c *Cli) authInfo(ctx context.Context, repoInfo *registry.RepositoryInfo, cmdName string) (encodedAuth, error) {
 	cli, err := newDockerCli(ctx)
 	if err != nil {
-		return "", nil, errors.Wrap(err, "authInfo")
+		return "", errors.Wrap(err, "authInfo")
 	}
 	authConfig := command.ResolveAuthConfig(cli.ConfigFile(), repoInfo.Index)
-	requestPrivilege := command.RegistryAuthenticationPrivilegedFunc(cli, repoInfo.Index, cmdName)
-
 	auth, err := typesregistry.EncodeAuthConfig(authConfig)
 	if err != nil {
-		return "", nil, errors.Wrap(err, "authInfo#EncodeAuthConfig")
+		return "", errors.Wrap(err, "authInfo#EncodeAuthConfig")
 	}
-	return encodedAuth(auth), requestPrivilege, nil
+	return encodedAuth(auth), nil
 }
 
 func (c *Cli) ImagePull(ctx context.Context, ref reference.Named) (reference.Canonical, error) {
@@ -417,15 +415,14 @@ func (c *Cli) ImagePull(ctx context.Context, ref reference.Named) (reference.Can
 		return nil, fmt.Errorf("could not parse registry for %q: %v", ref.String(), err)
 	}
 
-	encodedAuth, requestPrivilege, err := c.authInfo(ctx, repoInfo, "push")
+	encodedAuth, err := c.authInfo(ctx, repoInfo, "push")
 	if err != nil {
 		return nil, fmt.Errorf("could not authenticate: %v", err)
 	}
 
 	image := ref.String()
 	pullResp, err := c.Client.ImagePull(ctx, image, typesimage.PullOptions{
-		RegistryAuth:  string(encodedAuth),
-		PrivilegeFunc: requestPrivilege,
+		RegistryAuth: string(encodedAuth),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("could not pull image %q: %v", image, err)
@@ -479,14 +476,13 @@ func (c *Cli) ImagePush(ctx context.Context, ref reference.NamedTagged) (io.Read
 	}
 
 	logger.Get(ctx).Infof("Authenticating to image repo: %s", repoInfo.Index.Name)
-	encodedAuth, requestPrivilege, err := c.authInfo(ctx, repoInfo, "push")
+	encodedAuth, err := c.authInfo(ctx, repoInfo, "push")
 	if err != nil {
 		return nil, errors.Wrap(err, "ImagePush: authenticate")
 	}
 
 	options := typesimage.PushOptions{
-		RegistryAuth:  string(encodedAuth),
-		PrivilegeFunc: requestPrivilege,
+		RegistryAuth: string(encodedAuth),
 	}
 
 	if reference.Domain(ref) == "" {
