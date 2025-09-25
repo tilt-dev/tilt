@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	extbeta1 "k8s.io/api/extensions/v1beta1"
+	"k8s.io/apimachinery/pkg/api/meta"
 
 	"k8s.io/api/apps/v1beta1"
 
@@ -272,6 +273,32 @@ func TestInjectService(t *testing.T) {
 	verifyFields(t, []model.LabelPair{{Key: "app", Value: "cattos"}}, []field{
 		{"svc.Spec.Selector", svc.Spec.Selector},
 	})
+}
+
+func TestInjectLabelAPIService(t *testing.T) {
+	entity := parseOneEntity(t, testyaml.APIServiceYAML)
+	lps := []model.LabelPair{
+		{
+			Key:   "tier",
+			Value: "test",
+		},
+	}
+	newEntity, err := InjectLabels(entity, lps)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	meta, err := meta.Accessor(newEntity.Obj)
+	require.NoError(t, err)
+	labels := meta.GetLabels()
+	assert.Equal(t, map[string]string{
+		"app.kubernetes.io/instance":   "metrics-server",
+		"app.kubernetes.io/managed-by": "Helm",
+		"app.kubernetes.io/name":       "metrics-server",
+		"app.kubernetes.io/version":    "0.7.1",
+		"helm.sh/chart":                "metrics-server-3.12.1",
+		"tier":                         "test",
+	}, labels)
 }
 
 func TestSelectorMatchesLabels(t *testing.T) {

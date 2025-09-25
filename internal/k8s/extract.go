@@ -5,6 +5,7 @@ import (
 	"reflect"
 
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -42,7 +43,7 @@ func ExtractPodTemplateSpec(obj interface{}) ([]*v1.PodTemplateSpec, error) {
 	return result, nil
 }
 
-func extractObjectMetas(obj interface{}, filter func(v reflect.Value) bool) ([]*metav1.ObjectMeta, error) {
+func extractObjectMetas(obj interface{}, filter func(v reflect.Value) bool) ([]metav1.Object, error) {
 	extracted, err := newExtractor(reflect.TypeOf(metav1.ObjectMeta{})).
 		withFilter(filter).
 		extractPointersFrom(obj)
@@ -50,13 +51,21 @@ func extractObjectMetas(obj interface{}, filter func(v reflect.Value) bool) ([]*
 		return nil, err
 	}
 
-	result := make([]*metav1.ObjectMeta, len(extracted))
+	result := make([]metav1.Object, len(extracted))
 	for i, e := range extracted {
 		c, ok := e.(*metav1.ObjectMeta)
 		if !ok {
 			return nil, fmt.Errorf("ExtractObjectMetas: expected ObjectMeta, actual %T", e)
 		}
 		result[i] = c
+	}
+
+	// if this is unstructured, use the built-in accessors
+	if len(result) == 0 {
+		accessor, err := meta.Accessor(obj)
+		if err == nil {
+			result = append(result, accessor)
+		}
 	}
 	return result, nil
 }

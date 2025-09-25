@@ -7,6 +7,7 @@ import (
 	appsv1beta2 "k8s.io/api/apps/v1beta2"
 	v1 "k8s.io/api/core/v1"
 	extv1beta1 "k8s.io/api/extensions/v1beta1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
@@ -52,7 +53,7 @@ func injectLabels(entity K8sEntity, labels []model.LabelPair, overwrite bool) (K
 	// Don't modify persistent volume claims
 	// because they're supposed to be immutable.
 	pvc := reflect.TypeOf(v1.PersistentVolumeClaim{})
-	metas, err := extractObjectMetas(&entity, func(v reflect.Value) bool {
+	metas, err := extractObjectMetas(entity.Obj, func(v reflect.Value) bool {
 		return v.Type() != pvc
 	})
 	if err != nil {
@@ -60,7 +61,12 @@ func injectLabels(entity K8sEntity, labels []model.LabelPair, overwrite bool) (K
 	}
 
 	for _, meta := range metas {
-		applyLabelsToMap(&meta.Labels, labels, overwrite, true)
+		metaLabels := meta.GetLabels()
+		if metaLabels == nil {
+			metaLabels = make(map[string]string, 0)
+		}
+		applyLabelsToMap(&metaLabels, labels, overwrite, true)
+		meta.SetLabels(metaLabels)
 	}
 
 	switch obj := entity.Obj.(type) {
@@ -200,22 +206,18 @@ func (e K8sEntity) SelectorMatchesLabels(labels map[string]string) bool {
 // MatchesMetadataLabels indicates whether the given label(s) are a subset
 // of metadata labels for the given entity.
 func (e K8sEntity) MatchesMetadataLabels(labels map[string]string) (bool, error) {
-	// TODO(nick): This doesn't seem right.
-	// This should only look at the top-level obj meta, not all of them.
-	metas, err := extractObjectMetas(&e, NoFilter)
+	meta, err := meta.Accessor(e.Obj)
 	if err != nil {
 		return false, err
 	}
 
-	for _, meta := range metas {
-		for k, v := range labels {
-			realVal, ok := meta.Labels[k]
-			if !ok || realVal != v {
-				return false, nil
-			}
+	metaLabels := meta.GetLabels()
+	for k, v := range labels {
+		realVal, ok := metaLabels[k]
+		if !ok || realVal != v {
+			return false, nil
 		}
 	}
 
 	return true, nil
-
 }
