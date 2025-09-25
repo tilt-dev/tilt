@@ -1501,6 +1501,54 @@ k8s_yaml(doggos)
 	f.assertNoMoreManifests()
 }
 
+func TestFilterYamlByLabelCustomResource(t *testing.T) {
+	f := newFixture(t)
+	f.file("Tiltfile", `
+test="""
+apiVersion: apiregistration.k8s.io/v1
+kind: APIService
+metadata:
+  labels:
+    app.kubernetes.io/instance: metrics-server
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: metrics-server
+    app.kubernetes.io/version: 0.7.1
+    helm.sh/chart: metrics-server-3.12.1
+  name: v1beta1.metrics.k8s.io
+spec:
+  group: metrics.k8s.io
+  groupPriorityMinimum: 100
+  insecureSkipTLSVerify: true
+  service:
+    name: metrics-server
+    namespace: kube-system
+    port: 443
+  version: v1beta1
+  versionPriority: 100
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    app.kubernetes.io/instance: longhorn
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: longhorn
+  name: longhorn-system
+"""
+a, b = filter_yaml(
+  blob(test),
+  labels={"app.kubernetes.io/name": "longhorn"}
+)
+print('a: %d' % len(decode_yaml_stream(a)))
+print('b: %d' % len(decode_yaml_stream(b)))
+`)
+
+	f.load()
+
+	require.Contains(t, f.out.String(), "a: 1")
+	require.Contains(t, f.out.String(), "b: 1")
+}
+
 func TestFilterYamlByName(t *testing.T) {
 	f := newFixture(t)
 	f.file("k8s.yaml", yaml.ConcatYAML(

@@ -1697,3 +1697,18 @@ spec:
   image: gcr.io/knative-releases/knative.dev/serving/cmd/queue@sha256:713bd548700bf7fe5452969611d1cc987051bd607d67a4e7623e140f06c209b2
 
 `
+
+const APIServiceYAML = `
+apiVersion: apiregistration.k8s.io/v1
+kind: APIService
+metadata:
+  labels:
+    app.kubernetes.io/instance: metrics-server
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: metrics-server
+    app.kubernetes.io/version: 0.7.1
+    helm.sh/chart: metrics-server-3.12.1
+  name: v1beta1.metrics.k8s.io
+spec:
+  group: metrics.k8s.io
+`
