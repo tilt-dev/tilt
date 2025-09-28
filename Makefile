@@ -139,10 +139,6 @@ storybook:
 	cd web && yarn install
 	cd web && yarn storybook
 
-tilt-toast-container:
-	docker build --platform linux/amd64 -t docker/tilt-toast -f Dockerfile.toast .circleci
-	docker push docker/tilt-toast
-
 ensure: vendor
 
 vendor:
@@ -172,7 +168,7 @@ update-codegen-starlark:
 	goimports -w -l $(GOIMPORTS_LOCAL_ARG) internal/
 
 update-codegen-ts:
-	toast proto-ts
+	./scripts/codegen-webview.sh
 
 release-build:
 	toast -f build.toast.yml
