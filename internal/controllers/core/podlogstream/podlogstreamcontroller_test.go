@@ -542,7 +542,7 @@ type plmFixture struct {
 	plsc    *Controller
 	out     *bufsync.ThreadSafeBuffer
 	store   *plmStore
-	clock   clockwork.FakeClock
+	clock   *clockwork.FakeClock
 }
 
 func newPLMFixture(t testing.TB) *plmFixture {

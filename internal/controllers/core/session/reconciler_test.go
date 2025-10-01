@@ -675,7 +675,7 @@ type fixture struct {
 	*fake.ControllerFixture
 	tf    *tempdir.TempDirFixture
 	r     *Reconciler
-	clock clockwork.FakeClock
+	clock *clockwork.FakeClock
 }
 
 func newFixture(t testing.TB, engineMode store.EngineMode) *fixture {
