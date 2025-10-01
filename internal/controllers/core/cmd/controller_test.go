@@ -933,7 +933,7 @@ type fixture struct {
 	fpm   *FakeProberManager
 	sc    *local.ServerController
 	c     *Controller
-	clock clockwork.FakeClock
+	clock *clockwork.FakeClock
 }
 
 func newFixture(t *testing.T) *fixture {

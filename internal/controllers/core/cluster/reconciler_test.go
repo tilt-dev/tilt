@@ -191,7 +191,6 @@ contexts:
   name: default
 current-context: default
 kind: Config
-preferences: {}
 users: null
 `, string(contents))
 }
@@ -320,7 +319,7 @@ type fixture struct {
 	*fake.ControllerFixture
 	r            *Reconciler
 	ma           *analytics.MemoryAnalytics
-	clock        clockwork.FakeClock
+	clock        *clockwork.FakeClock
 	k8sClient    *k8s.FakeK8sClient
 	dockerClient *docker.FakeClient
 	base         *xdg.FakeBase

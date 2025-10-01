@@ -196,7 +196,7 @@ type pmFixture struct {
 	cancel func()
 	out    *bufsync.ThreadSafeBuffer
 	store  *testStore
-	clock  clockwork.FakeClock
+	clock  *clockwork.FakeClock
 }
 
 func newPMFixture(t *testing.T) *pmFixture {

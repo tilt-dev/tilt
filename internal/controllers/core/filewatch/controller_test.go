@@ -59,7 +59,7 @@ type fixture struct {
 	store            *testStore
 	fakeMultiWatcher *fsevent.FakeMultiWatcher
 	fakeTimerMaker   fsevent.FakeTimerMaker
-	clock            clockwork.FakeClock
+	clock            *clockwork.FakeClock
 }
 
 func newFixture(t *testing.T) *fixture {

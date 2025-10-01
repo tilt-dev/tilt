@@ -174,7 +174,7 @@ type dwFixture struct {
 	ctx       context.Context
 	dcClient  *dockercompose.FakeDCClient
 	watcher   *DisableSubscriber
-	clock     clockwork.FakeClock
+	clock     *clockwork.FakeClock
 	log       *bufsync.ThreadSafeBuffer
 	startTime time.Time
 }

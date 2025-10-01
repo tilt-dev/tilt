@@ -255,7 +255,7 @@ type ewmFixture struct {
 	ctx     context.Context
 	cancel  func()
 	store   *store.TestingStore
-	clock   clockwork.FakeClock
+	clock   *clockwork.FakeClock
 }
 
 func newEWMFixture(t *testing.T) *ewmFixture {

@@ -86,7 +86,7 @@ type cloudStatusManagerTestFixture struct {
 	st         *store.TestingStore
 	ctx        context.Context
 	t          *testing.T
-	clock      clockwork.FakeClock
+	clock      *clockwork.FakeClock
 }
 
 func newCloudStatusManagerTestFixture(t *testing.T) *cloudStatusManagerTestFixture {

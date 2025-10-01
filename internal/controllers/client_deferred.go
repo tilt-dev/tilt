@@ -112,6 +112,14 @@ func (d *DeferredClient) Patch(ctx context.Context, obj ctrlclient.Object, patch
 	return cli.Patch(ctx, obj, patch, opts...)
 }
 
+func (d *DeferredClient) Apply(ctx context.Context, obj runtime.ApplyConfiguration, opts ...ctrlclient.ApplyOption) error {
+	cli := d.client()
+	if cli == nil {
+		return ErrClientNotInitialized
+	}
+	return cli.Apply(ctx, obj, opts...)
+}
+
 func (d *DeferredClient) DeleteAllOf(ctx context.Context, obj ctrlclient.Object, opts ...ctrlclient.DeleteAllOfOption) error {
 	cli := d.client()
 	if cli == nil {
