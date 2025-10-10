@@ -4,6 +4,7 @@ package localexec
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"strconv"
@@ -15,23 +16,38 @@ import (
 
 // Common environment for local exec commands.
 type Env struct {
-	pairs   []kvPair
-	environ func() []string
+	osEnviron func() []string
+	baseEnv   func() []string
+
+	// TODO(nicksantos): get rid of pairs in favor of baseEnv.
+	pairs []kvPair
 }
 
 func EmptyEnv() *Env {
-	return &Env{
-		environ: os.Environ,
+	e := &Env{osEnviron: os.Environ}
+	e.baseEnv = func() []string {
+		return e.osEnviron()
 	}
+	return e
 }
 
-func DefaultEnv(port model.WebPort, host model.WebHost) *Env {
-	e := &Env{
-		environ: os.Environ,
+// We want to make sure all exec commands use the same kubernetes
+// config as tilt. To accomplish this, we lazily generate a frozen
+// kubeconfig to inject into the env.
+type KubeconfigPathOnce func() string
+
+func DefaultEnv(port model.WebPort, host model.WebHost, kubeconfigPathOnce KubeconfigPathOnce) *Env {
+	e := &Env{osEnviron: os.Environ}
+	e.baseEnv = func() []string {
+		env := e.osEnviron()
+		if kubeconfigPath := kubeconfigPathOnce(); kubeconfigPath != "" {
+			env = append(env, fmt.Sprintf("KUBECONFIG=%s", kubeconfigPath))
+		}
+		return env
 	}
 
 	// if Tilt was invoked with `tilt up --port=XXXXX`, local() calls to use the Tilt API will fail due to trying to
-	// connect to the default port, so explicitly populate the TILT_PORT environment variable if it isn't already
+	// connect to the default port, so explicitly populate the TILT_PORT environment variable
 	e.Add("TILT_PORT", strconv.Itoa(int(port)))
 
 	// some Tilt commands, such as `tilt dump engine`, also require the host
@@ -69,7 +85,7 @@ func (e *Env) populateExecCmd(c *exec.Cmd, cmd model.Cmd, l logger.Logger) {
 	c.Dir = cmd.Dir
 	// env precedence: parent process (i.e. tilt) -> logger -> command
 	// dupes are left for Go stdlib to handle (API guarantees last wins)
-	execEnv := e.environ()
+	execEnv := e.baseEnv()
 
 	execEnv = logger.PrepareEnv(l, execEnv)
 	for _, kv := range e.pairs {

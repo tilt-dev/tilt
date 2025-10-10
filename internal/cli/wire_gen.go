@@ -131,7 +131,11 @@ func wireTiltfileResult(ctx context.Context, analytics2 *analytics.TiltAnalytics
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
 	webHost := provideWebHost()
 	webPort := provideWebPort()
-	env := localexec.DefaultEnv(webPort, webHost)
+	fs := afero.NewOsFs()
+	apiServerName := model.ProvideAPIServerName(webPort)
+	writer := kubeconfig.NewWriter(base, fs, apiServerName)
+	kubeconfigPathOnce := k8s.ProvideDefaultLocalKubeconfigPath(ctx, writer, apiConfigOrError)
+	env := localexec.DefaultEnv(webPort, webHost, kubeconfigPathOnce)
 	processExecer := localexec.NewProcessExecer(env)
 	defaults := _wireDefaultsValue
 	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics2, plugin, versionPlugin, configPlugin, tiltextensionPlugin, cisettingsPlugin, dockerComposeClient, webHost, processExecer, defaults, product)
@@ -189,7 +193,11 @@ func wireDockerPrune(ctx context.Context, analytics2 *analytics.TiltAnalytics, s
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
 	webHost := provideWebHost()
 	webPort := provideWebPort()
-	env := localexec.DefaultEnv(webPort, webHost)
+	fs := afero.NewOsFs()
+	apiServerName := model.ProvideAPIServerName(webPort)
+	writer := kubeconfig.NewWriter(base, fs, apiServerName)
+	kubeconfigPathOnce := k8s.ProvideDefaultLocalKubeconfigPath(ctx, writer, apiConfigOrError)
+	env := localexec.DefaultEnv(webPort, webHost, kubeconfigPathOnce)
 	processExecer := localexec.NewProcessExecer(env)
 	defaults := _wireDefaultsValue
 	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics2, plugin, versionPlugin, configPlugin, tiltextensionPlugin, cisettingsPlugin, dockerComposeClient, webHost, processExecer, defaults, product)
@@ -262,14 +270,17 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	timerMaker := fsevent.ProvideTimerMaker()
 	clock := clockwork.NewRealClock()
 	controller := filewatch.NewController(deferredClient, storeStore, watcherMaker, timerMaker, scheme, clock)
-	env := localexec.DefaultEnv(webPort, webHost)
-	execer := cmd.ProvideExecer(env)
-	proberManager := cmd.ProvideProberManager()
-	cmdController := cmd.NewController(ctx, execer, proberManager, deferredClient, storeStore, clock, scheme)
+	fs := afero.NewOsFs()
+	writer := kubeconfig.NewWriter(base, fs, apiServerName)
 	k8sKubeContextOverride := ProvideKubeContextOverride()
 	k8sNamespaceOverride := ProvideNamespaceOverride()
 	clientConfig := k8s.ProvideClientConfig(k8sKubeContextOverride, k8sNamespaceOverride)
 	apiConfigOrError := k8s.ProvideAPIConfig(clientConfig, k8sKubeContextOverride, k8sNamespaceOverride)
+	kubeconfigPathOnce := k8s.ProvideDefaultLocalKubeconfigPath(ctx, writer, apiConfigOrError)
+	env := localexec.DefaultEnv(webPort, webHost, kubeconfigPathOnce)
+	execer := cmd.ProvideExecer(env)
+	proberManager := cmd.ProvideProberManager()
+	cmdController := cmd.NewController(ctx, execer, proberManager, deferredClient, storeStore, clock, scheme)
 	product := k8s.ProvideClusterProduct(apiConfigOrError)
 	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
 	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
@@ -335,9 +346,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	cmdimageReconciler := cmdimage.NewReconciler(deferredClient, storeStore, scheme, compositeClient, imageBuilder)
 	dockerClientFactory := _wireDockerClientFuncValue
 	kubernetesClientFactory := _wireKubernetesClientFuncValue
-	fs := afero.NewOsFs()
-	writer := kubeconfig.NewWriter(base, fs, apiServerName)
-	clusterReconciler := cluster.NewReconciler(ctx, deferredClient, storeStore, clock, connectionManager, localEnv, dockerClientFactory, kubernetesClientFactory, websocketList, writer)
+	clusterReconciler := cluster.NewReconciler(ctx, deferredClient, storeStore, clock, connectionManager, localEnv, dockerClientFactory, kubernetesClientFactory, websocketList, writer, kubeconfigPathOnce)
 	disableSubscriber := dockercomposeservice.NewDisableSubscriber(ctx, dockerComposeClient, clock)
 	dockercomposeserviceReconciler := dockercomposeservice.NewReconciler(deferredClient, dockerComposeClient, compositeClient, storeStore, scheme, disableSubscriber)
 	imagemapReconciler := imagemap.NewReconciler(deferredClient, storeStore)
@@ -477,14 +486,17 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	timerMaker := fsevent.ProvideTimerMaker()
 	clock := clockwork.NewRealClock()
 	controller := filewatch.NewController(deferredClient, storeStore, watcherMaker, timerMaker, scheme, clock)
-	env := localexec.DefaultEnv(webPort, webHost)
-	execer := cmd.ProvideExecer(env)
-	proberManager := cmd.ProvideProberManager()
-	cmdController := cmd.NewController(ctx, execer, proberManager, deferredClient, storeStore, clock, scheme)
+	fs := afero.NewOsFs()
+	writer := kubeconfig.NewWriter(base, fs, apiServerName)
 	k8sKubeContextOverride := ProvideKubeContextOverride()
 	k8sNamespaceOverride := ProvideNamespaceOverride()
 	clientConfig := k8s.ProvideClientConfig(k8sKubeContextOverride, k8sNamespaceOverride)
 	apiConfigOrError := k8s.ProvideAPIConfig(clientConfig, k8sKubeContextOverride, k8sNamespaceOverride)
+	kubeconfigPathOnce := k8s.ProvideDefaultLocalKubeconfigPath(ctx, writer, apiConfigOrError)
+	env := localexec.DefaultEnv(webPort, webHost, kubeconfigPathOnce)
+	execer := cmd.ProvideExecer(env)
+	proberManager := cmd.ProvideProberManager()
+	cmdController := cmd.NewController(ctx, execer, proberManager, deferredClient, storeStore, clock, scheme)
 	product := k8s.ProvideClusterProduct(apiConfigOrError)
 	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
 	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
@@ -550,9 +562,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	cmdimageReconciler := cmdimage.NewReconciler(deferredClient, storeStore, scheme, compositeClient, imageBuilder)
 	dockerClientFactory := _wireDockerClientFuncValue
 	kubernetesClientFactory := _wireKubernetesClientFuncValue
-	fs := afero.NewOsFs()
-	writer := kubeconfig.NewWriter(base, fs, apiServerName)
-	clusterReconciler := cluster.NewReconciler(ctx, deferredClient, storeStore, clock, connectionManager, localEnv, dockerClientFactory, kubernetesClientFactory, websocketList, writer)
+	clusterReconciler := cluster.NewReconciler(ctx, deferredClient, storeStore, clock, connectionManager, localEnv, dockerClientFactory, kubernetesClientFactory, websocketList, writer, kubeconfigPathOnce)
 	disableSubscriber := dockercomposeservice.NewDisableSubscriber(ctx, dockerComposeClient, clock)
 	dockercomposeserviceReconciler := dockercomposeservice.NewReconciler(deferredClient, dockerComposeClient, compositeClient, storeStore, scheme, disableSubscriber)
 	imagemapReconciler := imagemap.NewReconciler(deferredClient, storeStore)
@@ -688,14 +698,17 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	timerMaker := fsevent.ProvideTimerMaker()
 	clock := clockwork.NewRealClock()
 	controller := filewatch.NewController(deferredClient, storeStore, watcherMaker, timerMaker, scheme, clock)
-	env := localexec.DefaultEnv(webPort, webHost)
-	execer := cmd.ProvideExecer(env)
-	proberManager := cmd.ProvideProberManager()
-	cmdController := cmd.NewController(ctx, execer, proberManager, deferredClient, storeStore, clock, scheme)
+	fs := afero.NewOsFs()
+	writer := kubeconfig.NewWriter(base, fs, apiServerName)
 	k8sKubeContextOverride := ProvideKubeContextOverride()
 	k8sNamespaceOverride := ProvideNamespaceOverride()
 	clientConfig := k8s.ProvideClientConfig(k8sKubeContextOverride, k8sNamespaceOverride)
 	apiConfigOrError := k8s.ProvideAPIConfig(clientConfig, k8sKubeContextOverride, k8sNamespaceOverride)
+	kubeconfigPathOnce := k8s.ProvideDefaultLocalKubeconfigPath(ctx, writer, apiConfigOrError)
+	env := localexec.DefaultEnv(webPort, webHost, kubeconfigPathOnce)
+	execer := cmd.ProvideExecer(env)
+	proberManager := cmd.ProvideProberManager()
+	cmdController := cmd.NewController(ctx, execer, proberManager, deferredClient, storeStore, clock, scheme)
 	product := k8s.ProvideClusterProduct(apiConfigOrError)
 	restConfigOrError := k8s.ProvideRESTConfig(clientConfig)
 	clientsetOrError := k8s.ProvideClientset(restConfigOrError)
@@ -761,9 +774,7 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	cmdimageReconciler := cmdimage.NewReconciler(deferredClient, storeStore, scheme, compositeClient, imageBuilder)
 	dockerClientFactory := _wireDockerClientFuncValue
 	kubernetesClientFactory := _wireKubernetesClientFuncValue
-	fs := afero.NewOsFs()
-	writer := kubeconfig.NewWriter(base, fs, apiServerName)
-	clusterReconciler := cluster.NewReconciler(ctx, deferredClient, storeStore, clock, connectionManager, localEnv, dockerClientFactory, kubernetesClientFactory, websocketList, writer)
+	clusterReconciler := cluster.NewReconciler(ctx, deferredClient, storeStore, clock, connectionManager, localEnv, dockerClientFactory, kubernetesClientFactory, websocketList, writer, kubeconfigPathOnce)
 	disableSubscriber := dockercomposeservice.NewDisableSubscriber(ctx, dockerComposeClient, clock)
 	dockercomposeserviceReconciler := dockercomposeservice.NewReconciler(deferredClient, dockerComposeClient, compositeClient, storeStore, scheme, disableSubscriber)
 	imagemapReconciler := imagemap.NewReconciler(deferredClient, storeStore)
@@ -978,13 +989,14 @@ func wireDownDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, s
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
 	webHost := provideWebHost()
 	webPort := provideWebPort()
-	env := localexec.DefaultEnv(webPort, webHost)
-	processExecer := localexec.NewProcessExecer(env)
-	defaults := _wireDefaultsValue
-	tiltfileLoader := tiltfile.ProvideTiltfileLoader(tiltAnalytics, plugin, versionPlugin, configPlugin, tiltextensionPlugin, cisettingsPlugin, dockerComposeClient, webHost, processExecer, defaults, product)
 	fs := afero.NewOsFs()
 	apiServerName := model.ProvideAPIServerName(webPort)
 	writer := kubeconfig.NewWriter(base, fs, apiServerName)
+	kubeconfigPathOnce := k8s.ProvideDefaultLocalKubeconfigPath(ctx, writer, apiConfigOrError)
+	env := localexec.DefaultEnv(webPort, webHost, kubeconfigPathOnce)
+	processExecer := localexec.NewProcessExecer(env)
+	defaults := _wireDefaultsValue
+	tiltfileLoader := tiltfile.ProvideTiltfileLoader(tiltAnalytics, plugin, versionPlugin, configPlugin, tiltextensionPlugin, cisettingsPlugin, dockerComposeClient, webHost, processExecer, defaults, product)
 	downDeps := DownDeps{
 		tfl:              tiltfileLoader,
 		dcClient:         dockerComposeClient,
@@ -1099,7 +1111,7 @@ func wireLsp(ctx context.Context, l logger.Logger, subcommand model.TiltSubcomma
 
 // wire.go:
 
-var K8sWireSet = wire.NewSet(k8s.ProvideClusterProduct, k8s.ProvideClusterName, k8s.ProvideKubeContext, k8s.ProvideAPIConfig, k8s.ProvideClientConfig, k8s.ProvideClientset, k8s.ProvideRESTConfig, k8s.ProvidePortForwardClient, k8s.ProvideConfigNamespace, k8s.ProvideServerVersion, k8s.ProvideK8sClient, ProvideKubeContextOverride,
+var K8sWireSet = wire.NewSet(k8s.ProvideClusterProduct, k8s.ProvideClusterName, k8s.ProvideKubeContext, k8s.ProvideAPIConfig, k8s.ProvideClientConfig, k8s.ProvideClientset, k8s.ProvideRESTConfig, k8s.ProvidePortForwardClient, k8s.ProvideConfigNamespace, k8s.ProvideServerVersion, k8s.ProvideK8sClient, k8s.ProvideDefaultLocalKubeconfigPath, ProvideKubeContextOverride,
 	ProvideNamespaceOverride)
 
 var BaseWireSet = wire.NewSet(

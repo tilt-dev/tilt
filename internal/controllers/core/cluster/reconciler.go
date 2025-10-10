@@ -24,6 +24,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/hud/server"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/k8s/kubeconfig"
+	"github.com/tilt-dev/tilt/internal/localexec"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/clusters"
 	"github.com/tilt-dev/tilt/pkg/apis"
@@ -40,18 +41,19 @@ const (
 )
 
 type Reconciler struct {
-	globalCtx           context.Context
-	ctrlClient          ctrlclient.Client
-	store               store.RStore
-	requeuer            *indexer.Requeuer
-	clock               clockwork.Clock
-	connManager         *ConnectionManager
-	localDockerEnv      docker.LocalEnv
-	dockerClientFactory DockerClientFactory
-	k8sClientFactory    KubernetesClientFactory
-	wsList              *server.WebsocketList
-	clusterHealth       *clusterHealthMonitor
-	kubeconfigWriter    *kubeconfig.Writer
+	globalCtx               context.Context
+	ctrlClient              ctrlclient.Client
+	store                   store.RStore
+	requeuer                *indexer.Requeuer
+	clock                   clockwork.Clock
+	connManager             *ConnectionManager
+	localDockerEnv          docker.LocalEnv
+	dockerClientFactory     DockerClientFactory
+	k8sClientFactory        KubernetesClientFactory
+	wsList                  *server.WebsocketList
+	clusterHealth           *clusterHealthMonitor
+	kubeconfigWriter        *kubeconfig.Writer
+	localKubeconfigPathOnce localexec.KubeconfigPathOnce
 }
 
 func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
@@ -72,22 +74,24 @@ func NewReconciler(
 	k8sClientFactory KubernetesClientFactory,
 	wsList *server.WebsocketList,
 	kubeconfigWriter *kubeconfig.Writer,
+	localKubeconfigPathOnce localexec.KubeconfigPathOnce,
 ) *Reconciler {
 	requeuer := indexer.NewRequeuer()
 
 	return &Reconciler{
-		globalCtx:           globalCtx,
-		ctrlClient:          ctrlClient,
-		store:               store,
-		clock:               clock,
-		requeuer:            requeuer,
-		connManager:         connManager,
-		localDockerEnv:      localDockerEnv,
-		dockerClientFactory: dockerClientFactory,
-		k8sClientFactory:    k8sClientFactory,
-		wsList:              wsList,
-		clusterHealth:       newClusterHealthMonitor(globalCtx, clock, requeuer),
-		kubeconfigWriter:    kubeconfigWriter,
+		globalCtx:               globalCtx,
+		ctrlClient:              ctrlClient,
+		store:                   store,
+		clock:                   clock,
+		requeuer:                requeuer,
+		connManager:             connManager,
+		localDockerEnv:          localDockerEnv,
+		dockerClientFactory:     dockerClientFactory,
+		k8sClientFactory:        k8sClientFactory,
+		wsList:                  wsList,
+		clusterHealth:           newClusterHealthMonitor(globalCtx, clock, requeuer),
+		kubeconfigWriter:        kubeconfigWriter,
+		localKubeconfigPathOnce: localKubeconfigPathOnce,
 	}
 }
 
@@ -358,10 +362,27 @@ func (r *Reconciler) populateK8sMetadata(ctx context.Context, clusterNN types.Na
 			k8sStatus.Namespace = context.Namespace
 			k8sStatus.Cluster = context.Cluster
 		}
-		configPath, err := r.kubeconfigWriter.WriteFrozenKubeConfig(ctx, clusterNN, apiConfig)
-		if err != nil {
-			conn.initError = err.Error()
+
+		var configPath string
+		var configPathError error
+		if clusterNN.Name == v1alpha1.ClusterNameDefault {
+			// If this is the default cluster, use the same kubeconfig
+			// we generated for local commands.
+			configPath = r.localKubeconfigPathOnce()
+		} else {
+
+			configPath, configPathError = r.kubeconfigWriter.WriteFrozenKubeConfig(ctx, clusterNN, apiConfig)
 		}
+
+		if configPath == "" && configPathError == nil {
+			// Cover the case where localKubeconfigPathOnce() swallowed the error.
+			configPathError = fmt.Errorf("internal error generating default kubeconfig")
+		}
+
+		if configPathError != nil {
+			conn.initError = configPathError.Error()
+		}
+
 		k8sStatus.ConfigPath = configPath
 
 		conn.connStatus = &v1alpha1.ClusterConnectionStatus{
