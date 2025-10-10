@@ -5821,7 +5821,10 @@ func (f *fixture) newTiltfileLoader() TiltfileLoader {
 	k8sContextPlugin := k8scontext.NewPlugin(f.k8sContext, f.k8sNamespace, f.k8sEnv)
 	versionPlugin := version.NewPlugin(model.TiltBuild{Version: "0.5.0"})
 	configPlugin := config.NewPlugin("up")
-	localEnv := localexec.DefaultEnv(12345, f.webHost)
+	localKubeconfigPath := localexec.KubeconfigPathOnce(func() string {
+		return "/path/to/kubeconfig.yaml"
+	})
+	localEnv := localexec.DefaultEnv(12345, f.webHost, localKubeconfigPath)
 	execer := localexec.NewProcessExecer(localEnv)
 	extr := tiltextension.NewFakeExtReconciler(f.Path())
 	extrr := tiltextension.NewFakeExtRepoReconciler(f.Path())

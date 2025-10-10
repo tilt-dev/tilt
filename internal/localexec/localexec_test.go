@@ -12,13 +12,17 @@ import (
 )
 
 func TestDefaultEnv(t *testing.T) {
-	env := DefaultEnv(8000, "tilt.local")
-	env.environ = func() []string { return nil }
+	localKubeconfigPathOnce := KubeconfigPathOnce(func() string {
+		return "/path/to/kubeconfig"
+	})
+	env := DefaultEnv(8000, "tilt.local", localKubeconfigPathOnce)
+	env.osEnviron = func() []string { return nil }
 	l := logger.NewTestLogger(bytes.NewBuffer(nil))
 	cmd := &exec.Cmd{}
 	cmdModel := model.Cmd{Argv: []string{"x"}, Env: []string{"x=y"}}
 	env.populateExecCmd(cmd, cmdModel, l)
 	assert.Equal(t, cmd.Env, []string{
+		"KUBECONFIG=/path/to/kubeconfig",
 		"LINES=24",
 		"COLUMNS=80",
 		"PYTHONUNBUFFERED=1",

@@ -18,6 +18,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/hud/server"
 	"github.com/tilt-dev/tilt/internal/k8s/kubeconfig"
+	"github.com/tilt-dev/tilt/internal/localexec"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 	"github.com/tilt-dev/tilt/internal/xdg"
 	"github.com/tilt-dev/wmclient/pkg/analytics"
@@ -150,7 +151,7 @@ func TestKubernetesArch(t *testing.T) {
 func TestKubernetesConnStatus(t *testing.T) {
 	f := newFixture(t)
 	cluster := &v1alpha1.Cluster{
-		ObjectMeta: metav1.ObjectMeta{Name: "default"},
+		ObjectMeta: metav1.ObjectMeta{Name: "c"},
 		Spec: v1alpha1.ClusterSpec{
 			Connection: &v1alpha1.ClusterConnection{
 				Kubernetes: &v1alpha1.KubernetesClusterConnection{},
@@ -158,7 +159,7 @@ func TestKubernetesConnStatus(t *testing.T) {
 		},
 	}
 
-	nn := types.NamespacedName{Name: "default"}
+	nn := types.NamespacedName{Name: "c"}
 	f.Create(cluster)
 	f.MustGet(nn, cluster)
 
@@ -265,7 +266,7 @@ func TestDockerArch(t *testing.T) {
 func TestKubeconfig_RuntimeDirImmutable(t *testing.T) {
 	f := newFixture(t)
 	cluster := &v1alpha1.Cluster{
-		ObjectMeta: metav1.ObjectMeta{Name: "default"},
+		ObjectMeta: metav1.ObjectMeta{Name: "c"},
 		Spec: v1alpha1.ClusterSpec{
 			Connection: &v1alpha1.ClusterConnection{
 				Kubernetes: &v1alpha1.KubernetesClusterConnection{},
@@ -273,12 +274,12 @@ func TestKubeconfig_RuntimeDirImmutable(t *testing.T) {
 		},
 	}
 
-	p, err := f.base.RuntimeFile(filepath.Join("tilt-default", "cluster", "default.yml"))
+	p, err := f.base.RuntimeFile(filepath.Join("tilt-default", "cluster", "c.yml"))
 	require.NoError(t, err)
 	runtimeFile, _ := os.OpenFile(p, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0400)
 	_ = runtimeFile.Close()
 
-	nn := types.NamespacedName{Name: "default"}
+	nn := types.NamespacedName{Name: "c"}
 	f.Create(cluster)
 	f.MustGet(nn, cluster)
 
@@ -289,7 +290,7 @@ func TestKubeconfig_RuntimeDirImmutable(t *testing.T) {
 func TestKubeconfig_RuntimeAndStateDirImmutable(t *testing.T) {
 	f := newFixture(t)
 	cluster := &v1alpha1.Cluster{
-		ObjectMeta: metav1.ObjectMeta{Name: "default"},
+		ObjectMeta: metav1.ObjectMeta{Name: "c"},
 		Spec: v1alpha1.ClusterSpec{
 			Connection: &v1alpha1.ClusterConnection{
 				Kubernetes: &v1alpha1.KubernetesClusterConnection{},
@@ -297,17 +298,17 @@ func TestKubeconfig_RuntimeAndStateDirImmutable(t *testing.T) {
 		},
 	}
 
-	p, err := f.base.RuntimeFile(filepath.Join("tilt-default", "cluster", "default.yml"))
+	p, err := f.base.RuntimeFile(filepath.Join("tilt-default", "cluster", "c.yml"))
 	require.NoError(t, err)
 	runtimeFile, _ := os.OpenFile(p, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0400)
 	_ = runtimeFile.Close()
 
-	p, err = f.base.StateFile(filepath.Join("tilt-default", "cluster", "default.yml"))
+	p, err = f.base.StateFile(filepath.Join("tilt-default", "cluster", "c.yml"))
 	require.NoError(t, err)
 	stateFile, _ := os.OpenFile(p, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0400)
 	_ = stateFile.Close()
 
-	nn := types.NamespacedName{Name: "default"}
+	nn := types.NamespacedName{Name: "c"}
 	f.Create(cluster)
 	f.MustGet(nn, cluster)
 
@@ -337,6 +338,9 @@ func newFixture(t *testing.T) *fixture {
 	fs := afero.NewOsFs()
 	base := xdg.NewFakeBase(tmpf.Path(), fs)
 	kubeconfigWriter := kubeconfig.NewWriter(base, fs, "tilt-default")
+	localKubeconfigPathOnce := localexec.KubeconfigPathOnce(func() string {
+		return "/path/to/kubeconfig-default.yaml"
+	})
 	r := NewReconciler(cfb.Context(),
 		cfb.Client,
 		cfb.Store,
@@ -346,7 +350,8 @@ func newFixture(t *testing.T) *fixture {
 		FakeDockerClientOrError(dockerClient, nil),
 		FakeKubernetesClientOrError(k8sClient, nil),
 		server.NewWebsocketList(),
-		kubeconfigWriter)
+		kubeconfigWriter,
+		localKubeconfigPathOnce)
 	requeueChan := make(chan indexer.RequeueForTestResult, 1)
 	return &fixture{
 		ControllerFixture: cfb.WithRequeuer(r.requeuer).WithRequeuerResultChan(requeueChan).Build(r),

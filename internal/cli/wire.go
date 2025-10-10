@@ -73,6 +73,7 @@ var K8sWireSet = wire.NewSet(
 	k8s.ProvideConfigNamespace,
 	k8s.ProvideServerVersion,
 	k8s.ProvideK8sClient,
+	k8s.ProvideDefaultLocalKubeconfigPath,
 	ProvideKubeContextOverride,
 	ProvideNamespaceOverride)
 

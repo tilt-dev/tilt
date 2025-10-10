@@ -3238,10 +3238,15 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	dir := dockerimage.NewReconciler(cdc, st, sch, dockerClient, ib)
 	cir := cmdimage.NewReconciler(cdc, st, sch, dockerClient, ib)
 	kubeconfigWriter := kubeconfig.NewWriter(base, fs, "tilt-default")
+	localKubeconfigPathOnce := localexec.KubeconfigPathOnce(func() string {
+		return "/path/to/kubeconfig-default.yaml"
+	})
 	clr := cluster.NewReconciler(ctx, cdc, st, clock, clusterClients, docker.LocalEnv{},
 		cluster.FakeDockerClientOrError(dockerClient, nil),
 		cluster.FakeKubernetesClientOrError(kClient, nil),
-		wsl, kubeconfigWriter)
+		wsl,
+		kubeconfigWriter,
+		localKubeconfigPathOnce)
 	dclsr := dockercomposelogstream.NewReconciler(cdc, st, fakeDcc, dockerClient)
 
 	cb := controllers.NewControllerBuilder(tscm, controllers.ProvideControllers(
