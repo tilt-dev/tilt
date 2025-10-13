@@ -7546,6 +7546,13 @@ func schema_pkg_apis_core_v1alpha1_UIButtonSpec(ref common.ReferenceCallback) co
 							Format:      "",
 						},
 					},
+					"showInputsAsModal": {
+						SchemaProps: spec.SchemaProps{
+							Description: "If true, input values will be displayed in a modal dialog instead of a dropdown.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 					"inputs": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Any inputs for this button.",

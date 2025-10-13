@@ -4,7 +4,11 @@ import styled from "styled-components"
 import { ApiButton } from "./ApiButton"
 import { OverviewButtonMixin } from "./OverviewButton"
 import { TiltSnackbarProvider } from "./Snackbar"
-import { oneUIButton, textFieldForUIButton } from "./testdata"
+import {
+  oneUIButton,
+  textFieldForUIButton,
+  boolFieldForUIButton,
+} from "./testdata"
 import { UIInputSpec } from "./types"
 
 export default {
@@ -51,5 +55,55 @@ export const TextInputOptions = () => {
       textFieldForUIButton("text2", "default value"),
     ],
   })
+  return <StyledButton uiButton={button} />
+}
+
+export const ButtonWithModal = () => {
+  const button = oneUIButton({
+    buttonText: "Deploy with Modal",
+    inputSpecs: [
+      textFieldForUIButton("environment", "dev", "dev, staging, prod"),
+      textFieldForUIButton("replicas", "1", "1-10"),
+    ],
+  })
+  // Enable modal mode
+  if (button.spec) {
+    button.spec.showInputsAsModal = true
+  }
+  return <StyledButton uiButton={button} />
+}
+
+export const ModalWithManyInputs = () => {
+  const button = oneUIButton({
+    buttonText: "Deploy Complex App",
+    inputSpecs: [
+      textFieldForUIButton(
+        "environment",
+        "dev",
+        "Environment (dev/staging/prod)"
+      ),
+      textFieldForUIButton("replicas", "3", "Number of replicas"),
+      textFieldForUIButton("version", "latest", "Image version"),
+      textFieldForUIButton("namespace", "default", "Kubernetes namespace"),
+      boolFieldForUIButton("enable_debug", false),
+    ],
+  })
+  // Enable modal mode
+  if (button.spec) {
+    button.spec.showInputsAsModal = true
+  }
+  return <StyledButton uiButton={button} />
+}
+
+export const ModalWithConfirmation = () => {
+  const button = oneUIButton({
+    buttonText: "Delete Resources",
+    requiresConfirmation: true,
+    inputSpecs: [textFieldForUIButton("reason", "", "Reason for deletion")],
+  })
+  // Enable modal mode
+  if (button.spec) {
+    button.spec.showInputsAsModal = true
+  }
   return <StyledButton uiButton={button} />
 }

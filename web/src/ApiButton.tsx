@@ -27,6 +27,7 @@ import { annotations } from "./annotations"
 import { ReactComponent as CloseSvg } from "./assets/svg/close.svg"
 import { usePersistentState } from "./BrowserStorage"
 import FloatDialog from "./FloatDialog"
+import { ApiButtonInputModal } from "./ApiButtonInputModal"
 import { useHudErrorContext } from "./HudErrorContext"
 import {
   InstrumentedButton,
@@ -598,6 +599,7 @@ export function ApiButton(props: PropsWithChildren<ApiButtonProps>) {
 
   const [loading, setLoading] = useState(false)
   const [confirming, setConfirming] = useState(false)
+  const [showInputModal, setShowInputModal] = useState(false)
 
   // Reset the confirmation state when the button's name changes
   useLayoutEffect(() => setConfirming(false), [buttonName])
@@ -606,9 +608,19 @@ export function ApiButton(props: PropsWithChildren<ApiButtonProps>) {
   const disabled = loading || uiButton.spec?.disabled || false
   const buttonText = uiButton.spec?.text || "Button"
 
+  // If it has visible inputs and showInputsAsModal is enabled
+  const hasVisibleInputs = uiButton.spec?.inputs?.some((input) => !input.hidden)
+  const useModal = uiButton.spec?.showInputsAsModal === true
+
   const onClick = async (e: React.MouseEvent<HTMLElement>) => {
     e.preventDefault()
     e.stopPropagation()
+
+    if (hasVisibleInputs && useModal) {
+      // Show modal instead of executing directly
+      setShowInputModal(true)
+      return
+    }
 
     if (uiButton.spec?.requiresConfirmation && !confirming) {
       setConfirming(true)
@@ -680,39 +692,75 @@ export function ApiButton(props: PropsWithChildren<ApiButtonProps>) {
     const getInputValue = (name: string) => inputValues[name]
 
     return (
-      <ApiButtonWithOptions
-        className={className}
-        submit={submitButton}
-        uiButton={uiButton}
-        setInputValue={setInputValue}
-        getInputValue={getInputValue}
-        aria-label={buttonText}
-        // use-case-wise, it'd probably be better to leave the options button enabled
-        // regardless of the submit button's state.
-        // However, that's currently a low-impact difference, and this is a really
-        // cheap way to ensure the styling matches.
-        disabled={disabled}
-        text={buttonText}
-        {...buttonProps}
-      />
+      <>
+        <ApiButtonWithOptions
+          className={className}
+          submit={submitButton}
+          uiButton={uiButton}
+          setInputValue={setInputValue}
+          getInputValue={getInputValue}
+          aria-label={buttonText}
+          // use-case-wise, it'd probably be better to leave the options button enabled
+          // regardless of the submit button's state.
+          // However, that's currently a low-impact difference, and this is a really
+          // cheap way to ensure the styling matches.
+          disabled={disabled}
+          text={buttonText}
+          {...buttonProps}
+        />
+        <ApiButtonInputModal
+          open={showInputModal}
+          onClose={() => setShowInputModal(false)}
+          onConfirm={async (values) => {
+            try {
+              setLoading(true)
+              await updateButtonStatus(uiButton, values)
+            } catch (error) {
+              setError(`Error updating button: ${error}`)
+            } finally {
+              setLoading(false)
+            }
+          }}
+          uiButton={uiButton}
+          initialValues={inputValues}
+        />
+      </>
     )
   } else {
     return (
-      <ApiButtonRoot
-        className={className}
-        disableRipple={true}
-        aria-label={buttonText}
-        disabled={disabled}
-      >
-        {submitButton}
-        <ApiCancelButton
-          text={buttonText}
-          confirming={confirming}
+      <>
+        <ApiButtonRoot
+          className={className}
+          disableRipple={true}
+          aria-label={buttonText}
           disabled={disabled}
-          onClick={() => setConfirming(false)}
-          {...buttonProps}
+        >
+          {submitButton}
+          <ApiCancelButton
+            text={buttonText}
+            confirming={confirming}
+            disabled={disabled}
+            onClick={() => setConfirming(false)}
+            {...buttonProps}
+          />
+        </ApiButtonRoot>
+        <ApiButtonInputModal
+          open={showInputModal}
+          onClose={() => setShowInputModal(false)}
+          onConfirm={async (values) => {
+            try {
+              setLoading(true)
+              await updateButtonStatus(uiButton, values)
+            } catch (error) {
+              setError(`Error updating button: ${error}`)
+            } finally {
+              setLoading(false)
+            }
+          }}
+          uiButton={uiButton}
+          initialValues={inputValues}
         />
-      </ApiButtonRoot>
+      </>
     )
   }
 }
