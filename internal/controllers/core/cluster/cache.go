@@ -109,3 +109,8 @@ func (k *ConnectionManager) load(key types.NamespacedName) (connection, bool) {
 func (k *ConnectionManager) delete(key types.NamespacedName) {
 	k.connections.LoadAndDelete(key)
 }
+
+// Delete invalidates the cached connection for the given cluster key (public method)
+func (k *ConnectionManager) Delete(key types.NamespacedName) {
+	k.delete(key)
+}

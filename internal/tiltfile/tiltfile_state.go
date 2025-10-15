@@ -473,6 +473,11 @@ func (s *tiltfileState) OnBuiltinCall(name string, fn *starlark.Builtin) {
 }
 
 func (s *tiltfileState) OnExec(t *starlark.Thread, tiltfilePath string, contents []byte) error {
+	// Validate k8s_context order before execution using static analysis
+	err := validateK8sContextOrder(string(contents), tiltfilePath)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -1740,6 +1745,81 @@ func (s *tiltfileState) ignoresForImage(image *dockerImage) (contextIgnores []v1
 	}
 
 	return
+}
+
+// validateK8sContextOrder performs static analysis to ensure k8s_context() with parameters
+// is not called after Kubernetes-interacting commands
+func validateK8sContextOrder(content, filePath string) error {
+	// Parse the file content into an AST
+	f, err := syntax.Parse(filePath, content, 0)
+	if err != nil {
+		// If there's a syntax error, let it be handled during execution
+		return nil
+	}
+
+	// List of Kubernetes-interacting commands to check for
+	k8sCommands := map[string]bool{
+		"helm":              true,
+		"k8s_custom_deploy": true,
+		"k8s_kind":          true,
+		"k8s_resource":      true,
+		"k8s_yaml":          true,
+		"kustomize":         true,
+		"local_resource":    true,
+		"local":             true,
+		"port_forward":      true,
+	}
+
+	// Collect all function calls with their positions
+	type functionCall struct {
+		name     string
+		position syntax.Position
+		hasArgs  bool
+	}
+
+	var calls []functionCall
+
+	// Walk the AST to collect function calls in order
+	syntax.Walk(f, func(n syntax.Node) bool {
+		call, ok := n.(*syntax.CallExpr)
+		if !ok {
+			return true // Continue walking
+		}
+
+		// Get the function name
+		var funcName string
+		if ident, ok := call.Fn.(*syntax.Ident); ok {
+			funcName = ident.Name
+		} else {
+			return true // Not a simple function call
+		}
+
+		// Check if this is a relevant function call
+		if k8sCommands[funcName] || funcName == "k8s_context" {
+			start, _ := call.Span()
+			calls = append(calls, functionCall{
+				name:     funcName,
+				position: start,
+				hasArgs:  len(call.Args) > 0,
+			})
+		}
+
+		return true // Continue walking
+	})
+
+	// Check order: ensure k8s_context with args is not called after k8s commands
+	hasSeenK8sCommand := false
+	for _, call := range calls {
+		if k8sCommands[call.name] {
+			hasSeenK8sCommand = true
+		} else if call.name == "k8s_context" && call.hasArgs && hasSeenK8sCommand {
+			return fmt.Errorf("k8s_context() with parameters cannot be called after Kubernetes-interacting commands. "+
+				"Set the Kubernetes context before using commands like local(), k8s_yaml(), helm(), kustomize(), etc. "+
+				"Error at %s:%d:%d", filePath, call.position.Line, call.position.Col)
+		}
+	}
+
+	return nil
 }
 
 var _ starkit.Plugin = &tiltfileState{}

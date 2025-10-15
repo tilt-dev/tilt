@@ -20,6 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/validation"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/duration"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/version"
@@ -140,6 +141,24 @@ type Client interface {
 	ClusterHealth(ctx context.Context, verbose bool) (ClusterHealth, error)
 
 	APIConfig() *api.Config
+}
+
+// ConnectionProvider provides dynamic access to K8s clients by cluster key
+type ConnectionProvider interface {
+	GetK8sClient(clusterKey types.NamespacedName) (Client, error)
+}
+
+// Global connection provider (hack to avoid import cycles)
+var globalConnectionProvider ConnectionProvider
+
+// SetGlobalConnectionProvider sets the global connection provider
+func SetGlobalConnectionProvider(provider ConnectionProvider) {
+	globalConnectionProvider = provider
+}
+
+// GetGlobalConnectionProvider returns the global connection provider
+func GetGlobalConnectionProvider() ConnectionProvider {
+	return globalConnectionProvider
 }
 
 type RESTMapper interface {

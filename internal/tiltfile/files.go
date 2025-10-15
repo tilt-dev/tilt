@@ -12,6 +12,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/localexec"
 	tiltfile_io "github.com/tilt-dev/tilt/internal/tiltfile/io"
+	"github.com/tilt-dev/tilt/internal/tiltfile/k8scontext"
 	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
 	"github.com/tilt-dev/tilt/internal/tiltfile/value"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -53,6 +54,14 @@ func (s *tiltfileState) local(thread *starlark.Thread, fn *starlark.Builtin, arg
 	)
 	if err != nil {
 		return nil, err
+	}
+
+	// Inject temporary kubeconfig for isolated context switching
+	if tempKubeconfig := k8scontext.GetTempKubeconfigPath(); tempKubeconfig != "" {
+		if commandEnv == nil {
+			commandEnv = make(map[string]string)
+		}
+		commandEnv["KUBECONFIG"] = tempKubeconfig
 	}
 
 	cmd, err := value.ValueGroupToCmdHelper(thread, commandValue, commandBatValue, commandDirValue, commandEnv)

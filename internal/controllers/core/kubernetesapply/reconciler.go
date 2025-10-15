@@ -45,12 +45,13 @@ type deleteSpec struct {
 }
 
 type Reconciler struct {
-	st         store.RStore
-	k8sClient  k8s.Client
-	ctrlClient ctrlclient.Client
-	indexer    *indexer.Indexer
-	execer     localexec.Execer
-	requeuer   *indexer.Requeuer
+	st                 store.RStore
+	k8sClient          k8s.Client // Legacy: TODO remove after switching to connectionProvider
+	connectionProvider k8s.ConnectionProvider
+	ctrlClient         ctrlclient.Client
+	indexer            *indexer.Indexer
+	execer             localexec.Execer
+	requeuer           *indexer.Requeuer
 
 	mu sync.Mutex
 
@@ -79,14 +80,39 @@ func (r *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 
 func NewReconciler(ctrlClient ctrlclient.Client, k8sClient k8s.Client, scheme *runtime.Scheme, st store.RStore, execer localexec.Execer) *Reconciler {
 	return &Reconciler{
-		ctrlClient: ctrlClient,
-		k8sClient:  k8sClient,
-		indexer:    indexer.NewIndexer(scheme, indexKubernetesApply),
-		execer:     execer,
-		st:         st,
-		results:    make(map[types.NamespacedName]*Result),
-		requeuer:   indexer.NewRequeuer(),
+		ctrlClient:         ctrlClient,
+		k8sClient:          k8sClient,
+		connectionProvider: k8s.GetGlobalConnectionProvider(), // Use global provider
+		indexer:            indexer.NewIndexer(scheme, indexKubernetesApply),
+		execer:             execer,
+		st:                 st,
+		results:            make(map[types.NamespacedName]*Result),
+		requeuer:           indexer.NewRequeuer(),
 	}
+}
+
+// getK8sClient returns a Kubernetes client from the ConnectionProvider for the specified cluster
+func (r *Reconciler) getK8sClient(clusterName string) (k8s.Client, error) {
+	// Try instance provider first, then global
+	provider := r.connectionProvider
+	if provider == nil {
+		// Use global provider hack to avoid import cycles
+		// This will be set by SetupCacheInvalidation during wire initialization
+		provider = k8s.GetGlobalConnectionProvider()
+	}
+
+	if provider == nil {
+		return r.k8sClient, nil
+	}
+
+	// Create cluster key - using same format as cluster reconciler
+	clusterKey := types.NamespacedName{Name: clusterName}
+
+	client, err := provider.GetK8sClient(clusterKey)
+	if err != nil {
+		return r.k8sClient, nil
+	}
+	return client, nil
 }
 
 // Reconcile manages namespace watches for the modified KubernetesApply object.
@@ -298,7 +324,7 @@ func (r *Reconciler) forceApplyHelper(
 	var deployed []k8s.K8sEntity
 	deployCtx := r.indentLogger(ctx)
 	if spec.YAML != "" {
-		deployed, err = r.runYAMLDeploy(deployCtx, spec, imageMaps)
+		deployed, err = r.runYAMLDeploy(deployCtx, spec, cluster, imageMaps)
 		if err != nil {
 			return recordErrorStatus(err)
 		}
@@ -337,7 +363,7 @@ func (r *Reconciler) printAppliedReport(ctx context.Context, msg string, deploye
 	}
 }
 
-func (r *Reconciler) runYAMLDeploy(ctx context.Context, spec v1alpha1.KubernetesApplySpec, imageMaps map[types.NamespacedName]*v1alpha1.ImageMap) ([]k8s.K8sEntity, error) {
+func (r *Reconciler) runYAMLDeploy(ctx context.Context, spec v1alpha1.KubernetesApplySpec, cluster *v1alpha1.Cluster, imageMaps map[types.NamespacedName]*v1alpha1.ImageMap) ([]k8s.K8sEntity, error) {
 	// Create API objects.
 	newK8sEntities, err := r.createEntitiesToDeploy(ctx, imageMaps, spec)
 	if err != nil {
@@ -351,7 +377,19 @@ func (r *Reconciler) runYAMLDeploy(ctx context.Context, spec v1alpha1.Kubernetes
 		timeout = v1alpha1.KubernetesApplyTimeoutDefault
 	}
 
-	deployed, err := r.k8sClient.Upsert(ctx, newK8sEntities, timeout)
+	// Get cluster name for dynamic client lookup
+	clusterName := "default"
+	if cluster != nil && cluster.Name != "" {
+		clusterName = cluster.Name
+	}
+
+	// Get a fresh K8s client from ConnectionManager (or fallback to legacy)
+	k8sClient, err := r.getK8sClient(clusterName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get K8s client for cluster %s: %v", clusterName, err)
+	}
+
+	deployed, err := k8sClient.Upsert(ctx, newK8sEntities, timeout)
 	if err != nil {
 		r.printAppliedReport(ctx, "Tried to apply objects to cluster:", newK8sEntities)
 		return nil, err
