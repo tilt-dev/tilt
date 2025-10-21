@@ -506,7 +506,6 @@ def ui_button(
   icon_svg: str = "",
   disabled: bool = False,
   requires_confirmation: bool = False,
-  show_inputs_as_modal: bool = False,
   inputs: List[UIInputSpec] = None,
 ):
   """
@@ -537,8 +536,6 @@ def ui_button(
       
     requires_confirmation: If true, the UI will require the user to click the button a second time to
       confirm before taking action
-      
-    show_inputs_as_modal: If true, input values will be displayed in a modal dialog instead of a dropdown.
       
     inputs: Any inputs for this button.
 """

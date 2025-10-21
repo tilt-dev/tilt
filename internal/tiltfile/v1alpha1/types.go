@@ -460,7 +460,6 @@ func (p Plugin) uiButton(t *starlark.Thread, fn *starlark.Builtin, args starlark
 		"icon_svg?", &obj.Spec.IconSVG,
 		"disabled?", &obj.Spec.Disabled,
 		"requires_confirmation?", &obj.Spec.RequiresConfirmation,
-		"show_inputs_as_modal?", &obj.Spec.ShowInputsAsModal,
 		"inputs?", &inputs,
 	)
 	if err != nil {

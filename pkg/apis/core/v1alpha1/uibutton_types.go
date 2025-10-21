@@ -94,11 +94,6 @@ type UIButtonSpec struct {
 	// +optional
 	RequiresConfirmation bool `json:"requiresConfirmation,omitempty" protobuf:"varint,7,opt,name=requiresConfirmation"`
 
-	// If true, input values will be displayed in a modal dialog instead of a dropdown.
-	//
-	// +optional
-	ShowInputsAsModal bool `json:"showInputsAsModal,omitempty" protobuf:"varint,8,opt,name=showInputsAsModal"`
-
 	// Any inputs for this button.
 	// +optional
 	Inputs []UIInputSpec `json:"inputs,omitempty" protobuf:"bytes,6,rep,name=inputs"`

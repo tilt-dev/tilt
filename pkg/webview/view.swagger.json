@@ -684,10 +684,6 @@
           "description": "+optional",
           "title": "If true, the UI will require the user to click the button a second time to\nconfirm before taking action"
         },
-        "showInputsAsModal": {
-          "type": "boolean",
-          "description": "If true, input values will be displayed in a modal dialog instead of a dropdown."
-        },
         "inputs": {
           "type": "array",
           "items": {

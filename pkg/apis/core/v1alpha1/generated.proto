@@ -3139,11 +3139,6 @@ message UIButtonSpec {
   // +optional
   optional bool requiresConfirmation = 7;
 
-  // If true, input values will be displayed in a modal dialog instead of a dropdown.
-  //
-  // +optional
-  optional bool showInputsAsModal = 8;
-
   // Any inputs for this button.
   // +optional
   repeated UIInputSpec inputs = 6;

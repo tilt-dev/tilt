@@ -66,10 +66,6 @@ export const ButtonWithModal = () => {
       textFieldForUIButton("replicas", "1", "1-10"),
     ],
   })
-  // Enable modal mode
-  if (button.spec) {
-    button.spec.showInputsAsModal = true
-  }
   return <StyledButton uiButton={button} />
 }
 
@@ -88,10 +84,6 @@ export const ModalWithManyInputs = () => {
       boolFieldForUIButton("enable_debug", false),
     ],
   })
-  // Enable modal mode
-  if (button.spec) {
-    button.spec.showInputsAsModal = true
-  }
   return <StyledButton uiButton={button} />
 }
 
@@ -101,9 +93,5 @@ export const ModalWithConfirmation = () => {
     requiresConfirmation: true,
     inputSpecs: [textFieldForUIButton("reason", "", "Reason for deletion")],
   })
-  // Enable modal mode
-  if (button.spec) {
-    button.spec.showInputsAsModal = true
-  }
   return <StyledButton uiButton={button} />
 }
