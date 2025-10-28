@@ -142,9 +142,7 @@ describe("ApiButton", () => {
     })
 
     it("shows the modal with inputs when the button is clicked", () => {
-      const button = screen.getByLabelText(
-        `Trigger ${uibutton.spec!.text!}`
-      )
+      const button = screen.getByLabelText(`Trigger ${uibutton.spec!.text!}`)
       userEvent.click(button)
 
       expect(
@@ -154,9 +152,7 @@ describe("ApiButton", () => {
 
     it("only shows inputs for visible inputs", () => {
       // Open the modal by clicking the button
-      const button = screen.getByLabelText(
-        `Trigger ${uibutton.spec!.text!}`
-      )
+      const button = screen.getByLabelText(`Trigger ${uibutton.spec!.text!}`)
       userEvent.click(button)
 
       inputSpecs.forEach((spec) => {
@@ -168,9 +164,7 @@ describe("ApiButton", () => {
 
     it("allows an empty text string when there's a default value", async () => {
       // Open the modal by clicking the button
-      const button = screen.getByLabelText(
-        `Trigger ${uibutton.spec!.text!}`
-      )
+      const button = screen.getByLabelText(`Trigger ${uibutton.spec!.text!}`)
       userEvent.click(button)
 
       // Get the input element with the hardcoded default text
@@ -183,9 +177,7 @@ describe("ApiButton", () => {
 
     it("submits the current options when the submit button is clicked", async () => {
       // Open the modal by clicking the button
-      const button = screen.getByLabelText(
-        `Trigger ${uibutton.spec!.text!}`
-      )
+      const button = screen.getByLabelText(`Trigger ${uibutton.spec!.text!}`)
       userEvent.click(button)
 
       // Make a couple changes to the inputs
@@ -261,14 +253,13 @@ describe("ApiButton", () => {
     it("submits default options when the submit button is clicked", async () => {
       // Open the modal
       userEvent.click(screen.getByLabelText(`Trigger ${uibutton.spec!.text!}`))
-      
+
       // Click confirm in modal
       userEvent.click(screen.getByText("Confirm & Execute"))
 
       // Wait for the modal to close and API call to complete
-      await waitFor(
-        () =>
-          expect(screen.queryByText("Confirm & Execute")).not.toBeInTheDocument()
+      await waitFor(() =>
+        expect(screen.queryByText("Confirm & Execute")).not.toBeInTheDocument()
       )
 
       const calls = fetchMock.calls()
@@ -342,9 +333,7 @@ describe("ApiButton", () => {
 
     it("are read from local storage", () => {
       // Open the modal
-      userEvent.click(
-        screen.getByLabelText(`Trigger ${uibutton.spec!.text!}`)
-      )
+      userEvent.click(screen.getByLabelText(`Trigger ${uibutton.spec!.text!}`))
 
       expect(screen.getByLabelText("text1")).toHaveValue("text value")
       expect(screen.getByLabelText("bool1")).toBeChecked()
@@ -352,9 +341,7 @@ describe("ApiButton", () => {
 
     it("are written to local storage when modal is confirmed", () => {
       // Open the modal
-      userEvent.click(
-        screen.getByLabelText(`Trigger ${uibutton.spec!.text!}`)
-      )
+      userEvent.click(screen.getByLabelText(`Trigger ${uibutton.spec!.text!}`))
 
       // Type a new value in the text field
       const textField = screen.getByLabelText("text1")
@@ -363,7 +350,7 @@ describe("ApiButton", () => {
 
       // Uncheck the boolean field
       userEvent.click(screen.getByLabelText("bool1"))
-      
+
       // Confirm the modal to persist values
       userEvent.click(screen.getByText("Confirm & Execute"))
 

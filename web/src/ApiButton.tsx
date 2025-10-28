@@ -113,11 +113,6 @@ export const UIBUTTON_STOP_BUILD_TYPE = "StopBuild"
 const ApiButtonFormRoot = styled.div`
   z-index: ${ZIndex.ApiButton};
 `
-const ApiButtonFormFooter = styled.div`
-  text-align: right;
-  color: ${Color.gray40};
-  font-size: ${FontSize.smallester};
-`
 const ApiIconRoot = styled.span``
 export const ApiButtonLabel = styled.span``
 // MUI makes it tricky to get cursor: not-allowed on disabled buttons
@@ -395,7 +390,6 @@ export function ApiButtonForm(props: ApiButtonFormProps) {
           />
         )
       })}
-      <ApiButtonFormFooter>(Changes automatically applied)</ApiButtonFormFooter>
     </ApiButtonFormRoot>
   )
 }

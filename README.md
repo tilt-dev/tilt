@@ -55,8 +55,6 @@ and [C#](https://docs.tilt.dev/example_csharp.html).
 **Optimizing a Tiltfile?** Search for the function you need in our 
 [complete API reference](https://docs.tilt.dev/api.html).
 
-**Custom UI Actions?** `v1alpha1.ui_button()` now always shows its inputs in a modal dialog for clearer input collection (replaces the old dropdown).
-
 ## Community & Contributions
 
 **Questions:** Join [the Kubernetes slack](http://slack.k8s.io) and
