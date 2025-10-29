@@ -1,15 +1,21 @@
 import {
+  Button,
   ButtonClassKey,
   ButtonGroup,
   ButtonProps,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   FormControlLabel,
   Icon,
+  IconButton,
   InputLabel,
   MenuItem,
   Select,
   SvgIcon,
 } from "@material-ui/core"
-import ArrowDropDownIcon from "@material-ui/icons/ArrowDropDown"
+import { Close as CloseIcon } from "@material-ui/icons"
 import { ClassNameMap } from "@material-ui/styles"
 import moment from "moment"
 import { useSnackbar } from "notistack"
@@ -26,7 +32,6 @@ import styled from "styled-components"
 import { annotations } from "./annotations"
 import { ReactComponent as CloseSvg } from "./assets/svg/close.svg"
 import { usePersistentState } from "./BrowserStorage"
-import FloatDialog from "./FloatDialog"
 import { useHudErrorContext } from "./HudErrorContext"
 import {
   InstrumentedButton,
@@ -107,11 +112,6 @@ export const UIBUTTON_STOP_BUILD_TYPE = "StopBuild"
 // Styles
 const ApiButtonFormRoot = styled.div`
   z-index: ${ZIndex.ApiButton};
-`
-const ApiButtonFormFooter = styled.div`
-  text-align: right;
-  color: ${Color.gray40};
-  font-size: ${FontSize.smallester};
 `
 const ApiIconRoot = styled.span``
 export const ApiButtonLabel = styled.span``
@@ -222,10 +222,63 @@ const ApiButtonInputCheckbox = styled(InstrumentedCheckbox)`
   }
 `
 
-export const ApiButtonInputsToggleButton = styled(InstrumentedButton)`
-  &&&& {
-    margin-left: unset; /* Override any margins passed down through "className" props */
-    padding: 0 0;
+// Styled components for the input modal dialog
+const StyledDialog = styled(Dialog)`
+  .MuiDialog-paper {
+    min-width: 480px;
+    max-width: 600px;
+  }
+`
+
+const StyledDialogTitle = styled(DialogTitle)`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: ${Font.monospace};
+  font-size: ${FontSize.default};
+  background-color: ${Color.grayLightest};
+  border-bottom: 1px solid ${Color.gray50};
+
+  h2 {
+    margin: 0;
+    font-weight: normal;
+    color: ${Color.gray10};
+  }
+`
+
+const StyledDialogContent = styled(DialogContent)`
+  padding: 24px;
+  background-color: white;
+`
+
+const StyledDialogActions = styled(DialogActions)`
+  padding: 16px 24px;
+  background-color: ${Color.grayLightest};
+  border-top: 1px solid ${Color.gray50};
+  gap: 12px;
+`
+
+const CancelButton = styled(Button)`
+  color: ${Color.gray40};
+  border: 1px solid ${Color.gray50};
+
+  &:hover {
+    background-color: ${Color.grayLightest};
+    border-color: ${Color.gray40};
+  }
+`
+
+const ConfirmButton = styled(Button)`
+  background-color: ${Color.green};
+  color: white;
+
+  &:hover {
+    background-color: ${Color.greenLight};
+  }
+
+  &:disabled {
+    background-color: ${Color.gray50};
+    color: ${Color.gray40};
   }
 `
 
@@ -337,64 +390,102 @@ export function ApiButtonForm(props: ApiButtonFormProps) {
           />
         )
       })}
-      <ApiButtonFormFooter>(Changes automatically applied)</ApiButtonFormFooter>
     </ApiButtonFormRoot>
   )
 }
 
-type ApiButtonWithOptionsProps = {
-  submit: JSX.Element
+interface ApiButtonInputModalProps {
+  open: boolean
+  onClose: () => void
+  onConfirm: (values: { [name: string]: any }) => void
   uiButton: UIButton
-  setInputValue: (name: string, value: any) => void
-  getInputValue: (name: string) => any | undefined
-  className?: string
-  text: string
+  initialValues: { [name: string]: any }
 }
 
-function ApiButtonWithOptions(props: ApiButtonWithOptionsProps & ButtonProps) {
-  const [open, setOpen] = useState(false)
-  const anchorRef = useRef(null)
+function ApiButtonInputModal(props: ApiButtonInputModalProps) {
+  const [inputValues, setInputValues] = useState(props.initialValues)
 
-  const {
-    submit,
-    uiButton,
-    setInputValue,
-    getInputValue,
-    text,
-    ...buttonProps
-  } = props
+  const setInputValue = (name: string, value: any) => {
+    setInputValues({ ...inputValues, [name]: value })
+  }
+
+  const getInputValue = (name: string) => inputValues[name]
+
+  const handleConfirm = () => {
+    props.onConfirm(inputValues)
+    props.onClose()
+  }
+
+  const buttonText = props.uiButton.spec?.text || "Button"
+  const visibleInputs =
+    props.uiButton.spec?.inputs?.filter((input) => !input.hidden) || []
 
   return (
-    <>
-      <ApiButtonRoot
-        ref={anchorRef}
-        className={props.className}
-        disableRipple={true}
-        disabled={buttonProps.disabled}
-      >
-        {props.submit}
-        <ApiButtonInputsToggleButton
-          {...buttonProps}
+    <StyledDialog
+      open={props.open}
+      onClose={props.onClose}
+      maxWidth="md"
+      fullWidth
+      aria-labelledby="input-modal-title"
+    >
+      <StyledDialogTitle id="input-modal-title">
+        <span>Configure {buttonText}</span>
+        <IconButton
+          aria-label="Close dialog"
+          onClick={props.onClose}
           size="small"
-          onClick={() => {
-            setOpen((prevOpen) => !prevOpen)
-          }}
-          aria-label={`Open ${text} options`}
         >
-          <ArrowDropDownIcon />
-        </ApiButtonInputsToggleButton>
-      </ApiButtonRoot>
-      <FloatDialog
-        open={open}
-        onClose={() => {
-          setOpen(false)
-        }}
-        anchorEl={anchorRef.current}
-        title={`Options for ${text}`}
-      >
-        <ApiButtonForm {...props} />
-      </FloatDialog>
-    </>
+          <CloseIcon />
+        </IconButton>
+      </StyledDialogTitle>
+
+      <StyledDialogContent>
+        {visibleInputs.length > 0 ? (
+          <>
+            <p
+              style={{
+                margin: "0 0 20px 0",
+                color: Color.gray40,
+                fontSize: FontSize.small,
+                fontFamily: Font.monospace,
+              }}
+            >
+              Review and modify the input values, then confirm to execute the
+              action.
+            </p>
+            <ApiButtonForm
+              uiButton={props.uiButton}
+              setInputValue={setInputValue}
+              getInputValue={getInputValue}
+            />
+          </>
+        ) : (
+          <p
+            style={{
+              margin: 0,
+              color: Color.gray40,
+              fontSize: FontSize.small,
+              fontFamily: Font.monospace,
+            }}
+          >
+            Are you sure you want to execute "{buttonText}"?
+          </p>
+        )}
+      </StyledDialogContent>
+
+      <StyledDialogActions>
+        <CancelButton onClick={props.onClose} variant="outlined">
+          Cancel
+        </CancelButton>
+        <ConfirmButton
+          onClick={handleConfirm}
+          variant="contained"
+          color="primary"
+        >
+          Confirm & Execute
+        </ConfirmButton>
+      </StyledDialogActions>
+    </StyledDialog>
   )
 }
 
@@ -598,6 +689,7 @@ export function ApiButton(props: PropsWithChildren<ApiButtonProps>) {
 
   const [loading, setLoading] = useState(false)
   const [confirming, setConfirming] = useState(false)
+  const [showInputModal, setShowInputModal] = useState(false)
 
   // Reset the confirmation state when the button's name changes
   useLayoutEffect(() => setConfirming(false), [buttonName])
@@ -606,9 +698,18 @@ export function ApiButton(props: PropsWithChildren<ApiButtonProps>) {
   const disabled = loading || uiButton.spec?.disabled || false
   const buttonText = uiButton.spec?.text || "Button"
 
+  // Visible inputs (non-hidden) determine if we show a configuration modal before action
+  const hasVisibleInputs = uiButton.spec?.inputs?.some((input) => !input.hidden)
+
   const onClick = async (e: React.MouseEvent<HTMLElement>) => {
     e.preventDefault()
     e.stopPropagation()
+
+    // If there are visible inputs, always show modal to configure them before executing
+    if (hasVisibleInputs) {
+      setShowInputModal(true)
+      return
+    }
 
     if (uiButton.spec?.requiresConfirmation && !confirming) {
       setConfirming(true)
@@ -670,49 +771,78 @@ export function ApiButton(props: PropsWithChildren<ApiButtonProps>) {
     </ApiSubmitButton>
   )
 
-  // show the options button if there are any non-hidden inputs
-  const visibleInputs = uiButton.spec?.inputs?.filter((i) => !i.hidden) || []
-  if (visibleInputs.length) {
+  if (hasVisibleInputs) {
     const setInputValue = (name: string, value: any) => {
-      // Copy to a new object so that the reference changes to force a rerender.
       setInputValues({ ...inputValues, [name]: value })
     }
     const getInputValue = (name: string) => inputValues[name]
 
     return (
-      <ApiButtonWithOptions
-        className={className}
-        submit={submitButton}
-        uiButton={uiButton}
-        setInputValue={setInputValue}
-        getInputValue={getInputValue}
-        aria-label={buttonText}
-        // use-case-wise, it'd probably be better to leave the options button enabled
-        // regardless of the submit button's state.
-        // However, that's currently a low-impact difference, and this is a really
-        // cheap way to ensure the styling matches.
-        disabled={disabled}
-        text={buttonText}
-        {...buttonProps}
-      />
+      <>
+        <ApiButtonRoot
+          className={className}
+          disableRipple={true}
+          aria-label={buttonText}
+          disabled={disabled}
+        >
+          {submitButton}
+          {/* Confirmation cancel button only shown if in confirming state and no inputs (handled in else) */}
+        </ApiButtonRoot>
+        <ApiButtonInputModal
+          open={showInputModal}
+          onClose={() => setShowInputModal(false)}
+          onConfirm={async (values) => {
+            setInputValues(values) // Persist values for next time
+            try {
+              setLoading(true)
+              await updateButtonStatus(uiButton, values)
+            } catch (error) {
+              setError(`Error updating button: ${error}`)
+            } finally {
+              setLoading(false)
+            }
+          }}
+          uiButton={uiButton}
+          initialValues={inputValues}
+        />
+      </>
     )
   } else {
     return (
-      <ApiButtonRoot
-        className={className}
-        disableRipple={true}
-        aria-label={buttonText}
-        disabled={disabled}
-      >
-        {submitButton}
-        <ApiCancelButton
-          text={buttonText}
-          confirming={confirming}
+      <>
+        <ApiButtonRoot
+          className={className}
+          disableRipple={true}
+          aria-label={buttonText}
           disabled={disabled}
-          onClick={() => setConfirming(false)}
-          {...buttonProps}
+        >
+          {submitButton}
+          <ApiCancelButton
+            text={buttonText}
+            confirming={confirming}
+            disabled={disabled}
+            onClick={() => setConfirming(false)}
+            {...buttonProps}
+          />
+        </ApiButtonRoot>
+        {/* Modal for confirmation only (no inputs) */}
+        <ApiButtonInputModal
+          open={showInputModal}
+          onClose={() => setShowInputModal(false)}
+          onConfirm={async () => {
+            try {
+              setLoading(true)
+              await updateButtonStatus(uiButton, inputValues)
+            } catch (error) {
+              setError(`Error updating button: ${error}`)
+            } finally {
+              setLoading(false)
+            }
+          }}
+          uiButton={uiButton}
+          initialValues={inputValues}
         />
-      </ApiButtonRoot>
+      </>
     )
   }
 }
