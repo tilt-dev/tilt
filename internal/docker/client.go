@@ -303,7 +303,7 @@ func (c *Cli) initVersion(ctx context.Context) {
 }
 
 func (c *Cli) startBuildkitSession(ctx context.Context, g *errgroup.Group, key string, dirSource filesync.DirSource, sshSpecs []string, secretSpecs []string) (*session.Session, error) {
-	session, err := session.NewSession(ctx, "tilt", key)
+	session, err := session.NewSession(ctx, key)
 	if err != nil {
 		return nil, err
 	}
@@ -314,7 +314,9 @@ func (c *Cli) startBuildkitSession(ctx context.Context, g *errgroup.Group, key s
 
 	dockerConfig := config.LoadDefaultConfigFile(
 		logger.Get(ctx).Writer(logger.InfoLvl))
-	provider := authprovider.NewDockerAuthProvider(dockerConfig, nil)
+	provider := authprovider.NewDockerAuthProvider(authprovider.DockerAuthProviderConfig{
+		ConfigFile: dockerConfig,
+	})
 	session.Allow(provider)
 
 	if len(secretSpecs) > 0 {

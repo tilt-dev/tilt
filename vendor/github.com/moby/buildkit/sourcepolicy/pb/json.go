@@ -1,7 +1,7 @@
-package moby_buildkit_v1_sourcepolicy //nolint:revive
+package moby_buildkit_v1_sourcepolicy //nolint:revive,staticcheck
 
 import (
-	"github.com/gogo/protobuf/proto"
+	"github.com/moby/buildkit/util/gogo/proto"
 	"github.com/pkg/errors"
 )
 

@@ -1,7 +1,7 @@
 package build
 
 import (
-	"encoding/json"
+	"bufio"
 	"fmt"
 	"io"
 	"os"
@@ -11,6 +11,7 @@ import (
 
 	controlapi "github.com/moby/buildkit/api/services/control"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/tilt-dev/tilt/pkg/logger"
 )
@@ -24,16 +25,16 @@ type buildkitTestCase struct {
 	responsePath string
 }
 
-func (c buildkitTestCase) readResponse(reader io.Reader) ([]controlapi.StatusResponse, error) {
-	result := make([]controlapi.StatusResponse, 0)
-	decoder := json.NewDecoder(reader)
-	for decoder.More() {
+func (c buildkitTestCase) readResponse(reader io.Reader) ([]*controlapi.StatusResponse, error) {
+	result := make([]*controlapi.StatusResponse, 0)
+	scanner := bufio.NewScanner(reader)
+	for scanner.Scan() {
 		var resp controlapi.StatusResponse
-		err := decoder.Decode(&resp)
+		err := protojson.Unmarshal(scanner.Bytes(), &resp)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("decoding StatusResponse: %v", err)
 		}
-		result = append(result, resp)
+		result = append(result, &resp)
 	}
 	return result, nil
 }

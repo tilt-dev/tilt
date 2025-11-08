@@ -1,7 +1,8 @@
 package progress
 
 import (
-	"sort"
+	"maps"
+	"slices"
 	"sync"
 	"time"
 )
@@ -15,7 +16,7 @@ type MultiWriter struct {
 	mu      sync.Mutex
 	items   []*Progress
 	writers map[rawProgressWriter]struct{}
-	meta    map[string]interface{}
+	meta    map[string]any
 }
 
 var _ rawProgressWriter = &MultiWriter{}
@@ -23,7 +24,7 @@ var _ rawProgressWriter = &MultiWriter{}
 func NewMultiWriter(opts ...WriterOption) *MultiWriter {
 	mw := &MultiWriter{
 		writers: map[rawProgressWriter]struct{}{},
-		meta:    map[string]interface{}{},
+		meta:    map[string]any{},
 	}
 	for _, o := range opts {
 		o(mw)
@@ -48,8 +49,8 @@ func (ps *MultiWriter) Add(pw Writer) {
 	ps.mu.Lock()
 	plist := make([]*Progress, 0, len(ps.items))
 	plist = append(plist, ps.items...)
-	sort.Slice(plist, func(i, j int) bool {
-		return plist[i].Timestamp.Before(plist[j].Timestamp)
+	slices.SortFunc(plist, func(a, b *Progress) int {
+		return a.Timestamp.Compare(b.Timestamp)
 	})
 	for _, p := range plist {
 		rw.WriteRawProgress(p)
@@ -69,7 +70,7 @@ func (ps *MultiWriter) Delete(pw Writer) {
 	ps.mu.Unlock()
 }
 
-func (ps *MultiWriter) Write(id string, v interface{}) error {
+func (ps *MultiWriter) Write(id string, v any) error {
 	p := &Progress{
 		ID:        id,
 		Timestamp: time.Now(),
@@ -82,10 +83,8 @@ func (ps *MultiWriter) Write(id string, v interface{}) error {
 func (ps *MultiWriter) WriteRawProgress(p *Progress) error {
 	meta := p.meta
 	if len(ps.meta) > 0 {
-		meta = map[string]interface{}{}
-		for k, v := range p.meta {
-			meta[k] = v
-		}
+		meta = map[string]any{}
+		maps.Copy(meta, p.meta)
 		for k, v := range ps.meta {
 			if _, ok := meta[k]; !ok {
 				meta[k] = v

@@ -111,7 +111,7 @@ func cleanPath(urlPath string, defaultPath string) string {
 		return defaultPath
 	}
 	if !path.IsAbs(tmp) {
-		tmp = fmt.Sprintf("/%s", tmp)
+		tmp = "/" + tmp
 	}
 	return tmp
 }

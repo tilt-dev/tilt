@@ -7,7 +7,7 @@ package instructions
 import (
 	"fmt"
 	"regexp"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -20,8 +20,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-var excludePatternsEnabled = false
-
 type parseRequest struct {
 	command    string
 	args       []string
@@ -33,8 +31,10 @@ type parseRequest struct {
 	comments   []string
 }
 
-var parseRunPreHooks []func(*RunCommand, parseRequest) error
-var parseRunPostHooks []func(*RunCommand, parseRequest) error
+var (
+	parseRunPreHooks  []func(*RunCommand, parseRequest) error
+	parseRunPostHooks []func(*RunCommand, parseRequest) error
+)
 
 var parentsEnabled = false
 
@@ -66,14 +66,16 @@ func newParseRequestFromNode(node *parser.Node) parseRequest {
 	}
 }
 
-func ParseInstruction(node *parser.Node) (v interface{}, err error) {
+func ParseInstruction(node *parser.Node) (v any, err error) {
 	return ParseInstructionWithLinter(node, nil)
 }
 
 // ParseInstruction converts an AST to a typed instruction (either a command or a build stage beginning when encountering a `FROM` statement)
-func ParseInstructionWithLinter(node *parser.Node, lint *linter.Linter) (v interface{}, err error) {
+func ParseInstructionWithLinter(node *parser.Node, lint *linter.Linter) (v any, err error) {
 	defer func() {
-		err = parser.WithLocation(err, node.Location())
+		if err != nil {
+			err = parser.WithLocation(err, node.Location())
+		}
 	}()
 	req := newParseRequestFromNode(node)
 	switch strings.ToLower(node.Value) {
@@ -98,7 +100,14 @@ func ParseInstructionWithLinter(node *parser.Node, lint *linter.Linter) (v inter
 			msg := linter.RuleFromAsCasing.Format(req.command, req.args[1])
 			lint.Run(&linter.RuleFromAsCasing, node.Location(), msg)
 		}
-		return parseFrom(req)
+		fromCmd, err := parseFrom(req)
+		if err != nil {
+			return nil, err
+		}
+		if fromCmd.Name != "" {
+			validateDefinitionDescription("FROM", []string{fromCmd.Name}, node.PrevComment, node.Location(), lint)
+		}
+		return fromCmd, nil
 	case command.Onbuild:
 		return parseOnBuild(req)
 	case command.Workdir:
@@ -120,7 +129,16 @@ func ParseInstructionWithLinter(node *parser.Node, lint *linter.Linter) (v inter
 	case command.StopSignal:
 		return parseStopSignal(req)
 	case command.Arg:
-		return parseArg(req)
+		argCmd, err := parseArg(req)
+		if err != nil {
+			return nil, err
+		}
+		argKeys := []string{}
+		for _, arg := range argCmd.Args {
+			argKeys = append(argKeys, arg.Key)
+		}
+		validateDefinitionDescription("ARG", argKeys, node.PrevComment, node.Location(), lint)
+		return argCmd, nil
 	case command.Shell:
 		return parseShell(req)
 	}
@@ -308,18 +326,13 @@ func parseAdd(req parseRequest) (*AddCommand, error) {
 		return nil, errNoDestinationArgument("ADD")
 	}
 
-	var flExcludes *Flag
-
-	// silently ignore if not -labs
-	if excludePatternsEnabled {
-		flExcludes = req.flags.AddStrings("exclude")
-	}
-
 	flChown := req.flags.AddString("chown", "")
 	flChmod := req.flags.AddString("chmod", "")
 	flLink := req.flags.AddBool("link", false)
 	flKeepGitDir := req.flags.AddBool("keep-git-dir", false)
 	flChecksum := req.flags.AddString("checksum", "")
+	flUnpack := req.flags.AddBool("unpack", false)
+	flExcludes := req.flags.AddStrings("exclude")
 	if err := req.flags.Parse(); err != nil {
 		return nil, err
 	}
@@ -329,15 +342,28 @@ func parseAdd(req parseRequest) (*AddCommand, error) {
 		return nil, err
 	}
 
+	var unpack *bool
+	if _, ok := req.flags.used["unpack"]; ok {
+		b := flUnpack.Value == "true"
+		unpack = &b
+	}
+
+	var keepGit *bool
+	if _, ok := req.flags.used["keep-git-dir"]; ok {
+		b := flKeepGitDir.Value == "true"
+		keepGit = &b
+	}
+
 	return &AddCommand{
 		withNameAndCode: newWithNameAndCode(req),
 		SourcesAndDest:  *sourcesAndDest,
 		Chown:           flChown.Value,
 		Chmod:           flChmod.Value,
 		Link:            flLink.Value == "true",
-		KeepGitDir:      flKeepGitDir.Value == "true",
+		KeepGitDir:      keepGit,
 		Checksum:        flChecksum.Value,
 		ExcludePatterns: stringValuesFromFlagIfPossible(flExcludes),
+		Unpack:          unpack,
 	}, nil
 }
 
@@ -346,12 +372,7 @@ func parseCopy(req parseRequest) (*CopyCommand, error) {
 		return nil, errNoDestinationArgument("COPY")
 	}
 
-	var flExcludes *Flag
 	var flParents *Flag
-
-	if excludePatternsEnabled {
-		flExcludes = req.flags.AddStrings("exclude")
-	}
 	if parentsEnabled {
 		flParents = req.flags.AddBool("parents", false)
 	}
@@ -360,6 +381,7 @@ func parseCopy(req parseRequest) (*CopyCommand, error) {
 	flFrom := req.flags.AddString("from", "")
 	flChmod := req.flags.AddString("chmod", "")
 	flLink := req.flags.AddBool("link", false)
+	flExcludes := req.flags.AddStrings("exclude")
 
 	if err := req.flags.Parse(); err != nil {
 		return nil, err
@@ -396,6 +418,7 @@ func parseFrom(req parseRequest) (*Stage, error) {
 	code := strings.TrimSpace(req.original)
 	return &Stage{
 		BaseName:   req.args[0],
+		OrigCmd:    req.command,
 		Name:       stageName,
 		SourceCode: code,
 		Commands:   []Command{},
@@ -569,6 +592,7 @@ func parseOptInterval(f *Flag) (time.Duration, error) {
 	}
 	return d, nil
 }
+
 func parseHealthcheck(req parseRequest) (*HealthCheckCommand, error) {
 	if len(req.args) == 0 {
 		return nil, errAtLeastOneArgument("HEALTHCHECK")
@@ -668,7 +692,7 @@ func parseExpose(req parseRequest) (*ExposeCommand, error) {
 		return nil, err
 	}
 
-	sort.Strings(portsTab)
+	slices.Sort(portsTab)
 	return &ExposeCommand{
 		Ports:           portsTab,
 		withNameAndCode: newWithNameAndCode(req),
@@ -812,8 +836,8 @@ func getComment(comments []string, name string) string {
 		return ""
 	}
 	for _, line := range comments {
-		if strings.HasPrefix(line, name+" ") {
-			return strings.TrimPrefix(line, name+" ")
+		if after, ok := strings.CutPrefix(line, name+" "); ok {
+			return after
 		}
 	}
 	return ""
@@ -854,4 +878,21 @@ func doesFromCaseMatchAsCase(req parseRequest) bool {
 		return req.args[1] == strings.ToLower(req.args[1])
 	}
 	return req.args[1] == strings.ToUpper(req.args[1])
+}
+
+func validateDefinitionDescription(instruction string, argKeys []string, descComments []string, location []parser.Range, lint *linter.Linter) {
+	if len(descComments) == 0 || len(argKeys) == 0 {
+		return
+	}
+	descCommentParts := strings.Split(descComments[len(descComments)-1], " ")
+	if slices.Contains(argKeys, descCommentParts[0]) {
+		return
+	}
+	exampleKey := argKeys[0]
+	if len(argKeys) > 1 {
+		exampleKey = "<arg_key>"
+	}
+
+	msg := linter.RuleInvalidDefinitionDescription.Format(instruction, exampleKey)
+	lint.Run(&linter.RuleInvalidDefinitionDescription, location, msg)
 }

@@ -2,39 +2,43 @@ package llb
 
 import (
 	"io"
+	"slices"
+	"sync"
 
-	"github.com/containerd/containerd/platforms"
+	cerrdefs "github.com/containerd/errdefs"
+	"github.com/containerd/platforms"
 	"github.com/moby/buildkit/solver/pb"
 	digest "github.com/opencontainers/go-digest"
+	"google.golang.org/protobuf/proto"
 )
 
 // Definition is the LLB definition structure with per-vertex metadata entries
 // Corresponds to the Definition structure defined in solver/pb.Definition.
 type Definition struct {
 	Def         [][]byte
-	Metadata    map[digest.Digest]pb.OpMetadata
+	Metadata    map[digest.Digest]OpMetadata
 	Source      *pb.Source
 	Constraints *Constraints
 }
 
 func (def *Definition) ToPB() *pb.Definition {
-	md := make(map[digest.Digest]pb.OpMetadata, len(def.Metadata))
-	for k, v := range def.Metadata {
-		md[k] = v
+	metas := make(map[string]*pb.OpMetadata, len(def.Metadata))
+	for dgst, meta := range def.Metadata {
+		metas[string(dgst)] = meta.ToPB()
 	}
 	return &pb.Definition{
 		Def:      def.Def,
 		Source:   def.Source,
-		Metadata: md,
+		Metadata: metas,
 	}
 }
 
 func (def *Definition) FromPB(x *pb.Definition) {
 	def.Def = x.Def
 	def.Source = x.Source
-	def.Metadata = make(map[digest.Digest]pb.OpMetadata)
-	for k, v := range x.Metadata {
-		def.Metadata[k] = v
+	def.Metadata = make(map[digest.Digest]OpMetadata, len(x.Metadata))
+	for dgst, meta := range x.Metadata {
+		def.Metadata[digest.Digest(dgst)] = NewOpMetadata(meta)
 	}
 }
 
@@ -46,14 +50,14 @@ func (def *Definition) Head() (digest.Digest, error) {
 	last := def.Def[len(def.Def)-1]
 
 	var pop pb.Op
-	if err := (&pop).Unmarshal(last); err != nil {
+	if err := pop.UnmarshalVT(last); err != nil {
 		return "", err
 	}
 	if len(pop.Inputs) == 0 {
 		return "", nil
 	}
 
-	return pop.Inputs[0].Digest, nil
+	return digest.Digest(pop.Inputs[0].Digest), nil
 }
 
 func WriteTo(def *Definition, w io.Writer) error {
@@ -71,7 +75,7 @@ func ReadFrom(r io.Reader) (*Definition, error) {
 		return nil, err
 	}
 	var pbDef pb.Definition
-	if err := pbDef.Unmarshal(b); err != nil {
+	if err := pbDef.UnmarshalVT(b); err != nil {
 		return nil, err
 	}
 	var def Definition
@@ -81,7 +85,7 @@ func ReadFrom(r io.Reader) (*Definition, error) {
 
 func MarshalConstraints(base, override *Constraints) (*pb.Op, *pb.OpMetadata) {
 	c := *base
-	c.WorkerConstraints = append([]string{}, c.WorkerConstraints...)
+	c.WorkerConstraints = slices.Clone(c.WorkerConstraints)
 
 	if p := override.Platform; p != nil {
 		c.Platform = p
@@ -102,7 +106,7 @@ func MarshalConstraints(base, override *Constraints) (*pb.Op, *pb.OpMetadata) {
 		OSVersion:    c.Platform.OSVersion,
 	}
 	if c.Platform.OSFeatures != nil {
-		opPlatform.OSFeatures = append([]string{}, c.Platform.OSFeatures...)
+		opPlatform.OSFeatures = slices.Clone(c.Platform.OSFeatures)
 	}
 
 	return &pb.Op{
@@ -110,27 +114,56 @@ func MarshalConstraints(base, override *Constraints) (*pb.Op, *pb.OpMetadata) {
 		Constraints: &pb.WorkerConstraints{
 			Filter: c.WorkerConstraints,
 		},
-	}, &c.Metadata
+	}, c.Metadata.ToPB()
 }
 
 type MarshalCache struct {
-	digest      digest.Digest
-	dt          []byte
-	md          *pb.OpMetadata
-	srcs        []*SourceLocation
-	constraints *Constraints
+	mu    sync.Mutex
+	cache map[*Constraints]*marshalCacheResult
 }
 
-func (mc *MarshalCache) Cached(c *Constraints) bool {
-	return mc.dt != nil && mc.constraints == c
+type MarshalCacheInstance struct {
+	*MarshalCache
 }
-func (mc *MarshalCache) Load() (digest.Digest, []byte, *pb.OpMetadata, []*SourceLocation, error) {
-	return mc.digest, mc.dt, mc.md, mc.srcs, nil
+
+func (mc *MarshalCache) Acquire() *MarshalCacheInstance {
+	mc.mu.Lock()
+	return &MarshalCacheInstance{mc}
 }
-func (mc *MarshalCache) Store(dt []byte, md *pb.OpMetadata, srcs []*SourceLocation, c *Constraints) {
-	mc.digest = digest.FromBytes(dt)
-	mc.dt = dt
-	mc.md = md
-	mc.constraints = c
-	mc.srcs = srcs
+
+func (mc *MarshalCacheInstance) Load(c *Constraints) (digest.Digest, []byte, *pb.OpMetadata, []*SourceLocation, error) {
+	res, ok := mc.cache[c]
+	if !ok {
+		return "", nil, nil, nil, cerrdefs.ErrNotFound
+	}
+	return res.digest, res.dt, res.md, res.srcs, nil
+}
+
+func (mc *MarshalCacheInstance) Store(dt []byte, md *pb.OpMetadata, srcs []*SourceLocation, c *Constraints) (digest.Digest, []byte, *pb.OpMetadata, []*SourceLocation, error) {
+	res := &marshalCacheResult{
+		digest: digest.FromBytes(dt),
+		dt:     dt,
+		md:     md,
+		srcs:   srcs,
+	}
+	if mc.cache == nil {
+		mc.cache = make(map[*Constraints]*marshalCacheResult)
+	}
+	mc.cache[c] = res
+	return res.digest, res.dt, res.md, res.srcs, nil
+}
+
+func (mc *MarshalCacheInstance) Release() {
+	mc.mu.Unlock()
+}
+
+type marshalCacheResult struct {
+	digest digest.Digest
+	dt     []byte
+	md     *pb.OpMetadata
+	srcs   []*SourceLocation
+}
+
+func deterministicMarshal[Message proto.Message](m Message) ([]byte, error) {
+	return proto.MarshalOptions{Deterministic: true}.Marshal(m)
 }

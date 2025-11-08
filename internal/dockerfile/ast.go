@@ -58,7 +58,7 @@ func (a AST) extractBaseNameInFromCommand(node *parser.Node, shlex *shell.Lex, m
 	// The base image name may have ARG expansions in it. Do the default
 	// substitution.
 	argsMap := fakeArgsMap(shlex, metaArgs)
-	baseName, err := shlex.ProcessWordWithMap(fromInst.BaseName, argsMap)
+	baseName, _, err := shlex.ProcessWord(fromInst.BaseName, argsMap)
 	if err != nil {
 		// If anything fails, just use the hard-coded BaseName.
 		return fromInst.BaseName
@@ -303,20 +303,35 @@ func newReader(df Dockerfile) io.Reader {
 	return bytes.NewBufferString(string(df))
 }
 
+type envGetter map[string]string
+
+func (e envGetter) Get(key string) (string, bool) {
+	val, ok := e[key]
+	return val, ok
+}
+
+func (e envGetter) Keys() []string {
+	keys := make([]string, 0, len(e))
+	for k := range e {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
 // Loosely adapted from the buildkit code for turning args into a map.
 // Iterate through them and do substitutions in order.
-func fakeArgsMap(shlex *shell.Lex, args []instructions.ArgCommand) map[string]string {
+func fakeArgsMap(shlex *shell.Lex, args []instructions.ArgCommand) envGetter {
 	m := make(map[string]string)
 	for _, argCmd := range args {
 		val := ""
 		for _, a := range argCmd.Args {
 			if a.Value != nil {
-				val, _ = shlex.ProcessWordWithMap(*(a.Value), m)
+				val, _, _ = shlex.ProcessWord(*(a.Value), envGetter(m))
 			}
 			m[a.Key] = val
 		}
 	}
-	return m
+	return envGetter(m)
 }
 
 // argInstructions converts a map of build arguments into a slice of ArgCommand structs.

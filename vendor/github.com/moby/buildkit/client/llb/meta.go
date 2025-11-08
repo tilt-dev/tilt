@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"net"
 	"path"
+	"slices"
+	"sync"
 
-	"github.com/containerd/containerd/platforms"
+	"github.com/containerd/platforms"
 	"github.com/google/shlex"
 	"github.com/moby/buildkit/solver/pb"
 	ocispecs "github.com/opencontainers/image-spec/specs-go/v1"
@@ -16,14 +18,15 @@ import (
 type contextKeyT string
 
 var (
-	keyArgs         = contextKeyT("llb.exec.args")
-	keyDir          = contextKeyT("llb.exec.dir")
-	keyEnv          = contextKeyT("llb.exec.env")
-	keyExtraHost    = contextKeyT("llb.exec.extrahost")
-	keyHostname     = contextKeyT("llb.exec.hostname")
-	keyUlimit       = contextKeyT("llb.exec.ulimit")
-	keyCgroupParent = contextKeyT("llb.exec.cgroup.parent")
-	keyUser         = contextKeyT("llb.exec.user")
+	keyArgs           = contextKeyT("llb.exec.args")
+	keyDir            = contextKeyT("llb.exec.dir")
+	keyEnv            = contextKeyT("llb.exec.env")
+	keyExtraHost      = contextKeyT("llb.exec.extrahost")
+	keyHostname       = contextKeyT("llb.exec.hostname")
+	keyUlimit         = contextKeyT("llb.exec.ulimit")
+	keyCgroupParent   = contextKeyT("llb.exec.cgroup.parent")
+	keyUser           = contextKeyT("llb.exec.user")
+	keyValidExitCodes = contextKeyT("llb.exec.validexitcodes")
 
 	keyPlatform = contextKeyT("llb.platform")
 	keyNetwork  = contextKeyT("llb.network")
@@ -32,7 +35,7 @@ var (
 
 // AddEnvf is the same as [AddEnv] but allows for a format string.
 // This is the equivalent of `[State.AddEnvf]`
-func AddEnvf(key, value string, v ...interface{}) StateOption {
+func AddEnvf(key, value string, v ...any) StateOption {
 	return addEnvf(key, value, true, v...)
 }
 
@@ -43,12 +46,12 @@ func AddEnv(key, value string) StateOption {
 	return addEnvf(key, value, false)
 }
 
-func addEnvf(key, value string, replace bool, v ...interface{}) StateOption {
+func addEnvf(key, value string, replace bool, v ...any) StateOption {
 	if replace {
 		value = fmt.Sprintf(value, v...)
 	}
 	return func(s State) State {
-		return s.withValue(keyEnv, func(ctx context.Context, c *Constraints) (interface{}, error) {
+		return s.withValue(keyEnv, func(ctx context.Context, c *Constraints) (any, error) {
 			env, err := getEnv(s)(ctx, c)
 			if err != nil {
 				return nil, err
@@ -66,16 +69,16 @@ func Dir(str string) StateOption {
 }
 
 // Dirf is the same as [Dir] but allows for a format string.
-func Dirf(str string, v ...interface{}) StateOption {
+func Dirf(str string, v ...any) StateOption {
 	return dirf(str, true, v...)
 }
 
-func dirf(value string, replace bool, v ...interface{}) StateOption {
+func dirf(value string, replace bool, v ...any) StateOption {
 	if replace {
 		value = fmt.Sprintf(value, v...)
 	}
 	return func(s State) State {
-		return s.withValue(keyDir, func(ctx context.Context, c *Constraints) (interface{}, error) {
+		return s.withValue(keyDir, func(ctx context.Context, c *Constraints) (any, error) {
 			if !path.IsAbs(value) {
 				prev, err := getDir(s)(ctx, c)
 				if err != nil {
@@ -111,16 +114,16 @@ func Reset(other State) StateOption {
 	}
 }
 
-func getEnv(s State) func(context.Context, *Constraints) (EnvList, error) {
-	return func(ctx context.Context, c *Constraints) (EnvList, error) {
+func getEnv(s State) func(context.Context, *Constraints) (*EnvList, error) {
+	return func(ctx context.Context, c *Constraints) (*EnvList, error) {
 		v, err := s.getValue(keyEnv)(ctx, c)
 		if err != nil {
 			return nil, err
 		}
 		if v != nil {
-			return v.(EnvList), nil
+			return v.(*EnvList), nil
 		}
-		return EnvList{}, nil
+		return &EnvList{}, nil
 	}
 }
 
@@ -163,6 +166,25 @@ func getUser(s State) func(context.Context, *Constraints) (string, error) {
 	}
 }
 
+func validExitCodes(codes ...int) StateOption {
+	return func(s State) State {
+		return s.WithValue(keyValidExitCodes, codes)
+	}
+}
+
+func getValidExitCodes(s State) func(context.Context, *Constraints) ([]int, error) {
+	return func(ctx context.Context, c *Constraints) ([]int, error) {
+		v, err := s.getValue(keyValidExitCodes)(ctx, c)
+		if err != nil {
+			return nil, err
+		}
+		if v != nil {
+			return v.([]int), nil
+		}
+		return nil, nil
+	}
+}
+
 // Hostname returns a [StateOption] which sets the hostname used for containers created by [State.Run].
 // This is the equivalent of [State.Hostname]
 // See [State.With] for where to use this.
@@ -191,7 +213,7 @@ func args(args ...string) StateOption {
 	}
 }
 
-func shlexf(str string, replace bool, v ...interface{}) StateOption {
+func shlexf(str string, replace bool, v ...any) StateOption {
 	if replace {
 		str = fmt.Sprintf(str, v...)
 	}
@@ -226,7 +248,7 @@ func getPlatform(s State) func(context.Context, *Constraints) (*ocispecs.Platfor
 
 func extraHost(host string, ip net.IP) StateOption {
 	return func(s State) State {
-		return s.withValue(keyExtraHost, func(ctx context.Context, c *Constraints) (interface{}, error) {
+		return s.withValue(keyExtraHost, func(ctx context.Context, c *Constraints) (any, error) {
 			v, err := getExtraHosts(s)(ctx, c)
 			if err != nil {
 				return nil, err
@@ -256,12 +278,12 @@ type HostIP struct {
 
 func ulimit(name UlimitName, soft int64, hard int64) StateOption {
 	return func(s State) State {
-		return s.withValue(keyUlimit, func(ctx context.Context, c *Constraints) (interface{}, error) {
+		return s.withValue(keyUlimit, func(ctx context.Context, c *Constraints) (any, error) {
 			v, err := getUlimit(s)(ctx, c)
 			if err != nil {
 				return nil, err
 			}
-			return append(v, pb.Ulimit{
+			return append(v, &pb.Ulimit{
 				Name: string(name),
 				Soft: soft,
 				Hard: hard,
@@ -270,14 +292,14 @@ func ulimit(name UlimitName, soft int64, hard int64) StateOption {
 	}
 }
 
-func getUlimit(s State) func(context.Context, *Constraints) ([]pb.Ulimit, error) {
-	return func(ctx context.Context, c *Constraints) ([]pb.Ulimit, error) {
+func getUlimit(s State) func(context.Context, *Constraints) ([]*pb.Ulimit, error) {
+	return func(ctx context.Context, c *Constraints) ([]*pb.Ulimit, error) {
 		v, err := s.getValue(keyUlimit)(ctx, c)
 		if err != nil {
 			return nil, err
 		}
 		if v != nil {
-			return v.([]pb.Ulimit), nil
+			return v.([]*pb.Ulimit), nil
 		}
 		return nil, nil
 	}
@@ -310,6 +332,7 @@ func Network(v pb.NetMode) StateOption {
 		return s.WithValue(keyNetwork, v)
 	}
 }
+
 func getNetwork(s State) func(context.Context, *Constraints) (pb.NetMode, error) {
 	return func(ctx context.Context, c *Constraints) (pb.NetMode, error) {
 		v, err := s.getValue(keyNetwork)(ctx, c)
@@ -332,6 +355,7 @@ func Security(v pb.SecurityMode) StateOption {
 		return s.WithValue(keySecurity, v)
 	}
 }
+
 func getSecurity(s State) func(context.Context, *Constraints) (pb.SecurityMode, error) {
 	return func(ctx context.Context, c *Constraints) (pb.SecurityMode, error) {
 		v, err := s.getValue(keySecurity)(ctx, c)
@@ -346,54 +370,83 @@ func getSecurity(s State) func(context.Context, *Constraints) (pb.SecurityMode, 
 	}
 }
 
-type EnvList []KeyValue
-
-type KeyValue struct {
-	key   string
-	value string
+type EnvList struct {
+	parent *EnvList
+	key    string
+	value  string
+	del    bool
+	once   sync.Once
+	l      int
+	values map[string]string
+	keys   []string
 }
 
-func (e EnvList) AddOrReplace(k, v string) EnvList {
-	e = e.Delete(k)
-	e = append(e, KeyValue{key: k, value: v})
-	return e
+func (e *EnvList) AddOrReplace(k, v string) *EnvList {
+	return &EnvList{
+		parent: e,
+		key:    k,
+		value:  v,
+		l:      e.l + 1,
+	}
 }
 
-func (e EnvList) SetDefault(k, v string) EnvList {
+func (e *EnvList) SetDefault(k, v string) *EnvList {
 	if _, ok := e.Get(k); !ok {
-		e = append(e, KeyValue{key: k, value: v})
+		return e.AddOrReplace(k, v)
 	}
 	return e
 }
 
-func (e EnvList) Delete(k string) EnvList {
-	e = append([]KeyValue(nil), e...)
-	if i, ok := e.Index(k); ok {
-		return append(e[:i], e[i+1:]...)
+func (e *EnvList) Delete(k string) EnvList {
+	return EnvList{
+		parent: e,
+		key:    k,
+		del:    true,
+		l:      e.l + 1,
 	}
-	return e
 }
 
-func (e EnvList) Get(k string) (string, bool) {
-	if index, ok := e.Index(k); ok {
-		return e[index].value, true
-	}
-	return "", false
+func (e *EnvList) makeValues() {
+	m := make(map[string]string, e.l)
+	seen := make(map[string]struct{}, e.l)
+	keys := make([]string, 0, e.l)
+	e.keys = e.addValue(keys, m, seen)
+	e.values = m
+	slices.Reverse(e.keys)
 }
 
-func (e EnvList) Index(k string) (int, bool) {
-	for i, kv := range e {
-		if kv.key == k {
-			return i, true
-		}
+func (e *EnvList) addValue(keys []string, vals map[string]string, seen map[string]struct{}) []string {
+	if e.parent == nil {
+		return keys
 	}
-	return -1, false
+	if _, ok := seen[e.key]; !e.del && !ok {
+		vals[e.key] = e.value
+		keys = append(keys, e.key)
+	}
+	seen[e.key] = struct{}{}
+	if e.parent != nil {
+		keys = e.parent.addValue(keys, vals, seen)
+	}
+	return keys
 }
 
-func (e EnvList) ToArray() []string {
-	out := make([]string, 0, len(e))
-	for _, kv := range e {
-		out = append(out, kv.key+"="+kv.value)
+func (e *EnvList) Get(k string) (string, bool) {
+	e.once.Do(e.makeValues)
+	v, ok := e.values[k]
+	return v, ok
+}
+
+func (e *EnvList) Keys() []string {
+	e.once.Do(e.makeValues)
+	return e.keys
+}
+
+func (e *EnvList) ToArray() []string {
+	keys := e.Keys()
+	out := make([]string, 0, len(keys))
+	for _, k := range keys {
+		v, _ := e.Get(k)
+		out = append(out, k+"="+v)
 	}
 	return out
 }

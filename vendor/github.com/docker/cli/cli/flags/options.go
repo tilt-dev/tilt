@@ -1,12 +1,12 @@
 package flags
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/docker/cli/cli/config"
-	"github.com/docker/cli/opts"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/tlsconfig"
 	"github.com/sirupsen/logrus"
@@ -54,6 +54,39 @@ var (
 	dockerTLS       = os.Getenv(EnvEnableTLS) != ""
 )
 
+// hostVar is used for the '--host' / '-H' flag to set [ClientOptions.Hosts].
+// The [ClientOptions.Hosts] field is a slice because it was originally shared
+// with the daemon config. However, the CLI only allows for a single host to
+// be specified.
+//
+// hostVar presents itself as a "string", but stores the value in a string
+// slice. It produces an error when trying to set multiple values, matching
+// the check in [getServerHost].
+//
+// [getServerHost]: https://github.com/docker/cli/blob/7eab668982645def1cd46fe1b60894cba6fd17a4/cli/command/cli.go#L542-L551
+type hostVar struct {
+	dst *[]string
+	set bool
+}
+
+func (h *hostVar) String() string {
+	if h.dst == nil || len(*h.dst) == 0 {
+		return ""
+	}
+	return (*h.dst)[0]
+}
+
+func (h *hostVar) Set(s string) error {
+	if h.set {
+		return errors.New("specify only one -H")
+	}
+	*h.dst = []string{s}
+	h.set = true
+	return nil
+}
+
+func (*hostVar) Type() string { return "string" }
+
 // ClientOptions are the options used to configure the client cli.
 type ClientOptions struct {
 	Debug      bool
@@ -90,13 +123,13 @@ func (o *ClientOptions) InstallFlags(flags *pflag.FlagSet) {
 		KeyFile:  filepath.Join(dockerCertPath, DefaultKeyFile),
 	}
 	tlsOptions := o.TLSOptions
-	flags.Var(opts.NewQuotedString(&tlsOptions.CAFile), "tlscacert", "Trust certs signed only by this CA")
-	flags.Var(opts.NewQuotedString(&tlsOptions.CertFile), "tlscert", "Path to TLS certificate file")
-	flags.Var(opts.NewQuotedString(&tlsOptions.KeyFile), "tlskey", "Path to TLS key file")
+	flags.Var(&quotedString{&tlsOptions.CAFile}, "tlscacert", "Trust certs signed only by this CA")
+	flags.Var(&quotedString{&tlsOptions.CertFile}, "tlscert", "Path to TLS certificate file")
+	flags.Var(&quotedString{&tlsOptions.KeyFile}, "tlskey", "Path to TLS key file")
 
-	// opts.ValidateHost is not used here, so as to allow connection helpers
-	hostOpt := opts.NewNamedListOptsRef("hosts", &o.Hosts, nil)
-	flags.VarP(hostOpt, "host", "H", "Daemon socket to connect to")
+	// TODO(thaJeztah): show the default host.
+	// TODO(thaJeztah): this should be a string, not an "array" as we only allow a single host.
+	flags.VarP(&hostVar{dst: &o.Hosts}, "host", "H", "Daemon socket to connect to")
 	flags.StringVarP(&o.Context, "context", "c", "",
 		`Name of the context to use to connect to the daemon (overrides `+client.EnvOverrideHost+` env var and default context set with "docker context use")`)
 }
@@ -138,11 +171,41 @@ func SetLogLevel(logLevel string) {
 	if logLevel != "" {
 		lvl, err := logrus.ParseLevel(logLevel)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Unable to parse logging level: %s\n", logLevel)
+			_, _ = fmt.Fprintln(os.Stderr, "Unable to parse logging level:", logLevel)
 			os.Exit(1)
 		}
 		logrus.SetLevel(lvl)
 	} else {
 		logrus.SetLevel(logrus.InfoLevel)
 	}
+}
+
+type quotedString struct {
+	value *string
+}
+
+func (s *quotedString) Set(val string) error {
+	*s.value = trimQuotes(val)
+	return nil
+}
+
+func (*quotedString) Type() string {
+	return "string"
+}
+
+func (s *quotedString) String() string {
+	return *s.value
+}
+
+func trimQuotes(value string) string {
+	if len(value) < 2 {
+		return value
+	}
+	lastIndex := len(value) - 1
+	for _, char := range []byte{'\'', '"'} {
+		if value[0] == char && value[lastIndex] == char {
+			return value[1:lastIndex]
+		}
+	}
+	return value
 }

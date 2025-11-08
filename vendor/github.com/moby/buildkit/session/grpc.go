@@ -7,7 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/containerd/containerd/defaults"
+	"github.com/containerd/containerd/v2/defaults"
 	"github.com/moby/buildkit/util/bklog"
 	"github.com/moby/buildkit/util/grpcerrors"
 	"github.com/moby/buildkit/util/tracing"
@@ -56,9 +56,10 @@ func grpcClientConn(ctx context.Context, conn net.Conn) (context.Context, *grpc.
 		dialOpts = append(dialOpts, grpc.WithStatsHandler(statsHandler))
 	}
 
+	//nolint:staticcheck // ignore SA1019 NewClient is preferred but has different behavior
 	cc, err := grpc.DialContext(ctx, "localhost", dialOpts...)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed to create grpc client")
+		return ctx, nil, errors.Wrap(err, "failed to create grpc client")
 	}
 
 	ctx, cancel := context.WithCancelCause(ctx)
@@ -93,7 +94,7 @@ func monitorHealth(ctx context.Context, cc *grpc.ClientConn, cancelConn func(err
 			timeout := time.Duration(math.Max(float64(defaultHealthcheckDuration), float64(lastHealthcheckDuration)*1.5))
 
 			ctx, cancel := context.WithCancelCause(ctx)
-			ctx, _ = context.WithTimeoutCause(ctx, timeout, errors.WithStack(context.DeadlineExceeded))
+			ctx, _ = context.WithTimeoutCause(ctx, timeout, errors.WithStack(context.DeadlineExceeded)) //nolint:govet
 			_, err := healthClient.Check(ctx, &grpc_health_v1.HealthCheckRequest{})
 			cancel(errors.WithStack(context.Canceled))
 

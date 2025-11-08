@@ -1,6 +1,8 @@
 package pb
 
 import (
+	"slices"
+
 	ocispecs "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
@@ -12,25 +14,25 @@ func (p *Platform) Spec() ocispecs.Platform {
 		OSVersion:    p.OSVersion,
 	}
 	if p.OSFeatures != nil {
-		result.OSFeatures = append([]string{}, p.OSFeatures...)
+		result.OSFeatures = slices.Clone(p.OSFeatures)
 	}
 	return result
 }
 
-func PlatformFromSpec(p ocispecs.Platform) Platform {
-	result := Platform{
+func PlatformFromSpec(p ocispecs.Platform) *Platform {
+	result := &Platform{
 		OS:           p.OS,
 		Architecture: p.Architecture,
 		Variant:      p.Variant,
 		OSVersion:    p.OSVersion,
 	}
 	if p.OSFeatures != nil {
-		result.OSFeatures = append([]string{}, p.OSFeatures...)
+		result.OSFeatures = slices.Clone(p.OSFeatures)
 	}
 	return result
 }
 
-func ToSpecPlatforms(p []Platform) []ocispecs.Platform {
+func ToSpecPlatforms(p []*Platform) []ocispecs.Platform {
 	out := make([]ocispecs.Platform, 0, len(p))
 	for _, pp := range p {
 		out = append(out, pp.Spec())
@@ -38,8 +40,8 @@ func ToSpecPlatforms(p []Platform) []ocispecs.Platform {
 	return out
 }
 
-func PlatformsFromSpec(p []ocispecs.Platform) []Platform {
-	out := make([]Platform, 0, len(p))
+func PlatformsFromSpec(p []ocispecs.Platform) []*Platform {
+	out := make([]*Platform, 0, len(p))
 	for _, pp := range p {
 		out = append(out, PlatformFromSpec(pp))
 	}

@@ -94,12 +94,12 @@ func (opt *ThrottledeviceOpt) String() string {
 
 // GetList returns a slice of pointers to ThrottleDevices.
 func (opt *ThrottledeviceOpt) GetList() []*blkiodev.ThrottleDevice {
-	out := make([]*blkiodev.ThrottleDevice, 0, len(opt.values))
+	out := make([]*blkiodev.ThrottleDevice, len(opt.values))
 	copy(out, opt.values)
 	return out
 }
 
 // Type returns the option type
-func (opt *ThrottledeviceOpt) Type() string {
+func (*ThrottledeviceOpt) Type() string {
 	return "list"
 }
