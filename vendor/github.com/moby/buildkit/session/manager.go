@@ -16,7 +16,6 @@ type Caller interface {
 	Context() context.Context
 	Supports(method string) bool
 	Conn() *grpc.ClientConn
-	Name() string
 	SharedKey() string
 }
 
@@ -100,13 +99,12 @@ func (sm *Manager) HandleConn(ctx context.Context, conn net.Conn, opts map[strin
 // caller needs to take lock, this function will release it
 func (sm *Manager) handleConn(ctx context.Context, conn net.Conn, opts map[string][]string) error {
 	ctx, cancel := context.WithCancelCause(ctx)
-	defer cancel(errors.WithStack(context.Canceled))
+	defer func() { cancel(errors.WithStack(context.Canceled)) }()
 
 	opts = canonicalHeaders(opts)
 
 	h := http.Header(opts)
 	id := h.Get(headerSessionID)
-	name := h.Get(headerSessionName)
 	sharedKey := h.Get(headerSessionSharedKey)
 
 	ctx, cc, err := grpcClientConn(ctx, conn)
@@ -118,7 +116,6 @@ func (sm *Manager) handleConn(ctx context.Context, conn net.Conn, opts map[strin
 	c := &client{
 		Session: Session{
 			id:        id,
-			name:      name,
 			sharedKey: sharedKey,
 			ctx:       ctx,
 			cancelCtx: cancel,
@@ -157,7 +154,7 @@ func (sm *Manager) Get(ctx context.Context, id string, noWait bool) (Caller, err
 	}
 
 	ctx, cancel := context.WithCancelCause(ctx)
-	defer cancel(errors.WithStack(context.Canceled))
+	defer func() { cancel(errors.WithStack(context.Canceled)) }()
 
 	go func() {
 		<-ctx.Done()
@@ -195,10 +192,6 @@ func (sm *Manager) Get(ctx context.Context, id string, noWait bool) (Caller, err
 
 func (c *client) Context() context.Context {
 	return c.context()
-}
-
-func (c *client) Name() string {
-	return c.name
 }
 
 func (c *client) SharedKey() string {

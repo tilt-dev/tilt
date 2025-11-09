@@ -1,8 +1,9 @@
 package apicaps
 
 import (
+	"cmp"
 	"fmt"
-	"sort"
+	"slices"
 	"strings"
 
 	pb "github.com/moby/buildkit/util/apicaps/pb"
@@ -64,10 +65,10 @@ func (l *CapList) Init(cc ...Cap) {
 }
 
 // All reports the configuration of all known capabilities
-func (l *CapList) All() []pb.APICap {
-	out := make([]pb.APICap, 0, len(l.m))
+func (l *CapList) All() []*pb.APICap {
+	out := make([]*pb.APICap, 0, len(l.m))
 	for _, c := range l.m {
-		out = append(out, pb.APICap{
+		out = append(out, &pb.APICap{
 			ID:                  string(c.ID),
 			Enabled:             c.Enabled,
 			Deprecated:          c.Deprecated,
@@ -76,19 +77,18 @@ func (l *CapList) All() []pb.APICap {
 			DisabledAlternative: c.DisabledAlternative,
 		})
 	}
-	sort.Slice(out, func(i, j int) bool {
-		return out[i].ID < out[j].ID
+	slices.SortFunc(out, func(a, b *pb.APICap) int {
+		return cmp.Compare(a.ID, b.ID)
 	})
 	return out
 }
 
 // CapSet returns a CapSet for an capability configuration
-func (l *CapList) CapSet(caps []pb.APICap) CapSet {
+func (l *CapList) CapSet(caps []*pb.APICap) CapSet {
 	m := make(map[string]*pb.APICap, len(caps))
 	for _, c := range caps {
 		if c.ID != "" {
-			c := c // capture loop iterator
-			m[c.ID] = &c
+			m[c.ID] = c
 		}
 	}
 	return CapSet{

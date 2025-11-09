@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	digest "github.com/opencontainers/go-digest"
+	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/tonistiigi/units"
 
 	"github.com/tilt-dev/tilt/pkg/apis"
@@ -16,18 +16,18 @@ import (
 
 type buildkitPrinter struct {
 	logger logger.Logger
-	vData  map[digest.Digest]*vertexAndLogs
-	vOrder []digest.Digest
+	vData  map[string]*vertexAndLogs
+	vOrder []string
 }
 
 type vertex struct {
-	digest          digest.Digest
+	digest          string
 	name            string
 	error           string
 	started         bool
-	startedTime     *time.Time
+	startedTime     *timestamp.Timestamp
 	completed       bool
-	completedTime   *time.Time
+	completedTime   *timestamp.Timestamp
 	startPrinted    bool
 	errorPrinted    bool
 	completePrinted bool
@@ -83,12 +83,12 @@ type vertexAndLogs struct {
 }
 
 type vertexLog struct {
-	vertex digest.Digest
+	vertex string
 	msg    []byte
 }
 
 type vertexStatus struct {
-	vertex    digest.Digest
+	vertex    string
 	id        string
 	total     int64
 	current   int64
@@ -122,8 +122,8 @@ func (s vertexStatusSet) combined() vertexStatus {
 func newBuildkitPrinter(l logger.Logger) *buildkitPrinter {
 	return &buildkitPrinter{
 		logger: l,
-		vData:  map[digest.Digest]*vertexAndLogs{},
-		vOrder: []digest.Digest{},
+		vData:  map[string]*vertexAndLogs{},
+		vOrder: []string{},
 	}
 }
 
@@ -137,11 +137,11 @@ func (b *buildkitPrinter) toStageStatuses() []v1alpha1.DockerImageStageStatus {
 				Cached: v.cached,
 			}
 			if v.startedTime != nil {
-				st := apis.NewMicroTime(*v.startedTime)
+				st := apis.NewMicroTime(v.startedTime.AsTime())
 				status.StartedAt = &st
 			}
 			if v.completedTime != nil {
-				ct := apis.NewMicroTime(*v.completedTime)
+				ct := apis.NewMicroTime(v.completedTime.AsTime())
 				status.FinishedAt = &ct
 			}
 			if v.isError() {

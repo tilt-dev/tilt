@@ -1,16 +1,5 @@
 // Copyright The OpenTelemetry Authors
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// SPDX-License-Identifier: Apache-2.0
 
 package otelhttptrace // import "go.opentelemetry.io/contrib/instrumentation/net/http/httptrace/otelhttptrace"
 
@@ -18,12 +7,11 @@ import (
 	"context"
 	"net/http"
 
-	"go.opentelemetry.io/contrib/instrumentation/net/http/httptrace/otelhttptrace/internal/semconvutil"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/httptrace/otelhttptrace/internal/semconv"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/baggage"
 	"go.opentelemetry.io/otel/propagation"
-	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -65,11 +53,13 @@ func Extract(ctx context.Context, req *http.Request, opts ...Option) ([]attribut
 	c := newConfig(opts)
 	ctx = c.propagators.Extract(ctx, propagation.HeaderCarrier(req.Header))
 
-	attrs := append(semconvutil.HTTPServerRequest("", req), semconvutil.NetTransport("tcp"))
-	if req.ContentLength > 0 {
-		a := semconv.HTTPRequestContentLength(int(req.ContentLength))
-		attrs = append(attrs, a)
-	}
+	semconvSrv := semconv.NewHTTPServer(nil)
+
+	attrs := append(semconvSrv.RequestTraceAttrs("", req), semconvSrv.NetworkTransportAttr("tcp")...)
+	attrs = append(attrs, semconvSrv.ResponseTraceAttrs(semconv.ResponseTelemetry{
+		ReadBytes: req.ContentLength,
+	})...)
+
 	return attrs, baggage.FromContext(ctx), trace.SpanContextFromContext(ctx)
 }
 

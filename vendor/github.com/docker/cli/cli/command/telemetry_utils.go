@@ -9,6 +9,7 @@ import (
 	"github.com/docker/cli/cli/version"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 )
@@ -94,7 +95,9 @@ func startCobraCommandTimer(mp metric.MeterProvider, attrs []attribute.KeyValue)
 			metric.WithAttributes(cmdStatusAttrs...),
 		)
 		if mp, ok := mp.(MeterProvider); ok {
-			mp.ForceFlush(ctx)
+			if err := mp.ForceFlush(ctx); err != nil {
+				otel.Handle(err)
+			}
 		}
 	}
 }

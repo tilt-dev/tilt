@@ -50,7 +50,7 @@ func run() error {
 
 	d.NegotiateAPIVersion(ctx)
 
-	session, err := session.NewSession(ctx, "tilt", identity.NewID())
+	session, err := session.NewSession(ctx, identity.NewID())
 	if err != nil {
 		return err
 	}
@@ -156,11 +156,11 @@ func writeBuildkitStatus(aux *json.RawMessage) error {
 	if err := json.Unmarshal(*aux, &dt); err != nil {
 		return err
 	}
-	if err := (&resp).Unmarshal(dt); err != nil {
+	if err := (&resp).UnmarshalVT(dt); err != nil {
 		return err
 	}
 
-	return json.NewEncoder(os.Stdout).Encode(resp)
+	return json.NewEncoder(os.Stdout).Encode(&resp)
 }
 
 func messageIsFromBuildkit(msg jsonmessage.JSONMessage) bool {

@@ -8,7 +8,7 @@ import (
 )
 
 type DiffOp struct {
-	MarshalCache
+	cache       MarshalCache
 	lower       Output
 	upper       Output
 	output      Output
@@ -31,8 +31,11 @@ func (m *DiffOp) Validate(ctx context.Context, constraints *Constraints) error {
 }
 
 func (m *DiffOp) Marshal(ctx context.Context, constraints *Constraints) (digest.Digest, []byte, *pb.OpMetadata, []*SourceLocation, error) {
-	if m.Cached(constraints) {
-		return m.Load()
+	cache := m.cache.Acquire()
+	defer cache.Release()
+
+	if dgst, dt, md, srcs, err := cache.Load(constraints); err == nil {
+		return dgst, dt, md, srcs, nil
 	}
 	if err := m.Validate(ctx, constraints); err != nil {
 		return "", nil, nil, nil, err
@@ -43,9 +46,9 @@ func (m *DiffOp) Marshal(ctx context.Context, constraints *Constraints) (digest.
 
 	op := &pb.DiffOp{}
 
-	op.Lower = &pb.LowerDiffInput{Input: pb.InputIndex(len(proto.Inputs))}
+	op.Lower = &pb.LowerDiffInput{Input: int64(len(proto.Inputs))}
 	if m.lower == nil {
-		op.Lower.Input = pb.Empty
+		op.Lower.Input = int64(pb.Empty)
 	} else {
 		pbLowerInput, err := m.lower.ToInput(ctx, constraints)
 		if err != nil {
@@ -54,9 +57,9 @@ func (m *DiffOp) Marshal(ctx context.Context, constraints *Constraints) (digest.
 		proto.Inputs = append(proto.Inputs, pbLowerInput)
 	}
 
-	op.Upper = &pb.UpperDiffInput{Input: pb.InputIndex(len(proto.Inputs))}
+	op.Upper = &pb.UpperDiffInput{Input: int64(len(proto.Inputs))}
 	if m.upper == nil {
-		op.Upper.Input = pb.Empty
+		op.Upper.Input = int64(pb.Empty)
 	} else {
 		pbUpperInput, err := m.upper.ToInput(ctx, constraints)
 		if err != nil {
@@ -67,13 +70,12 @@ func (m *DiffOp) Marshal(ctx context.Context, constraints *Constraints) (digest.
 
 	proto.Op = &pb.Op_Diff{Diff: op}
 
-	dt, err := proto.Marshal()
+	dt, err := deterministicMarshal(proto)
 	if err != nil {
 		return "", nil, nil, nil, err
 	}
 
-	m.Store(dt, md, m.constraints.SourceLocations, constraints)
-	return m.Load()
+	return cache.Store(dt, md, m.constraints.SourceLocations, constraints)
 }
 
 func (m *DiffOp) Output() Output {

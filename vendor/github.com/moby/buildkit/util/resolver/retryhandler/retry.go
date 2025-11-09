@@ -8,8 +8,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/containerd/containerd/images"
-	remoteserrors "github.com/containerd/containerd/remotes/errors"
+	"github.com/containerd/containerd/v2/core/images"
+	remoteserrors "github.com/containerd/containerd/v2/core/remotes/errors"
 	ocispecs "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 )
@@ -33,7 +33,7 @@ func New(f images.HandlerFunc, logger func([]byte)) images.HandlerFunc {
 					}
 				}
 				if logger != nil {
-					logger([]byte(fmt.Sprintf("error: %v\n", err.Error())))
+					logger(fmt.Appendf(nil, "error: %v\n", err.Error()))
 				}
 			} else {
 				return descs, nil
@@ -43,7 +43,7 @@ func New(f images.HandlerFunc, logger func([]byte)) images.HandlerFunc {
 				return nil, err
 			}
 			if logger != nil {
-				logger([]byte(fmt.Sprintf("retrying in %v\n", backoff)))
+				logger(fmt.Appendf(nil, "retrying in %v\n", backoff))
 			}
 			time.Sleep(backoff)
 			backoff *= 2
@@ -64,11 +64,7 @@ func retryError(err error) bool {
 		return true
 	}
 	// catches TLS timeout or other network-related temporary errors
-	if ne, ok := errors.Cause(err).(net.Error); ok && ne.Temporary() { //nolint:staticcheck // ignoring "SA1019: Temporary is deprecated", continue to propagate net.Error through the "temporary" status
-		return true
-	}
-	// https://github.com/containerd/containerd/pull/4724
-	if errors.Cause(err).Error() == "no response" {
+	if ne := net.Error(nil); errors.As(err, &ne) && ne.Temporary() { //nolint:staticcheck // ignoring "SA1019: Temporary is deprecated", continue to propagate net.Error through the "temporary" status
 		return true
 	}
 

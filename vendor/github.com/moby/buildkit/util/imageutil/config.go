@@ -7,13 +7,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/containerd/containerd/content"
-	"github.com/containerd/containerd/images"
-	"github.com/containerd/containerd/leases"
-	"github.com/containerd/containerd/platforms"
-	"github.com/containerd/containerd/reference"
-	"github.com/containerd/containerd/remotes"
-	"github.com/containerd/containerd/remotes/docker"
+	"github.com/containerd/containerd/v2/core/content"
+	"github.com/containerd/containerd/v2/core/images"
+	"github.com/containerd/containerd/v2/core/leases"
+	"github.com/containerd/containerd/v2/core/remotes"
+	"github.com/containerd/containerd/v2/core/remotes/docker"
+	"github.com/containerd/containerd/v2/pkg/reference"
+	cerrdefs "github.com/containerd/errdefs"
+	"github.com/containerd/platforms"
 	intoto "github.com/in-toto/in-toto-golang/in_toto"
 	srctypes "github.com/moby/buildkit/source/types"
 	"github.com/moby/buildkit/util/contentutil"
@@ -115,8 +116,9 @@ func Config(ctx context.Context, str string, resolver remotes.Resolver, cache Co
 	}
 
 	if desc.MediaType == images.MediaTypeDockerSchema1Manifest {
-		dgst, dt, err := readSchema1Config(ctx, desc, fetcher)
-		return dgst, dt, err
+		errMsg := "support Docker Image manifest version 2, schema 1 has been removed. " +
+			"More information at https://docs.docker.com/go/deprecated-image-specs/"
+		return "", nil, errors.WithStack(cerrdefs.ErrConflict.WithMessage(errMsg))
 	}
 
 	children := childrenConfigHandler(cache, platform)
@@ -198,10 +200,7 @@ func childrenConfigHandler(provider content.Provider, platform platforms.MatchCo
 	}
 }
 
-// specs.MediaTypeImageManifest, // TODO: detect schema1/manifest-list
 func DetectManifestMediaType(ra content.ReaderAt) (string, error) {
-	// TODO: schema1
-
 	dt := make([]byte, ra.Size())
 	if _, err := ra.ReadAt(dt, 0); err != nil {
 		return "", err

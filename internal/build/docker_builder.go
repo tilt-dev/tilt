@@ -448,13 +448,13 @@ func toBuildkitStatus(aux *json.RawMessage, b *buildkitPrinter) error {
 	if err := json.Unmarshal(*aux, &dt); err != nil {
 		return err
 	}
-	if err := (&resp).Unmarshal(dt); err != nil {
+	if err := (&resp).UnmarshalVT(dt); err != nil {
 		return err
 	}
-	return b.parseAndPrint(toVertexes(resp))
+	return b.parseAndPrint(toVertexes(&resp))
 }
 
-func toVertexes(resp controlapi.StatusResponse) ([]*vertex, []*vertexLog, []*vertexStatus) {
+func toVertexes(resp *controlapi.StatusResponse) ([]*vertex, []*vertexLog, []*vertexStatus) {
 	vertexes := []*vertex{}
 	logs := []*vertexLog{}
 	statuses := []*vertexStatus{}
@@ -464,7 +464,7 @@ func toVertexes(resp controlapi.StatusResponse) ([]*vertex, []*vertexLog, []*ver
 		started := v.Started != nil
 		completed := v.Completed != nil
 		if started && completed {
-			duration = (*v.Completed).Sub((*v.Started))
+			duration = v.Completed.AsTime().Sub(v.Started.AsTime())
 		}
 		vertexes = append(vertexes, &vertex{
 			digest:        v.Digest,
@@ -491,7 +491,7 @@ func toVertexes(resp controlapi.StatusResponse) ([]*vertex, []*vertexLog, []*ver
 			id:        s.ID,
 			total:     s.Total,
 			current:   s.Current,
-			timestamp: s.Timestamp,
+			timestamp: s.Timestamp.AsTime(),
 		})
 	}
 	return vertexes, logs, statuses

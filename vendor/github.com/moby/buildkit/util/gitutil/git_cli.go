@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"slices"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -119,20 +120,13 @@ func NewGitCLI(opts ...Option) *GitCLI {
 // New returns a new git client with the same config as the current one, but
 // with the given options applied on top.
 func (cli *GitCLI) New(opts ...Option) *GitCLI {
-	c := &GitCLI{
-		git:           cli.git,
-		dir:           cli.dir,
-		workTree:      cli.workTree,
-		gitDir:        cli.gitDir,
-		args:          append([]string{}, cli.args...),
-		streams:       cli.streams,
-		sshAuthSock:   cli.sshAuthSock,
-		sshKnownHosts: cli.sshKnownHosts,
-	}
+	clone := *cli
+	clone.args = slices.Clone(cli.args)
+
 	for _, opt := range opts {
-		opt(c)
+		opt(&clone)
 	}
-	return c
+	return &clone
 }
 
 // Run executes a git command with the given args.
@@ -140,6 +134,10 @@ func (cli *GitCLI) Run(ctx context.Context, args ...string) (_ []byte, err error
 	gitBinary := "git"
 	if cli.git != "" {
 		gitBinary = cli.git
+	}
+	proxyEnvVars := [...]string{
+		"HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY", "ALL_PROXY",
+		"http_proxy", "https_proxy", "no_proxy", "all_proxy",
 	}
 
 	for {
@@ -197,6 +195,11 @@ func (cli *GitCLI) Run(ctx context.Context, args ...string) (_ []byte, err error
 			"HOME=/dev/null",        // Disable reading from user gitconfig.
 			"LC_ALL=C",              // Ensure consistent output.
 		}
+		for _, ev := range proxyEnvVars {
+			if v, ok := os.LookupEnv(ev); ok {
+				cmd.Env = append(cmd.Env, ev+"="+v)
+			}
+		}
 		if cli.sshAuthSock != "" {
 			cmd.Env = append(cmd.Env, "SSH_AUTH_SOCK="+cli.sshAuthSock)
 		}
@@ -221,6 +224,14 @@ func (cli *GitCLI) Run(ctx context.Context, args ...string) (_ []byte, err error
 
 			if strings.Contains(errbuf.String(), "--depth") || strings.Contains(errbuf.String(), "shallow") {
 				if newArgs := argsNoDepth(args); len(args) > len(newArgs) {
+					args = newArgs
+					continue
+				}
+			}
+			if strings.Contains(errbuf.String(), "not our ref") || strings.Contains(errbuf.String(), "unadvertised object") {
+				// server-side error: https://github.com/git/git/blob/34b6ce9b30747131b6e781ff718a45328aa887d0/upload-pack.c#L811-L812
+				// client-side error: https://github.com/git/git/blob/34b6ce9b30747131b6e781ff718a45328aa887d0/fetch-pack.c#L2250-L2253
+				if newArgs := argsNoCommitRefspec(args); len(args) > len(newArgs) {
 					args = newArgs
 					continue
 				}
@@ -250,4 +261,20 @@ func argsNoDepth(args []string) []string {
 		}
 	}
 	return out
+}
+
+func argsNoCommitRefspec(args []string) []string {
+	if len(args) <= 2 {
+		return args
+	}
+	if args[0] != "fetch" {
+		return args
+	}
+
+	// assume the refspec is the last arg
+	if IsCommitSHA(args[len(args)-1]) {
+		return args[:len(args)-1]
+	}
+
+	return args
 }
