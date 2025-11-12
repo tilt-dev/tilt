@@ -101,6 +101,18 @@ func (s *tiltfileState) localResource(thread *starlark.Thread, fn *starlark.Buil
 		return nil, err
 	}
 
+	// Validate dir/cmd combinations to prevent common mistakes
+	if updateCmdDirVal != nil && updateCmd.Empty() {
+		if !serveCmd.Empty() {
+			return nil, fmt.Errorf("local_resource: 'dir' only affects 'cmd', not 'serve_cmd'. Did you mean to use 'serve_dir' instead?")
+		}
+		return nil, fmt.Errorf("local_resource: 'dir' specified but 'cmd' is empty")
+	}
+
+	if serveCmdDirVal != nil && serveCmd.Empty() {
+		return nil, fmt.Errorf("local_resource: 'serve_dir' specified but 'serve_cmd' is empty")
+	}
+
 	if updateCmd.Empty() && serveCmd.Empty() {
 		return nil, fmt.Errorf("local_resource must have a cmd and/or a serve_cmd, but both were empty")
 	}
