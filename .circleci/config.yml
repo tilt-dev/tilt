@@ -10,7 +10,7 @@ jobs:
   build-linux:
     resource_class: medium+
     docker:
-      - image: docker/tilt-ci@sha256:383e2d24af70080eaf88d0f47d37cb11ecb7c2a2cb7ccfe1b3e96572bf163d30
+      - image: docker/tilt-ci@sha256:24c582b02189c68cf5980f49d238ca9a540b576aa0487de35a3cd739704c4c8b
     # apiserver code generation scripts require being in GOPATH
     working_directory: /home/circleci/go/src/github.com/tilt-dev/tilt
     steps:
@@ -18,7 +18,6 @@ jobs:
       - run: echo 'export PATH=~/go/bin:$PATH' >> $BASH_ENV
       - setup_remote_docker
       - run: docker pull registry:2
-      - run: sudo mv /usr/bin/helm3 /usr/bin/helm
       - run: make install
       - run: make lint
       - run: make test_install_version_check
@@ -47,7 +46,7 @@ jobs:
           only_for_branches: master
   check-docs:
     docker:
-      - image: docker/tilt-ci@sha256:383e2d24af70080eaf88d0f47d37cb11ecb7c2a2cb7ccfe1b3e96572bf163d30
+      - image: docker/tilt-ci@sha256:24c582b02189c68cf5980f49d238ca9a540b576aa0487de35a3cd739704c4c8b
     steps:
       - checkout
       - setup_remote_docker
@@ -95,7 +94,7 @@ jobs:
   build-integration:
     resource_class: medium+
     docker:
-      - image: docker/tilt-integration-ci@sha256:930c41e8b1ed625600c691ff0039cc1e06b94638f989008cda400ee560167704
+      - image: docker/tilt-integration-ci@sha256:475f7d5834f21d48df45963499dff7cf4be0e1ac9717117c7677b6714f0e7ba6
     steps:
       - checkout
       - run: echo 'export PATH=/go/bin:$PATH' >> $BASH_ENV
