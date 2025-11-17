@@ -244,8 +244,6 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 		return nil, err
 	}
 
-	var cmd []string
-
 	if name == "" {
 		// Use 'chart' as the release name, so that the release name is stable
 		// across Tiltfile loads.
@@ -254,12 +252,7 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 		name = "chart"
 	}
 
-	if version == helmV3_0 || version == helmV3_1andAbove {
-		cmd = []string{"helm", "template", name, localPath}
-	} else {
-		cmd = []string{"helm", "template", localPath, "--name", name}
-	}
-
+	var cmd = []string{"helm", "template", name, localPath}
 	if namespace != "" {
 		cmd = append(cmd, "--namespace", namespace)
 	}

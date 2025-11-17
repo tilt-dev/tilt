@@ -47,7 +47,6 @@ type helmVersion int
 
 const (
 	unknownHelmVersion helmVersion = iota
-	helmV2
 	helmV3_0
 	helmV3_1andAbove
 )
@@ -64,10 +63,8 @@ func parseVersion(versionOutput string) (helmVersion, error) {
 
 	if strings.HasPrefix(version, "v3.0.") {
 		return helmV3_0, nil
-	} else if strings.HasPrefix(version, "v3.") || strings.HasPrefix(version, "3.") {
+	} else if strings.HasPrefix(version, "v3.") || strings.HasPrefix(version, "3.") || strings.HasPrefix(version, "v4.") {
 		return helmV3_1andAbove, nil
-	} else if strings.HasPrefix(version, "Client: v2") {
-		return helmV2, nil
 	}
 
 	return unknownHelmVersion, fmt.Errorf("could not parse Helm version from string: %q", versionOutput)
@@ -96,13 +93,7 @@ func getHelmVersion() (helmVersion, error) {
 		return unknownHelmVersion, unableToFindHelmErrorMessage()
 	}
 
-	// NOTE(dmiller): I pass `--client` here even though that doesn't do anything in Helm v3.
-	// In Helm v2 that causes `helm version` to not reach out to tiller. Doing so can cause the
-	// command to fail, even though Tilt doesn't use the server at all (it just calls
-	// `helm template`).
-	// In Helm v3, it has no effect, not even an unknown flag error.
-	cmd := exec.Command("helm", "version", "--client", "--short")
-
+	cmd := exec.Command("helm", "version", "--short")
 	out, err := cmd.Output()
 	if err != nil {
 		return unknownHelmVersion, err
