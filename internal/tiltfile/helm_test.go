@@ -7,8 +7,6 @@
 package tiltfile
 
 import (
-	"os/exec"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -248,6 +246,7 @@ const exampleHelmV3_0VersionOutput = `v3.0.0`
 const exampleHelmV3_1VersionOutput = `v3.1.0`
 const exampleHelmV3_2VersionOutput = `v3.2.4`
 const examplePkgxHelmV3_15VersionOutput = `3.15.2`
+const exampleHelmV4_0VersionOutput = `v4.0.0+g99cd196`
 
 // see https://github.com/tilt-dev/tilt/issues/3788
 const exampleHelmV3_3VersionOutput = `WARNING: Kubernetes configuration file is group-readable. This is insecure. Location: /Users/someone/.kube/config
@@ -256,8 +255,9 @@ v3.3.3+g55e3ca0
 `
 
 func TestParseHelmV2Version(t *testing.T) {
-	expected := helmV2
-	assertHelmVersion(t, exampleHelmV2VersionOutput, expected)
+	_, err := parseVersion(exampleHelmV2VersionOutput)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "could not parse Helm version from string")
 }
 
 func TestParseHelmV3Version(t *testing.T) {
@@ -285,8 +285,12 @@ func TestParsePkgxHelmV3_15Version(t *testing.T) {
 	assertHelmVersion(t, examplePkgxHelmV3_15VersionOutput, expected)
 }
 
+func TestParsePkgxHelmV4(t *testing.T) {
+	assertHelmVersion(t, exampleHelmV4_0VersionOutput, helmV3_1andAbove)
+}
+
 func TestHelmUnknownVersionError(t *testing.T) {
-	_, err := parseVersion("v4.1.2")
+	_, err := parseVersion("vx.1.2")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "could not parse Helm version from string")
 }
@@ -407,18 +411,7 @@ func TestYamlErrorFromHelm(t *testing.T) {
 	f.file("Tiltfile", `
 k8s_yaml(helm('helm'))
 `)
-
-	// TODO(dmiller): there should be a better assertion here
-
-	version, err := getHelmVersion()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if version == helmV2 {
-		f.loadErrString("from helm")
-	} else {
-		f.loadErrString("in helm")
-	}
+	f.loadErrString("in helm")
 }
 
 func TestHelmSkipsTests(t *testing.T) {
@@ -440,23 +433,7 @@ k8s_yaml(yml)
 	)
 }
 
-// There's a major helm regression that's breaking everything
-// https://github.com/helm/helm/issues/6708
-func isBuggyHelm(t *testing.T) bool {
-	cmd := exec.Command("helm", "version", "-c", "--short")
-	out, err := cmd.Output()
-	if err != nil {
-		t.Fatalf("Error running helm: %v", err)
-	}
-
-	return strings.Contains(string(out), "v2.15.0")
-}
-
 func TestHelmIncludesRequirements(t *testing.T) {
-	if isBuggyHelm(t) {
-		t.Skipf("Helm v2.15.0 has a major regression, skipping test. See: https://github.com/helm/helm/issues/6708")
-	}
-
 	f := newFixture(t)
 
 	f.setupHelmWithRequirements()
