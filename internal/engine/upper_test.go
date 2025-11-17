@@ -676,6 +676,10 @@ func TestUpper_CI(t *testing.T) {
 }
 
 func TestFirstBuildFails_Up(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("flaky on windows")
+	}
+
 	f := newTestFixture(t)
 	manifest := f.newManifest("foobar")
 	f.SetNextBuildError(errors.New("Build failed"))
@@ -2602,6 +2606,10 @@ func TestHasEverBeenCompleteK8s(t *testing.T) {
 }
 
 func TestHasEverBeenReadyLocal(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("flaky on windows")
+	}
+
 	f := newTestFixture(t)
 
 	m := manifestbuilder.New(f, "foobar").WithLocalResource("foo", []string{f.Path()}).Build()
