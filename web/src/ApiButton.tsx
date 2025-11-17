@@ -137,6 +137,8 @@ export const confirmingButtonStateMixin = `
   background-color: ${Color.red};
   border-color: ${Color.gray30};
   color: ${Color.black};
+  height: 32px;
+  margin: 12px 0 12px 0;
 
   &:hover,
   &:active,
@@ -213,6 +215,7 @@ const ApiButtonInputTextField = styled(InstrumentedTextField)`
 const ApiButtonInputFormControlLabel = styled(FormControlLabel)`
   ${inputLabelMixin}
   margin-left: unset;
+  gap: ${SizeUnit(0.25)};
 `
 
 const ApiButtonInputCheckbox = styled(InstrumentedCheckbox)`
@@ -244,6 +247,12 @@ const StyledDialogTitle = styled(DialogTitle)`
     font-weight: normal;
     color: ${Color.gray10};
   }
+`
+
+const StyledDialogCloseButton = styled(IconButton)`
+  position: absolute;
+  top: 16px;
+  right: 16px;
 `
 
 const StyledDialogContent = styled(DialogContent)`
@@ -430,13 +439,13 @@ function ApiButtonInputModal(props: ApiButtonInputModalProps) {
     >
       <StyledDialogTitle id="input-modal-title">
         <span>Configure {buttonText}</span>
-        <IconButton
+        <StyledDialogCloseButton
           aria-label="Close dialog"
           onClick={props.onClose}
           size="small"
         >
           <CloseIcon />
-        </IconButton>
+        </StyledDialogCloseButton>
       </StyledDialogTitle>
 
       <StyledDialogContent>

@@ -34,15 +34,6 @@ const CustomNavButton = styled(ApiButton)`
     color: ${Color.blue};
     background: transparent;
   }
-  // If there is an options toggle, remove padding between the submit
-  // button and the options button.
-  button:first-child {
-    padding-right: 0px;
-  }
-  // If there is no options toggle, then restore the default padding.
-  button:only-child {
-    padding-right: ${SizeUnit(0.5)};
-  }
   .apibtn-label {
     display: none;
   }
