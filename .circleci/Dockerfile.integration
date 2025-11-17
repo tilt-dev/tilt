@@ -19,8 +19,8 @@ RUN curl -sSL -o /usr/local/bin/kubectl "https://dl.k8s.io/release/$(curl -L -s 
 
 # Install docker
 # Adapted from https://github.com/circleci/circleci-images/blob/staging/shared/images/Dockerfile-basic.template
-# Check https://download.docker.com/linux/static/stable/x86_64/ for latest versions
-ENV DOCKER_VERSION=25.0.3
+# Che1ck https://download.docker.com/linux/static/stable/x86_64/ for latest versions
+ENV DOCKER_VERSION=29.0.1
 RUN set -exu \
   && DOCKER_URL="https://download.docker.com/linux/static/stable/x86_64/docker-${DOCKER_VERSION}.tgz" \
   && echo Docker URL: $DOCKER_URL \
@@ -33,13 +33,13 @@ RUN set -exu \
   && (docker version || true)
 
 # docker-compose v2
-ARG DOCKER_COMPOSE_V2_VERSION=v2.25.0
+ARG DOCKER_COMPOSE_V2_VERSION=v2.40.3
 RUN curl -fL "https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_V2_VERSION}/docker-compose-$(uname -s | tr '[A-Z]' '[a-z]')-$(uname -m)" -o /usr/local/bin/docker-compose \
   && chmod a+x /usr/local/bin/docker-compose \
   && docker-compose version
 
 # install Kind (Kubernetes in Docker)
-ENV KIND_VERSION=v0.24.0
+ENV KIND_VERSION=v0.30.0
 RUN curl -fLo ./kind-linux-amd64 https://github.com/kubernetes-sigs/kind/releases/download/${KIND_VERSION}/kind-linux-amd64 \
   && chmod +x ./kind-linux-amd64 \
   && mv ./kind-linux-amd64 /usr/local/bin/kind \
