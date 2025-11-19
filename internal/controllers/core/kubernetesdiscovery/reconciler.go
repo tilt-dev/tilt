@@ -797,6 +797,18 @@ func (w *Reconciler) dispatchPodChangesLoop(ctx context.Context, nsKey nsKey, ow
 		select {
 		case obj, ok := <-ch:
 			if !ok {
+				// Log the closure and trigger reconciliation for all watchers in this namespace to recreate the watch.
+				logger.Get(ctx).Infof("Pod watch channel closed for namespace %s in cluster %s. Triggering reconciliation to restart watch.",
+					nsKey.namespace, nsKey.cluster)
+				
+				w.mu.Lock()
+				if nsWatch, ok := w.watchedNamespaces[nsKey]; ok {
+					for watcherID := range nsWatch.watchers {
+						w.requeuer.Add(types.NamespacedName(watcherID))
+					}
+					delete(w.watchedNamespaces, nsKey)
+				}
+				w.mu.Unlock()
 				return
 			}
 
