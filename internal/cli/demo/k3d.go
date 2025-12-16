@@ -16,7 +16,7 @@ import (
 	"github.com/tilt-dev/tilt/pkg/logger"
 )
 
-const defaultK3dImage = "docker.io/rancher/k3d:v4.4.7"
+const defaultK3dImage = "ghcr.io/k3d-io/k3d:5.8.3"
 
 type cluster struct {
 	Name string `json:"name"`
@@ -65,17 +65,15 @@ func (k *K3dClient) CreateCluster(ctx context.Context, clusterName string) error
 	cmd := []string{
 		"cluster",
 		"create", clusterName,
-		"--registry-create",
+		"--registry-create", fmt.Sprintf("%s-registry:5000", clusterName),
 		"--kubeconfig-switch-context",
 		"--kubeconfig-update-default",
-		"--no-hostip",
-		"--no-image-volume",
 		"--no-lb",
 		// k3d has a special label syntax which accepts a node filter so you can tag server/agent/LB differently
-		// since we're launching a cluster with no load balancer, there's only a single node named `server[0]`,
+		// since we're launching a cluster with no load balancer, there's only a single node named `server:0`,
 		// but k3d will emit a confusing warning if we don't specify it explicitly, so this will be
-		// `dev.tilt.built=true@server[0]`
-		"--label", fmt.Sprintf("%s=true@%s", docker.BuiltLabel, "server[0]"),
+		// `dev.tilt.built=true@server:0`
+		"--k3s-node-label", fmt.Sprintf("%s=true@%s", docker.BuiltLabel, "server:0"),
 	}
 	stdout := logger.Get(ctx).Writer(logger.DebugLvl)
 	stderr := logger.Get(ctx).Writer(logger.WarnLvl)

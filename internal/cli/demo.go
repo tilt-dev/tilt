@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -155,6 +156,10 @@ func (c *demoCmd) run(ctx context.Context, args []string) error {
 		if kubeconfig, err := k3dCli.GenerateKubeconfig(ctx, clusterName); err != nil {
 			return fmt.Errorf("failed to generate kubeconfig: %v", err)
 		} else {
+			// Replace "host.docker.internal" with "localhost" in the kubeconfig for docker desktop.
+			kubeconfig = bytes.ReplaceAll(kubeconfig,
+				[]byte("host.docker.internal"), []byte("localhost"))
+
 			kubeconfigPath := filepath.Join(c.tmpdir, "kubeconfig")
 			if err := os.WriteFile(kubeconfigPath, kubeconfig, 0666); err != nil {
 				return fmt.Errorf("failed to write kubeconfig file: %v", err)
