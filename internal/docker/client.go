@@ -17,6 +17,7 @@ import (
 	"github.com/docker/cli/cli/command"
 	"github.com/docker/cli/cli/config"
 	"github.com/docker/docker/api/types"
+	typesbuild "github.com/docker/docker/api/types/build"
 	typescontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	typesimage "github.com/docker/docker/api/types/image"
@@ -79,7 +80,7 @@ type Client interface {
 
 	// If you'd like to call this Docker instance in a separate process, this
 	// is the default builder version you want (buildkit or legacy)
-	BuilderVersion(ctx context.Context) (types.BuilderVersion, error)
+	BuilderVersion(ctx context.Context) (typesbuild.BuilderVersion, error)
 
 	ServerVersion(ctx context.Context) (types.Version, error)
 
@@ -91,8 +92,8 @@ type Client interface {
 	ForOrchestrator(orc model.Orchestrator) Client
 
 	ContainerLogs(ctx context.Context, container string, options typescontainer.LogsOptions) (io.ReadCloser, error)
-	ContainerInspect(ctx context.Context, containerID string) (types.ContainerJSON, error)
-	ContainerList(ctx context.Context, options typescontainer.ListOptions) ([]types.Container, error)
+	ContainerInspect(ctx context.Context, containerID string) (typescontainer.InspectResponse, error)
+	ContainerList(ctx context.Context, options typescontainer.ListOptions) ([]typescontainer.Summary, error)
 	ContainerRestartNoWait(ctx context.Context, containerID string) error
 
 	Run(ctx context.Context, opts RunConfig) (RunResult, error)
@@ -103,14 +104,14 @@ type Client interface {
 
 	ImagePull(ctx context.Context, ref reference.Named) (reference.Canonical, error)
 	ImagePush(ctx context.Context, image reference.NamedTagged) (io.ReadCloser, error)
-	ImageBuild(ctx context.Context, g *errgroup.Group, buildContext io.Reader, options BuildOptions) (types.ImageBuildResponse, error)
+	ImageBuild(ctx context.Context, g *errgroup.Group, buildContext io.Reader, options BuildOptions) (typesbuild.ImageBuildResponse, error)
 	ImageTag(ctx context.Context, source, target string) error
-	ImageInspectWithRaw(ctx context.Context, imageID string) (types.ImageInspect, []byte, error)
+	ImageInspect(ctx context.Context, imageID string, inspectOpts ...client.ImageInspectOption) (typesimage.InspectResponse, error)
 	ImageList(ctx context.Context, options typesimage.ListOptions) ([]typesimage.Summary, error)
 	ImageRemove(ctx context.Context, imageID string, options typesimage.RemoveOptions) ([]typesimage.DeleteResponse, error)
 
 	NewVersionError(ctx context.Context, APIrequired, feature string) error
-	BuildCachePrune(ctx context.Context, opts types.BuildCachePruneOptions) (*types.BuildCachePruneReport, error)
+	BuildCachePrune(ctx context.Context, opts typesbuild.CachePruneOptions) (*typesbuild.CachePruneReport, error)
 	ContainersPrune(ctx context.Context, pruneFilters filters.Args) (typescontainer.PruneReport, error)
 }
 
@@ -147,7 +148,7 @@ type Cli struct {
 	env             Env
 
 	versionsOnce   sync.Once
-	builderVersion types.BuilderVersion
+	builderVersion typesbuild.BuilderVersion
 	serverVersion  types.Version
 	versionError   error
 }
@@ -176,7 +177,7 @@ func SupportedVersion(v types.Version) bool {
 	return version.GTE(minDockerVersion)
 }
 
-func getDockerBuilderVersion(v types.Version, env Env) (types.BuilderVersion, error) {
+func getDockerBuilderVersion(v types.Version, env Env) (typesbuild.BuilderVersion, error) {
 	// If the user has explicitly chosen to enable/disable buildkit, respect that.
 	buildkitEnv := os.Getenv("DOCKER_BUILDKIT")
 	if buildkitEnv != "" {
@@ -186,16 +187,16 @@ func getDockerBuilderVersion(v types.Version, env Env) (types.BuilderVersion, er
 			return "", errors.Wrap(err, "DOCKER_BUILDKIT environment variable expects boolean value")
 		}
 		if buildkitEnabled && SupportsBuildkit(v, env) {
-			return types.BuilderBuildKit, nil
+			return typesbuild.BuilderBuildKit, nil
 
 		}
-		return types.BuilderV1, nil
+		return typesbuild.BuilderV1, nil
 	}
 
 	if SupportsBuildkit(v, env) {
-		return types.BuilderBuildKit, nil
+		return typesbuild.BuilderBuildKit, nil
 	}
-	return types.BuilderV1, nil
+	return typesbuild.BuilderV1, nil
 }
 
 // Sadly, certain versions of docker return an error if the client requests
@@ -386,7 +387,7 @@ func (c *Cli) Env() Env {
 	return c.env
 }
 
-func (c *Cli) BuilderVersion(ctx context.Context) (types.BuilderVersion, error) {
+func (c *Cli) BuilderVersion(ctx context.Context) (typesbuild.BuilderVersion, error) {
 	c.initVersion(ctx)
 	return c.builderVersion, c.versionError
 }
@@ -446,7 +447,7 @@ func (c *Cli) ImagePull(ctx context.Context, ref reference.Named) (reference.Can
 		return nil, fmt.Errorf("connection error while pulling image %q: %v", image, err)
 	}
 
-	imgInspect, _, err := c.ImageInspectWithRaw(ctx, image)
+	imgInspect, err := c.Client.ImageInspect(ctx, image)
 	if err != nil {
 		return nil, fmt.Errorf("failed to inspect after pull for image %q: %v", image, err)
 	}
@@ -494,7 +495,7 @@ func (c *Cli) ImagePush(ctx context.Context, ref reference.NamedTagged) (io.Read
 	return c.Client.ImagePush(ctx, ref.String(), options)
 }
 
-func (c *Cli) ImageBuild(ctx context.Context, g *errgroup.Group, buildContext io.Reader, options BuildOptions) (types.ImageBuildResponse, error) {
+func (c *Cli) ImageBuild(ctx context.Context, g *errgroup.Group, buildContext io.Reader, options BuildOptions) (typesbuild.ImageBuildResponse, error) {
 	// Always use a one-time session when using buildkit, since credential
 	// passing is fast and we want to get the latest creds.
 	// https://github.com/tilt-dev/tilt/issues/4043
@@ -504,26 +505,26 @@ func (c *Cli) ImageBuild(ctx context.Context, g *errgroup.Group, buildContext io
 	mustUseBuildkit := len(options.SSHSpecs) > 0 || len(options.SecretSpecs) > 0 || options.DirSource != nil
 	builderVersion, err := c.BuilderVersion(ctx)
 	if err != nil {
-		return types.ImageBuildResponse{}, err
+		return typesbuild.ImageBuildResponse{}, err
 	}
 	if options.ForceLegacyBuilder {
-		builderVersion = types.BuilderV1
+		builderVersion = typesbuild.BuilderV1
 	}
 
-	isUsingBuildkit := builderVersion == types.BuilderBuildKit
+	isUsingBuildkit := builderVersion == typesbuild.BuilderBuildKit
 	if isUsingBuildkit {
 		var err error
 		oneTimeSession, err = c.startBuildkitSession(ctx, g, identity.NewID(), options.DirSource, options.SSHSpecs, options.SecretSpecs)
 		if err != nil {
-			return types.ImageBuildResponse{}, errors.Wrapf(err, "ImageBuild")
+			return typesbuild.ImageBuildResponse{}, errors.Wrapf(err, "ImageBuild")
 		}
 		sessionID = oneTimeSession.ID()
 	} else if mustUseBuildkit {
-		return types.ImageBuildResponse{},
+		return typesbuild.ImageBuildResponse{},
 			fmt.Errorf("Docker SSH secrets only work on Buildkit, but Buildkit has been disabled")
 	}
 
-	opts := types.ImageBuildOptions{}
+	opts := typesbuild.ImageBuildOptions{}
 	opts.Version = builderVersion
 
 	if isUsingBuildkit {

@@ -3,7 +3,7 @@ package dockercomposeservice
 import (
 	"context"
 
-	"github.com/docker/docker/api/types"
+	typescontainer "github.com/docker/docker/api/types/container"
 
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
@@ -102,7 +102,7 @@ func (r *Reconciler) runProjectWatch(pw *ProjectWatch) {
 }
 
 // Record the container event and re-reconcile the dockercompose service.
-func (r *Reconciler) recordContainerEvent(ctx context.Context, evt dockercompose.Event, containerJSON types.ContainerJSON) {
+func (r *Reconciler) recordContainerEvent(ctx context.Context, evt dockercompose.Event, containerJSON typescontainer.InspectResponse) {
 	cState := containerJSON.ContainerJSONBase.State
 	state := dockercompose.ToContainerState(cState)
 	healthcheckOutput := dockercompose.ToHealthcheckOutput(cState)

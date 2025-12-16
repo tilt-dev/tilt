@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
@@ -61,7 +61,7 @@ func TestMaybeNewDisableStatusNoKey(t *testing.T) {
 
 func TestMaybeNewDisableStatusTrue(t *testing.T) {
 	f := newDisableFixture(t)
-	f.createConfigMap(pointer.StringPtr("true"))
+	f.createConfigMap(ptr.To("true"))
 	newStatus, err := MaybeNewDisableStatus(f.ctx, f.fc, disableSource(), nil)
 	require.NoError(t, err)
 	require.NotNil(t, newStatus)
@@ -72,7 +72,7 @@ func TestMaybeNewDisableStatusTrue(t *testing.T) {
 
 func TestMaybeNewDisableStatusFalse(t *testing.T) {
 	f := newDisableFixture(t)
-	f.createConfigMap(pointer.StringPtr("false"))
+	f.createConfigMap(ptr.To("false"))
 	newStatus, err := MaybeNewDisableStatus(f.ctx, f.fc, disableSource(), nil)
 	require.NoError(t, err)
 	require.NotNil(t, newStatus)
@@ -83,8 +83,8 @@ func TestMaybeNewDisableStatusFalse(t *testing.T) {
 
 func TestMaybeNewDisableStatusEveryTrue(t *testing.T) {
 	f := newDisableFixture(t)
-	f.createConfigMapNamed(configMapName, pointer.StringPtr("true"))
-	f.createConfigMapNamed(configMap2Name, pointer.StringPtr("true"))
+	f.createConfigMapNamed(configMapName, ptr.To("true"))
+	f.createConfigMapNamed(configMap2Name, ptr.To("true"))
 	newStatus, err := MaybeNewDisableStatus(f.ctx, f.fc, everyDisableSource(), nil)
 	require.NoError(t, err)
 	require.NotNil(t, newStatus)
@@ -95,8 +95,8 @@ func TestMaybeNewDisableStatusEveryTrue(t *testing.T) {
 
 func TestMaybeNewDisableStatusEveryMixed(t *testing.T) {
 	f := newDisableFixture(t)
-	f.createConfigMapNamed(configMapName, pointer.StringPtr("true"))
-	f.createConfigMapNamed(configMap2Name, pointer.StringPtr("false"))
+	f.createConfigMapNamed(configMapName, ptr.To("true"))
+	f.createConfigMapNamed(configMap2Name, ptr.To("false"))
 	newStatus, err := MaybeNewDisableStatus(f.ctx, f.fc, everyDisableSource(), nil)
 	require.NoError(t, err)
 	require.NotNil(t, newStatus)
@@ -107,7 +107,7 @@ func TestMaybeNewDisableStatusEveryMixed(t *testing.T) {
 
 func TestMaybeNewDisableStatusGobbledygookValue(t *testing.T) {
 	f := newDisableFixture(t)
-	f.createConfigMap(pointer.StringPtr("asdf"))
+	f.createConfigMap(ptr.To("asdf"))
 	newStatus, err := MaybeNewDisableStatus(f.ctx, f.fc, disableSource(), nil)
 	require.NoError(t, err)
 	require.NotNil(t, newStatus)
@@ -118,7 +118,7 @@ func TestMaybeNewDisableStatusGobbledygookValue(t *testing.T) {
 
 func TestMaybeNewDisableStatusNoChange(t *testing.T) {
 	f := newDisableFixture(t)
-	f.createConfigMap(pointer.StringPtr("false"))
+	f.createConfigMap(ptr.To("false"))
 	status, err := MaybeNewDisableStatus(f.ctx, f.fc, disableSource(), nil)
 	require.NoError(t, err)
 	newStatus, err := MaybeNewDisableStatus(f.ctx, f.fc, disableSource(), status)
@@ -128,7 +128,7 @@ func TestMaybeNewDisableStatusNoChange(t *testing.T) {
 
 func TestMaybeNewDisableStatusChange(t *testing.T) {
 	f := newDisableFixture(t)
-	f.createConfigMap(pointer.StringPtr("false"))
+	f.createConfigMap(ptr.To("false"))
 	status, err := MaybeNewDisableStatus(
 		f.ctx,
 		f.fc,
@@ -136,7 +136,7 @@ func TestMaybeNewDisableStatusChange(t *testing.T) {
 		nil,
 	)
 	require.NoError(t, err)
-	f.updateConfigMap(pointer.StringPtr("true"))
+	f.updateConfigMap(ptr.To("true"))
 	newStatus, err := MaybeNewDisableStatus(f.ctx, f.fc, disableSource(), status)
 	require.NoError(t, err)
 	require.NotSame(t, status, newStatus)

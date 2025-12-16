@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	dtypes "github.com/docker/docker/api/types"
+	typescontainer "github.com/docker/docker/api/types/container"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -41,7 +41,7 @@ func TestBasicLogsFromEvents(t *testing.T) {
 	}
 	f.Create(&obj)
 
-	container := dtypes.ContainerState{
+	container := typescontainer.State{
 		Status:    "running",
 		Running:   true,
 		StartedAt: "2021-09-08T19:58:01.483005100Z",
@@ -69,7 +69,7 @@ func TestBasicLogsFromExisting(t *testing.T) {
 
 	containerID := "my-container-id"
 	f.dc.ContainerLogChans[containerID] = output
-	c := dtypes.ContainerState{
+	c := typescontainer.State{
 		Status:    "running",
 		Running:   true,
 		StartedAt: "2021-09-08T19:58:01.483005100Z",
@@ -139,7 +139,7 @@ func TestTwoServices(t *testing.T) {
 		},
 	}
 
-	container := dtypes.ContainerState{
+	container := typescontainer.State{
 		Status:    "running",
 		Running:   true,
 		StartedAt: "2021-09-08T19:58:01.483005100Z",

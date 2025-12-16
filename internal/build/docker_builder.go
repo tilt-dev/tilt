@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
+	cerrdefs "github.com/containerd/errdefs"
 	"github.com/distribution/reference"
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/client"
+	typesbuild "github.com/docker/docker/api/types/build"
 	"github.com/docker/docker/pkg/jsonmessage"
 	controlapi "github.com/moby/buildkit/api/services/control"
 	"github.com/moby/buildkit/session/filesync"
@@ -66,7 +66,7 @@ func (d *DockerBuilder) DumpImageDeployRef(ctx context.Context, ref string) (ref
 		return nil, errors.Wrap(err, "DumpImageDeployRef")
 	}
 
-	data, _, err := d.dCli.ImageInspectWithRaw(ctx, ref)
+	data, err := d.dCli.ImageInspect(ctx, ref)
 	if err != nil {
 		return nil, errors.Wrap(err, "DumpImageDeployRef")
 	}
@@ -135,9 +135,9 @@ func (d *DockerBuilder) PushImage(ctx context.Context, ref reference.NamedTagged
 }
 
 func (d *DockerBuilder) ImageExists(ctx context.Context, ref reference.NamedTagged) (bool, error) {
-	_, _, err := d.dCli.ImageInspectWithRaw(ctx, ref.String())
+	_, err := d.dCli.ImageInspect(ctx, ref.String())
 	if err != nil {
-		if client.IsErrNotFound(err) {
+		if cerrdefs.IsNotFound(err) {
 			return false, nil
 		}
 		return false, errors.Wrapf(err, "error checking if %s exists", ref.String())
@@ -238,7 +238,7 @@ func (d *DockerBuilder) buildToDigest(ctx context.Context, spec v1alpha1.DockerI
 	}
 
 	// Buildkit allows us to use a fs sync server instead of uploading up-front.
-	useFSSync := allowBuildkit && builderVersion == types.BuilderBuildKit
+	useFSSync := allowBuildkit && builderVersion == typesbuild.BuilderBuildKit
 	if !useFSSync {
 		pipeReader, pipeWriter := io.Pipe()
 		w := NewProgressWriter(ctx, pipeWriter)
@@ -395,8 +395,8 @@ func readDockerOutput(ctx context.Context, reader io.Reader) (dockerOutput, []v1
 			logger.Get(ctx).Write(logger.InfoLvl, []byte(msg))
 		}
 
-		if message.ErrorMessage != "" {
-			return dockerOutput{}, b.toStageStatuses(), errors.New(cleanupDockerBuildError(message.ErrorMessage))
+		if message.Error != nil && message.Error.Message != "" {
+			return dockerOutput{}, b.toStageStatuses(), errors.New(cleanupDockerBuildError(message.Error.Message))
 		}
 
 		if message.Error != nil {
@@ -507,7 +507,7 @@ func (d *DockerBuilder) getDigestFromDockerOutput(ctx context.Context, output do
 	}
 
 	if output.shortDigest != "" {
-		data, _, err := d.dCli.ImageInspectWithRaw(ctx, output.shortDigest)
+		data, err := d.dCli.ImageInspect(ctx, output.shortDigest)
 		if err != nil {
 			return "", err
 		}

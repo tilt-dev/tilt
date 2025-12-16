@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/docker/api/types"
+	typesbuild "github.com/docker/docker/api/types/build"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
@@ -52,7 +52,7 @@ func (c *dockerCmd) run(ctx context.Context, args []string) error {
 	}
 
 	buildkitEnv := "DOCKER_BUILDKIT=0"
-	if builder == types.BuilderBuildKit {
+	if builder == typesbuild.BuilderBuildKit {
 		buildkitEnv = "DOCKER_BUILDKIT=1"
 	}
 	env := append([]string{buildkitEnv}, dockerEnv.AsEnviron()...)

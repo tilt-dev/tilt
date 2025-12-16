@@ -10,7 +10,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/docker/docker/api/types"
+	typesbuild "github.com/docker/docker/api/types/build"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
 	controlapi "github.com/moby/buildkit/api/services/control"
@@ -43,7 +43,7 @@ func main() {
 
 func run() error {
 	ctx := context.Background()
-	d, err := client.NewEnvClient()
+	d, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
 		return err
 	}
@@ -103,8 +103,8 @@ func run() error {
 		_ = session.Run(ctx, dialSession)
 	}()
 
-	opts := types.ImageBuildOptions{}
-	opts.Version = types.BuilderBuildKit
+	opts := typesbuild.ImageBuildOptions{}
+	opts.Version = typesbuild.BuilderBuildKit
 	opts.Dockerfile = "Dockerfile"
 	opts.RemoteContext = "client-session"
 	opts.SessionID = session.ID()

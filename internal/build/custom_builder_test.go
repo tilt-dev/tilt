@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/docker/api/types"
+	typesimage "github.com/docker/docker/api/types/image"
 	"github.com/jonboulle/clockwork"
 	"github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/assert"
@@ -41,7 +41,7 @@ func TestCustomBuildSuccess(t *testing.T) {
 	f := newFakeCustomBuildFixture(t)
 
 	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
-	f.dCli.Images["gcr.io/foo/bar:tilt-build-1551202573"] = types.ImageInspect{ID: string(sha)}
+	f.dCli.Images["gcr.io/foo/bar:tilt-build-1551202573"] = typesimage.InspectResponse{ID: string(sha)}
 	cb := f.customBuild("exit 0")
 	refs, err := f.Build(refSetFromString("gcr.io/foo/bar"), cb, nil)
 	require.NoError(t, err)
@@ -54,7 +54,7 @@ func TestCustomBuildSuccessClusterRefTaggedWithDigest(t *testing.T) {
 	f := newFakeCustomBuildFixture(t)
 
 	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
-	f.dCli.Images["localhost:1234/foo_bar:tilt-build-1551202573"] = types.ImageInspect{ID: string(sha)}
+	f.dCli.Images["localhost:1234/foo_bar:tilt-build-1551202573"] = typesimage.InspectResponse{ID: string(sha)}
 	cb := f.customBuild("exit 0")
 	refs, err := f.Build(refSetWithRegistryFromString("foo/bar", TwoURLRegistry), cb, nil)
 	require.NoError(t, err)
@@ -67,7 +67,7 @@ func TestCustomBuildSuccessClusterRefWithCustomTag(t *testing.T) {
 	f := newFakeCustomBuildFixture(t)
 
 	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
-	f.dCli.Images["gcr.io/foo/bar:my-tag"] = types.ImageInspect{ID: string(sha)}
+	f.dCli.Images["gcr.io/foo/bar:my-tag"] = typesimage.InspectResponse{ID: string(sha)}
 	cb := f.customBuild("exit 0")
 	cb.CmdImageSpec.OutputTag = "my-tag"
 	refs, err := f.Build(refSetWithRegistryFromString("gcr.io/foo/bar", TwoURLRegistry), cb, nil)
@@ -122,7 +122,7 @@ func TestCustomBuildExpectedTag(t *testing.T) {
 	f := newFakeCustomBuildFixture(t)
 
 	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
-	f.dCli.Images["gcr.io/foo/bar:the-tag"] = types.ImageInspect{ID: string(sha)}
+	f.dCli.Images["gcr.io/foo/bar:the-tag"] = typesimage.InspectResponse{ID: string(sha)}
 
 	cb := f.customBuild("exit 0")
 	cb.CmdImageSpec.OutputTag = "the-tag"
@@ -142,7 +142,7 @@ func TestCustomBuilderExecsRelativeToTiltfile(t *testing.T) {
 	f.WriteFile("proj/build.sh", "exit 0")
 
 	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
-	f.dCli.Images["gcr.io/foo/bar:tilt-build-1551202573"] = types.ImageInspect{ID: string(sha)}
+	f.dCli.Images["gcr.io/foo/bar:tilt-build-1551202573"] = typesimage.InspectResponse{ID: string(sha)}
 	cb := f.customBuild("./build.sh")
 	cb.CmdImageSpec.Dir = filepath.Join(f.Path(), "proj")
 	refs, err := f.Build(refSetFromString("gcr.io/foo/bar"), cb, nil)
@@ -158,7 +158,7 @@ func TestCustomBuildOutputsToImageRefSuccess(t *testing.T) {
 
 	myTag := "gcr.io/foo/bar:dev"
 	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
-	f.dCli.Images[myTag] = types.ImageInspect{ID: string(sha)}
+	f.dCli.Images[myTag] = typesimage.InspectResponse{ID: string(sha)}
 	cb := f.customBuild("echo gcr.io/foo/bar:dev > ref.txt")
 	cb.CmdImageSpec.OutputsImageRefTo = f.JoinPath("ref.txt")
 	refs, err := f.Build(refSetFromString("gcr.io/foo/bar"), cb, nil)
@@ -211,7 +211,7 @@ func TestCustomBuildOutputsToImageRef_DifferentClusterHost(t *testing.T) {
 	myTag := "localhost:5000/foo/bar:dev"
 	myClusterTag := "registry:5000/foo/bar:dev"
 	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
-	f.dCli.Images[myTag] = types.ImageInspect{ID: string(sha)}
+	f.dCli.Images[myTag] = typesimage.InspectResponse{ID: string(sha)}
 	cb := f.customBuild(fmt.Sprintf("echo %s > ref.txt", myTag))
 	cb.CmdImageSpec.OutputsImageRefTo = f.JoinPath("ref.txt")
 	reg := &v1alpha1.RegistryHosting{Host: "localhost:5000", HostFromContainerRuntime: "registry:5000"}
@@ -229,7 +229,7 @@ func TestCustomBuildImageDep(t *testing.T) {
 	f := newFakeCustomBuildFixture(t)
 
 	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
-	f.dCli.Images["gcr.io/foo/bar:tilt-build-1551202573"] = types.ImageInspect{ID: string(sha)}
+	f.dCli.Images["gcr.io/foo/bar:tilt-build-1551202573"] = typesimage.InspectResponse{ID: string(sha)}
 	cb := f.customBuild("echo $TILT_IMAGE_0 > image-0.txt")
 	cb.CmdImageSpec.ImageMaps = []string{"base"}
 
@@ -269,7 +269,7 @@ func TestCustomBuildEnvVars(t *testing.T) {
 
 	f := newFakeCustomBuildFixture(t)
 	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
-	f.dCli.Images["localhost:1234/foo_bar:tilt-build-1551202573"] = types.ImageInspect{ID: string(sha)}
+	f.dCli.Images["localhost:1234/foo_bar:tilt-build-1551202573"] = typesimage.InspectResponse{ID: string(sha)}
 	cb := f.customBuild(strings.Join(script, "\n"))
 	cb.Env = []string{"EXTRA=value"}
 	_, err := f.Build(refSetWithRegistryFromString("foo/bar", TwoURLRegistry), cb, nil)
@@ -303,7 +303,7 @@ func TestCustomBuildEnvVars_ConfigRefWithLocalRegistry(t *testing.T) {
 
 	f := newFakeCustomBuildFixture(t)
 	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
-	f.dCli.Images["localhost:1234/foo/bar:tilt-build-1551202573"] = types.ImageInspect{ID: string(sha)}
+	f.dCli.Images["localhost:1234/foo/bar:tilt-build-1551202573"] = typesimage.InspectResponse{ID: string(sha)}
 	cb := f.customBuild(strings.Join(script, "\n"))
 	_, err := f.Build(refSetWithRegistryFromString("localhost:1234/foo/bar", TwoURLRegistry), cb, nil)
 	require.NoError(t, err)

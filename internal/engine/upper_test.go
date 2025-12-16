@@ -19,7 +19,7 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/distribution/reference"
-	dockertypes "github.com/docker/docker/api/types"
+	typescontainer "github.com/docker/docker/api/types/container"
 	"github.com/google/uuid"
 	"github.com/jonboulle/clockwork"
 	"github.com/spf13/afero"
@@ -228,7 +228,7 @@ type fakeBuildAndDeployer struct {
 	// Inject the container ID of the container started by Docker Compose.
 	// If not set, we will auto-generate an ID.
 	nextDockerComposeContainerID    container.ID
-	nextDockerComposeContainerState *dockertypes.ContainerState
+	nextDockerComposeContainerState *typescontainer.State
 
 	targetObjectTree        map[model.TargetID]podbuilder.PodObjectTree
 	nextDeployedUID         types.UID

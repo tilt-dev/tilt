@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/distribution/reference"
-	"github.com/docker/docker/api/types"
+	typesimage "github.com/docker/docker/api/types/image"
 	"github.com/jonboulle/clockwork"
 	"github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/assert"
@@ -465,7 +465,7 @@ func TestDockerPushIfKINDAndClusterRef(t *testing.T) {
 func TestCustomBuildDisablePush(t *testing.T) {
 	f := newIBDFixture(t, clusterid.ProductKIND)
 	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
-	f.docker.Images["gcr.io/some-project-162817/sancho:tilt-build"] = types.ImageInspect{ID: string(sha)}
+	f.docker.Images["gcr.io/some-project-162817/sancho:tilt-build"] = typesimage.InspectResponse{ID: string(sha)}
 
 	manifest := NewSanchoCustomBuildManifestWithPushDisabled(f)
 	_, err := f.BuildAndDeploy(BuildTargets(manifest), store.BuildStateSet{})
@@ -481,7 +481,7 @@ func TestCustomBuildDisablePush(t *testing.T) {
 func TestCustomBuildSkipsLocalDocker(t *testing.T) {
 	f := newIBDFixture(t, clusterid.ProductKIND)
 	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
-	f.docker.Images["gcr.io/some-project-162817/sancho:tilt-build"] = types.ImageInspect{ID: string(sha)}
+	f.docker.Images["gcr.io/some-project-162817/sancho:tilt-build"] = typesimage.InspectResponse{ID: string(sha)}
 
 	cb := model.CustomBuild{
 		CmdImageSpec: v1alpha1.CmdImageSpec{
@@ -535,7 +535,7 @@ func TestBuildAndDeployUsesCorrectRef(t *testing.T) {
 
 			if strings.Contains(test.name, "custom build") {
 				sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
-				f.docker.Images["foo.com/gcr.io_some-project-162817_sancho:tilt-build-1546304461"] = types.ImageInspect{ID: string(sha)}
+				f.docker.Images["foo.com/gcr.io_some-project-162817_sancho:tilt-build-1546304461"] = typesimage.InspectResponse{ID: string(sha)}
 			}
 
 			manifest := test.manifest(f)
@@ -881,7 +881,7 @@ func TestCustomBuildStatus(t *testing.T) {
 	f := newIBDFixture(t, clusterid.ProductGKE)
 
 	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
-	f.docker.Images["gcr.io/some-project-162817/sancho:tilt-build"] = types.ImageInspect{ID: string(sha)}
+	f.docker.Images["gcr.io/some-project-162817/sancho:tilt-build"] = typesimage.InspectResponse{ID: string(sha)}
 
 	cb := model.CustomBuild{
 		CmdImageSpec: v1alpha1.CmdImageSpec{Args: model.ToHostCmd("exit 0").Argv, OutputTag: "tilt-build"},
@@ -914,7 +914,7 @@ func TestCustomBuildCancel(t *testing.T) {
 	f := newIBDFixture(t, clusterid.ProductGKE)
 
 	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
-	f.docker.Images["gcr.io/some-project-162817/sancho:tilt-build"] = types.ImageInspect{ID: string(sha)}
+	f.docker.Images["gcr.io/some-project-162817/sancho:tilt-build"] = typesimage.InspectResponse{ID: string(sha)}
 
 	cb := model.CustomBuild{
 		CmdImageSpec: v1alpha1.CmdImageSpec{Args: model.ToHostCmd("sleep 100").Argv, OutputTag: "tilt-build"},

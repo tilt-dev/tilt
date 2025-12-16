@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/moby/buildkit/frontend/dockerfile/dockerignore"
+	"github.com/moby/patternmatcher/ignorefile"
 
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -29,7 +29,7 @@ func ReadTiltignore(tiltignorePath string) (model.Dockerignore, error) {
 		return model.Dockerignore{}, err
 	}
 
-	patterns, err := dockerignore.ReadAll(bytes.NewBuffer(tiltignoreContents))
+	patterns, err := ignorefile.ReadAll(bytes.NewBuffer(tiltignoreContents))
 	if err != nil {
 		return model.Dockerignore{}, fmt.Errorf("Parsing .tiltignore: %v", err)
 	}

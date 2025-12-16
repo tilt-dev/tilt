@@ -12,7 +12,8 @@ import (
 	"time"
 
 	"github.com/distribution/reference"
-	"github.com/docker/docker/api/types"
+	typescontainer "github.com/docker/docker/api/types/container"
+	typesimage "github.com/docker/docker/api/types/image"
 	"github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -157,7 +158,7 @@ func TestIgnoredFiles(t *testing.T) {
 func TestCustomBuild(t *testing.T) {
 	f := newBDFixture(t, clusterid.ProductGKE, container.RuntimeDocker)
 	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
-	f.docker.Images["gcr.io/some-project-162817/sancho:tilt-build-1551202573"] = types.ImageInspect{ID: string(sha)}
+	f.docker.Images["gcr.io/some-project-162817/sancho:tilt-build-1551202573"] = typesimage.InspectResponse{ID: string(sha)}
 
 	manifest := NewSanchoCustomBuildManifest(f)
 	targets := buildcontrol.BuildTargets(manifest)
@@ -180,7 +181,7 @@ func TestCustomBuildDeterministicTag(t *testing.T) {
 	f := newBDFixture(t, clusterid.ProductGKE, container.RuntimeDocker)
 	refStr := "gcr.io/some-project-162817/sancho:deterministic-tag"
 	sha := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
-	f.docker.Images[refStr] = types.ImageInspect{ID: string(sha)}
+	f.docker.Images[refStr] = typesimage.InspectResponse{ID: string(sha)}
 
 	manifest := NewSanchoCustomBuildManifestWithTag(f, "deterministic-tag")
 	targets := buildcontrol.BuildTargets(manifest)
@@ -325,9 +326,9 @@ func newBDFixtureWithUpdateMode(t *testing.T, env clusterid.Product, runtime con
 	f := tempdir.NewTempDirFixture(t)
 	dir := dirs.NewTiltDevDirAt(f.Path())
 	dockerClient := docker.NewFakeClient()
-	dockerClient.ContainerListOutput = map[string][]types.Container{
-		"pod": []types.Container{
-			types.Container{
+	dockerClient.ContainerListOutput = map[string][]typescontainer.Summary{
+		"pod": []typescontainer.Summary{
+			typescontainer.Summary{
 				ID: k8s.MagicTestContainerID,
 			},
 		},

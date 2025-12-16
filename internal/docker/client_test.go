@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/docker/docker/api/types"
+	typesbuild "github.com/docker/docker/api/types/build"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/tilt-dev/clusterid"
@@ -44,17 +45,17 @@ func TestSupportsBuildkit(t *testing.T) {
 type builderVersionTestCase struct {
 	v        string
 	bkEnv    string
-	expected types.BuilderVersion
+	expected typesbuild.BuilderVersion
 }
 
 func TestProvideBuilderVersion(t *testing.T) {
 	cases := []builderVersionTestCase{
-		{"1.37", "", types.BuilderV1},
-		{"1.37", "0", types.BuilderV1},
-		{"1.37", "1", types.BuilderV1},
-		{"1.40", "", types.BuilderBuildKit},
-		{"1.40", "0", types.BuilderV1},
-		{"1.40", "1", types.BuilderBuildKit},
+		{"1.37", "", typesbuild.BuilderV1},
+		{"1.37", "0", typesbuild.BuilderV1},
+		{"1.37", "1", typesbuild.BuilderV1},
+		{"1.40", "", typesbuild.BuilderBuildKit},
+		{"1.40", "0", typesbuild.BuilderV1},
+		{"1.40", "1", typesbuild.BuilderBuildKit},
 	}
 
 	for i, c := range cases {

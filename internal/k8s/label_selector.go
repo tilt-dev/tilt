@@ -5,7 +5,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
-func setEqual(a, b sets.String) bool {
+func setEqual(a, b sets.Set[string]) bool {
 	if len(a) != len(b) {
 		return false
 	}
@@ -22,7 +22,7 @@ func setEqual(a, b sets.String) bool {
 func requirementEqual(a, b labels.Requirement) bool {
 	return a.Key() == b.Key() &&
 		a.Operator() == b.Operator() &&
-		setEqual(a.Values(), b.Values())
+		setEqual(sets.Set[string](a.Values()), sets.Set[string](b.Values()))
 }
 
 func requirementsEqual(a, b labels.Requirements) bool {
