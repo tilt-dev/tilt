@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/moby/buildkit/frontend/dockerfile/dockerignore"
+	"github.com/moby/patternmatcher/ignorefile"
 
 	tiltDockerignore "github.com/tilt-dev/dockerignore"
 	"github.com/tilt-dev/tilt/internal/ospath"
@@ -161,11 +161,11 @@ func readDockerignorePatterns(repoRoot string) ([]string, error) {
 	}
 	defer func() { _ = f.Close() }()
 
-	return dockerignore.ReadAll(f)
+	return ignorefile.ReadAll(f)
 }
 
 func DockerIgnoreTesterFromContents(repoRoot string, contents string) (*dockerPathMatcher, error) {
-	patterns, err := dockerignore.ReadAll(strings.NewReader(contents))
+	patterns, err := ignorefile.ReadAll(strings.NewReader(contents))
 	if err != nil {
 		return nil, err
 	}

@@ -5,13 +5,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pkg/errors"
-	"golang.org/x/sync/errgroup"
-
+	cerrdefs "github.com/containerd/errdefs"
 	"github.com/distribution/reference"
 	"github.com/docker/docker/api/types/filters"
 	typesimage "github.com/docker/docker/api/types/image"
-	"github.com/docker/docker/client"
+	"github.com/pkg/errors"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockerfile"
@@ -69,7 +68,7 @@ func (r ImageReaper) RemoveTiltImages(ctx context.Context, createdBefore time.Ti
 
 		g.Go(func() error {
 			_, err := r.docker.ImageRemove(ctx, id, rmOptions)
-			if client.IsErrNotFound(err) {
+			if cerrdefs.IsNotFound(err) {
 				return nil
 			}
 			return err

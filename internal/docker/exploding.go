@@ -6,9 +6,11 @@ import (
 
 	"github.com/distribution/reference"
 	"github.com/docker/docker/api/types"
+	typesbuild "github.com/docker/docker/api/types/build"
 	typescontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	typesimage "github.com/docker/docker/api/types/image"
+	"github.com/docker/docker/client"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/tilt-dev/tilt/internal/container"
@@ -38,8 +40,8 @@ func (c explodingClient) CheckConnected() error {
 func (c explodingClient) Env() Env {
 	return Env{}
 }
-func (c explodingClient) BuilderVersion(ctx context.Context) (types.BuilderVersion, error) {
-	return types.BuilderV1, c.err
+func (c explodingClient) BuilderVersion(ctx context.Context) (typesbuild.BuilderVersion, error) {
+	return typesbuild.BuilderV1, c.err
 }
 func (c explodingClient) ServerVersion(ctx context.Context) (types.Version, error) {
 	return types.Version{}, c.err
@@ -47,10 +49,10 @@ func (c explodingClient) ServerVersion(ctx context.Context) (types.Version, erro
 func (c explodingClient) ContainerLogs(ctx context.Context, containerID string, options typescontainer.LogsOptions) (io.ReadCloser, error) {
 	return nil, c.err
 }
-func (c explodingClient) ContainerInspect(ctx context.Context, containerID string) (types.ContainerJSON, error) {
-	return types.ContainerJSON{}, c.err
+func (c explodingClient) ContainerInspect(ctx context.Context, containerID string) (typescontainer.InspectResponse, error) {
+	return typescontainer.InspectResponse{}, c.err
 }
-func (c explodingClient) ContainerList(ctx context.Context, options typescontainer.ListOptions) ([]types.Container, error) {
+func (c explodingClient) ContainerList(ctx context.Context, options typescontainer.ListOptions) ([]typescontainer.Summary, error) {
 	return nil, c.err
 }
 func (c explodingClient) ContainerRestartNoWait(ctx context.Context, containerID string) error {
@@ -68,14 +70,14 @@ func (c explodingClient) ImagePull(_ context.Context, _ reference.Named) (refere
 func (c explodingClient) ImagePush(ctx context.Context, ref reference.NamedTagged) (io.ReadCloser, error) {
 	return nil, c.err
 }
-func (c explodingClient) ImageBuild(ctx context.Context, g *errgroup.Group, buildContext io.Reader, options BuildOptions) (types.ImageBuildResponse, error) {
-	return types.ImageBuildResponse{}, c.err
+func (c explodingClient) ImageBuild(ctx context.Context, g *errgroup.Group, buildContext io.Reader, options BuildOptions) (typesbuild.ImageBuildResponse, error) {
+	return typesbuild.ImageBuildResponse{}, c.err
 }
 func (c explodingClient) ImageTag(ctx context.Context, source, target string) error {
 	return c.err
 }
-func (c explodingClient) ImageInspectWithRaw(ctx context.Context, imageID string) (types.ImageInspect, []byte, error) {
-	return types.ImageInspect{}, nil, c.err
+func (c explodingClient) ImageInspect(ctx context.Context, imageID string, inspectOpts ...client.ImageInspectOption) (typesimage.InspectResponse, error) {
+	return typesimage.InspectResponse{}, c.err
 }
 func (c explodingClient) ImageList(ctx context.Context, options typesimage.ListOptions) ([]typesimage.Summary, error) {
 	return nil, c.err
@@ -86,7 +88,7 @@ func (c explodingClient) ImageRemove(ctx context.Context, imageID string, option
 func (c explodingClient) NewVersionError(ctx context.Context, apiRequired, feature string) error {
 	return c.err
 }
-func (c explodingClient) BuildCachePrune(ctx context.Context, opts types.BuildCachePruneOptions) (*types.BuildCachePruneReport, error) {
+func (c explodingClient) BuildCachePrune(ctx context.Context, opts typesbuild.CachePruneOptions) (*typesbuild.CachePruneReport, error) {
 	return nil, c.err
 }
 func (c explodingClient) ContainersPrune(ctx context.Context, pruneFilters filters.Args) (typescontainer.PruneReport, error) {

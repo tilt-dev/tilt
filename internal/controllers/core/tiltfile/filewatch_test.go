@@ -11,7 +11,7 @@ import (
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/moby/buildkit/frontend/dockerfile/dockerignore"
+	"github.com/moby/patternmatcher/ignorefile"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -224,7 +224,7 @@ func (f *fwFixture) SetManifest(m model.Manifest) {
 }
 
 func (f *fwFixture) SetTiltIgnoreContents(s string) {
-	patterns, err := dockerignore.ReadAll(strings.NewReader(s))
+	patterns, err := ignorefile.ReadAll(strings.NewReader(s))
 	assert.NoError(f.T(), err)
 	f.inputs.Tiltignore = model.Dockerignore{
 		LocalPath: f.Path(),

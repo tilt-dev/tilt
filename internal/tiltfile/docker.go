@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/distribution/reference"
-	"github.com/moby/buildkit/frontend/dockerfile/dockerignore"
+	"github.com/moby/patternmatcher/ignorefile"
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
 
@@ -565,7 +565,7 @@ func (s *tiltfileState) dockerignoresFromPathsAndContextFilters(source string, p
 			return nil, err
 		}
 
-		patterns, err := dockerignore.ReadAll(bytes.NewBuffer(contents))
+		patterns, err := ignorefile.ReadAll(bytes.NewBuffer(contents))
 		if err != nil {
 			return nil, err
 		}

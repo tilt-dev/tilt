@@ -138,7 +138,7 @@ func (b *CustomBuilder) Build(ctx context.Context, refs container.RefSet,
 		return expectedBuildRefs, nil
 	}
 
-	inspect, _, err := b.dCli.ImageInspectWithRaw(ctx, expectedBuildResult.String())
+	inspect, err := b.dCli.ImageInspect(ctx, expectedBuildResult.String())
 	if err != nil {
 		return container.TaggedRefs{}, errors.Wrap(err, "Could not find image in Docker\n"+
 			"Did your custom_build script properly tag the image?\n"+

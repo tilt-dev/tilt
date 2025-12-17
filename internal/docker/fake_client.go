@@ -17,9 +17,11 @@ import (
 
 	"github.com/distribution/reference"
 	"github.com/docker/docker/api/types"
+	typesbuild "github.com/docker/docker/api/types/build"
 	typescontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	typesimage "github.com/docker/docker/api/types/image"
+	"github.com/docker/docker/client"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -71,13 +73,13 @@ const (
 	TestContainer = "test_container"
 )
 
-var DefaultContainerListOutput = map[string][]types.Container{
-	TestPod: []types.Container{
-		types.Container{ID: TestContainer, ImageID: ExampleBuildSHA1, Command: "./stuff"},
+var DefaultContainerListOutput = map[string][]typescontainer.Summary{
+	TestPod: []typescontainer.Summary{
+		typescontainer.Summary{ID: TestContainer, ImageID: ExampleBuildSHA1, Command: "./stuff"},
 	},
-	"two-containers": []types.Container{
-		types.Container{ID: "not a match", ImageID: ExamplePushSHA1, Command: "/pause"},
-		types.Container{ID: "the right container", ImageID: ExampleBuildSHA1, Command: "./stuff"},
+	"two-containers": []typescontainer.Summary{
+		typescontainer.Summary{ID: "not a match", ImageID: ExamplePushSHA1, Command: "/pause"},
+		typescontainer.Summary{ID: "the right container", ImageID: ExampleBuildSHA1, Command: "./stuff"},
 	},
 }
 
@@ -107,7 +109,7 @@ type FakeClient struct {
 	TagSource string
 	TagTarget string
 
-	ContainerListOutput map[string][]types.Container
+	ContainerListOutput map[string][]typescontainer.Summary
 
 	CopyCount     int
 	CopyContainer string
@@ -120,10 +122,10 @@ type FakeClient struct {
 	RemovedImageIDs     []string
 
 	// Images returned by ImageInspect.
-	Images map[string]types.ImageInspect
+	Images map[string]typesimage.InspectResponse
 
 	// Containers returned by ContainerInspect
-	Containers        map[string]types.ContainerState
+	Containers        map[string]typescontainer.State
 	ContainerLogChans map[string]<-chan string
 
 	// If true, ImageInspectWithRaw will always return an ImageInspect,
@@ -135,7 +137,7 @@ type FakeClient struct {
 
 	ThrowNewVersionError   bool
 	BuildCachePruneErr     error
-	BuildCachePruneOpts    types.BuildCachePruneOptions
+	BuildCachePruneOpts    typesbuild.CachePruneOptions
 	BuildCachesPruned      []string
 	ContainersPruneErr     error
 	ContainersPruneFilters filters.Args
@@ -148,10 +150,10 @@ func NewFakeClient() *FakeClient {
 	return &FakeClient{
 		PushOutput:          ExamplePushOutput1,
 		BuildOutput:         ExampleBuildOutput1,
-		ContainerListOutput: make(map[string][]types.Container),
+		ContainerListOutput: make(map[string][]typescontainer.Summary),
 		RestartsByContainer: make(map[string]int),
-		Images:              make(map[string]types.ImageInspect),
-		Containers:          make(map[string]types.ContainerState),
+		Images:              make(map[string]typesimage.InspectResponse),
+		Containers:          make(map[string]typescontainer.State),
 		ContainerLogChans:   make(map[string]<-chan string),
 	}
 }
@@ -168,8 +170,8 @@ func (c *FakeClient) CheckConnected() error {
 func (c *FakeClient) Env() Env {
 	return c.FakeEnv
 }
-func (c *FakeClient) BuilderVersion(ctx context.Context) (types.BuilderVersion, error) {
-	return types.BuilderV1, nil
+func (c *FakeClient) BuilderVersion(ctx context.Context) (typesbuild.BuilderVersion, error) {
+	return typesbuild.BuilderV1, nil
 }
 func (c *FakeClient) ServerVersion(ctx context.Context) (types.Version, error) {
 	return types.Version{
@@ -209,28 +211,28 @@ func (c *FakeClient) ContainerLogs(ctx context.Context, containerID string, opti
 	return reader, nil
 }
 
-func (c *FakeClient) ContainerInspect(ctx context.Context, containerID string) (types.ContainerJSON, error) {
+func (c *FakeClient) ContainerInspect(ctx context.Context, containerID string) (typescontainer.InspectResponse, error) {
 	container, ok := c.Containers[containerID]
 	if ok {
-		return types.ContainerJSON{
+		return typescontainer.InspectResponse{
 			Config: &typescontainer.Config{Tty: true},
-			ContainerJSONBase: &types.ContainerJSONBase{
+			ContainerJSONBase: &typescontainer.ContainerJSONBase{
 				ID:    containerID,
 				State: &container,
 			},
 		}, nil
 	}
 	state := NewRunningContainerState()
-	return types.ContainerJSON{
+	return typescontainer.InspectResponse{
 		Config: &typescontainer.Config{Tty: true},
-		ContainerJSONBase: &types.ContainerJSONBase{
+		ContainerJSONBase: &typescontainer.ContainerJSONBase{
 			ID:    containerID,
 			State: &state,
 		},
 	}, nil
 }
 
-func (c *FakeClient) SetContainerListOutput(output map[string][]types.Container) {
+func (c *FakeClient) SetContainerListOutput(output map[string][]typescontainer.Summary) {
 	c.ContainerListOutput = output
 }
 
@@ -238,7 +240,7 @@ func (c *FakeClient) SetDefaultContainerListOutput() {
 	c.SetContainerListOutput(DefaultContainerListOutput)
 }
 
-func (c *FakeClient) ContainerList(ctx context.Context, options typescontainer.ListOptions) ([]types.Container, error) {
+func (c *FakeClient) ContainerList(ctx context.Context, options typescontainer.ListOptions) ([]typescontainer.Summary, error) {
 	nameFilter := options.Filters.Get("name")
 	if len(nameFilter) != 1 {
 		return nil, fmt.Errorf("expected one filter for 'name', got: %v", nameFilter)
@@ -301,13 +303,13 @@ func (c *FakeClient) ImagePush(ctx context.Context, ref reference.NamedTagged) (
 	return NewFakeDockerResponse(c.PushOutput), nil
 }
 
-func (c *FakeClient) ImageBuild(ctx context.Context, g *errgroup.Group, buildContext io.Reader, options BuildOptions) (types.ImageBuildResponse, error) {
+func (c *FakeClient) ImageBuild(ctx context.Context, g *errgroup.Group, buildContext io.Reader, options BuildOptions) (typesbuild.ImageBuildResponse, error) {
 	c.BuildCount++
 	c.BuildOptions = options
 
 	data, err := io.ReadAll(buildContext)
 	if err != nil {
-		return types.ImageBuildResponse{}, errors.Wrap(err, "ImageBuild")
+		return typesbuild.ImageBuildResponse{}, errors.Wrap(err, "ImageBuild")
 	}
 
 	c.BuildContext = bytes.NewBuffer(data)
@@ -316,10 +318,10 @@ func (c *FakeClient) ImageBuild(ctx context.Context, g *errgroup.Group, buildCon
 	err = c.BuildErrorToThrow
 	if err != nil {
 		c.BuildErrorToThrow = nil
-		return types.ImageBuildResponse{}, err
+		return typesbuild.ImageBuildResponse{}, err
 	}
 
-	return types.ImageBuildResponse{Body: NewFakeDockerResponse(c.BuildOutput)}, nil
+	return typesbuild.ImageBuildResponse{Body: NewFakeDockerResponse(c.BuildOutput)}, nil
 }
 
 func (c *FakeClient) ImageTag(ctx context.Context, source, target string) error {
@@ -329,17 +331,17 @@ func (c *FakeClient) ImageTag(ctx context.Context, source, target string) error 
 	return nil
 }
 
-func (c *FakeClient) ImageInspectWithRaw(ctx context.Context, imageID string) (types.ImageInspect, []byte, error) {
+func (c *FakeClient) ImageInspect(ctx context.Context, imageID string, inspectOpts ...client.ImageInspectOption) (typesimage.InspectResponse, error) {
 	result, ok := c.Images[imageID]
 	if ok {
-		return result, nil, nil
+		return result, nil
 	}
 
 	if c.ImageAlwaysExists {
-		return types.ImageInspect{}, nil, nil
+		return typesimage.InspectResponse{}, nil
 	}
 
-	return types.ImageInspect{}, nil, newNotFoundErrorf("fakeClient.Images key: %s", imageID)
+	return typesimage.InspectResponse{}, newNotFoundErrorf("fakeClient.Images key: %s", imageID)
 }
 
 func (c *FakeClient) ImageList(ctx context.Context, options typesimage.ListOptions) ([]typesimage.Summary, error) {
@@ -374,18 +376,18 @@ func (c *FakeClient) VersionError(apiRequired, feature string) error {
 	return fmt.Errorf("%q requires API version %s, but the Docker daemon API version is... something else", feature, apiRequired)
 }
 
-func (c *FakeClient) BuildCachePrune(ctx context.Context, opts types.BuildCachePruneOptions) (*types.BuildCachePruneReport, error) {
+func (c *FakeClient) BuildCachePrune(ctx context.Context, opts typesbuild.CachePruneOptions) (*typesbuild.CachePruneReport, error) {
 	if err := c.BuildCachePruneErr; err != nil {
 		c.BuildCachePruneErr = nil
 		return nil, err
 	}
 
-	c.BuildCachePruneOpts = types.BuildCachePruneOptions{
+	c.BuildCachePruneOpts = typesbuild.CachePruneOptions{
 		All:         opts.All,
 		KeepStorage: opts.KeepStorage,
 		Filters:     opts.Filters.Clone(),
 	}
-	report := &types.BuildCachePruneReport{
+	report := &typesbuild.CachePruneReport{
 		CachesDeleted:  c.BuildCachesPruned,
 		SpaceReclaimed: uint64(units.MB * len(c.BuildCachesPruned)), // 1MB per cache pruned
 	}

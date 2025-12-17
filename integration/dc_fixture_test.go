@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os/exec"
 	"strings"
 	"testing"
@@ -80,10 +79,10 @@ func (f *dcFixture) dockerKillAll(name string) {
 	// don't exist anymore.
 	cmd = f.dockerCmd(append([]string{
 		"kill",
-	}, cIDs...), ioutil.Discard)
+	}, cIDs...), io.Discard)
 	_ = cmd.Run()
 
-	cmd = f.dockerCmd([]string{"network", "prune", "-f"}, ioutil.Discard)
+	cmd = f.dockerCmd([]string{"network", "prune", "-f"}, io.Discard)
 	_ = cmd.Run()
 }
 

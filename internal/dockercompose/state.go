@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types"
+	typescontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -102,7 +103,7 @@ func (s State) HasEverBeenReadyOrSucceeded() bool {
 }
 
 // Convert ContainerState into an apiserver-compatible state model.
-func ToContainerState(state *types.ContainerState) *v1alpha1.DockerContainerState {
+func ToContainerState(state *typescontainer.State) *v1alpha1.DockerContainerState {
 	if state == nil {
 		return nil
 	}
@@ -140,7 +141,7 @@ func ToContainerState(state *types.ContainerState) *v1alpha1.DockerContainerStat
 }
 
 // Returns the output of a healthcheck if the container is unhealthy.
-func ToHealthcheckOutput(state *types.ContainerState) string {
+func ToHealthcheckOutput(state *typescontainer.State) string {
 	health := state.Health
 	healthStatus := ""
 	if health == nil {
@@ -156,7 +157,7 @@ func ToHealthcheckOutput(state *types.ContainerState) string {
 }
 
 // Convert a full into an apiserver-compatible status model.
-func ToServiceStatus(id container.ID, name string, state *types.ContainerState, ports nat.PortMap) v1alpha1.DockerComposeServiceStatus {
+func ToServiceStatus(id container.ID, name string, state *typescontainer.State, ports nat.PortMap) v1alpha1.DockerComposeServiceStatus {
 	status := v1alpha1.DockerComposeServiceStatus{}
 	status.ContainerID = string(id)
 	status.ContainerName = name

@@ -15,6 +15,7 @@ linters:
   default: none
   enable:
     - copyloopvar
+    - staticcheck
     - errcheck
     - govet
     - ineffassign
@@ -25,6 +26,18 @@ linters:
     errcheck:
       check-type-assertions: false
       check-blank: false
+    staticcheck:
+      checks:
+        # Using a deprecated function, variable, constant or field.
+        # https://staticcheck.dev/docs/checks/#SA1019
+        # TODO(nicks): turn this on
+        #- "SA1*"
+        - "SA2*" # concurrency issues
+        - "SA3*" # testing issues
+        - "SA4*" # no-op issues
+        - "SA5*" # correctness issues
+        - "SA6*" # performance issues
+        - "SA9*" # dubious constructs
     govet:
       settings:
         printf:
@@ -46,12 +59,6 @@ linters:
       - legacy
       - std-error-handling
     rules:
-      - linters:
-          - staticcheck
-        text: 'SA1019:'
-      - linters:
-          - staticcheck
-        text: 'S1008:'
       - linters:
           - errcheck
         path: _test\.go

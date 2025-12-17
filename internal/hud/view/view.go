@@ -1,8 +1,10 @@
 package view
 
 import (
-	"strings"
 	"time"
+
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -44,7 +46,7 @@ var _ ResourceInfoView = DCResourceInfo{}
 func (DCResourceInfo) resourceInfoView()                     {}
 func (dcInfo DCResourceInfo) RuntimeSpanID() logstore.SpanID { return dcInfo.SpanID }
 func (dcInfo DCResourceInfo) Status() string {
-	return strings.Title(dcInfo.ContainerStatus)
+	return cases.Title(language.English).String(dcInfo.ContainerStatus)
 }
 func (dcInfo DCResourceInfo) RuntimeStatus() v1alpha1.RuntimeStatus { return dcInfo.RunStatus }
 

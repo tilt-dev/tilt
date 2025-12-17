@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"go/build"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
@@ -141,7 +140,7 @@ func (f *fixture) Curl(url string) (int, string, error) {
 		f.t.Errorf("Error fetching %s: %s", url, resp.Status)
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return -1, "", errors.Wrap(err, "Curl")
 	}
@@ -277,7 +276,7 @@ func (f *fixture) Touch(fileBaseName string) {
 func (f *fixture) ReplaceContents(fileBaseName, original, replacement string) {
 	f.t.Helper()
 	file := f.testDirPath(fileBaseName)
-	contentsBytes, err := ioutil.ReadFile(file)
+	contentsBytes, err := os.ReadFile(file)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -293,7 +292,7 @@ func (f *fixture) ReplaceContents(fileBaseName, original, replacement string) {
 		f.t.Fatalf("Could not find contents %q to replace in file %s: %s", original, fileBaseName, contents)
 	}
 
-	err = ioutil.WriteFile(file, []byte(newContents), os.FileMode(0777))
+	err = os.WriteFile(file, []byte(newContents), os.FileMode(0777))
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -382,6 +381,6 @@ func (f *fixture) TearDown() {
 	}
 
 	for k, v := range f.originalFiles {
-		_ = ioutil.WriteFile(k, []byte(v), os.FileMode(0777))
+		_ = os.WriteFile(k, []byte(v), os.FileMode(0777))
 	}
 }

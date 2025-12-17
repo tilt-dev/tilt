@@ -9,7 +9,7 @@ import (
 
 	"github.com/docker/go-units"
 
-	"github.com/docker/docker/api/types"
+	typesbuild "github.com/docker/docker/api/types/build"
 	typescontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	typesimage "github.com/docker/docker/api/types/image"
@@ -165,7 +165,7 @@ func (dp *DockerPruner) prune(ctx context.Context, maxAge time.Duration, keepRec
 	prettyPrintImagesPruneReport(imageReport, l)
 
 	// PRUNE BUILD CACHE
-	opts := types.BuildCachePruneOptions{Filters: f}
+	opts := typesbuild.CachePruneOptions{Filters: f}
 	cacheReport, err := dp.dCli.BuildCachePrune(ctx, opts)
 	if err != nil {
 		if !strings.Contains(err.Error(), `"build prune" requires API version`) {
@@ -179,10 +179,10 @@ func (dp *DockerPruner) prune(ctx context.Context, maxAge time.Duration, keepRec
 	return nil
 }
 
-func (dp *DockerPruner) inspectImages(ctx context.Context, imgs []typesimage.Summary) []types.ImageInspect {
-	result := []types.ImageInspect{}
+func (dp *DockerPruner) inspectImages(ctx context.Context, imgs []typesimage.Summary) []typesimage.InspectResponse {
+	result := []typesimage.InspectResponse{}
 	for _, imgSummary := range imgs {
-		inspect, _, err := dp.dCli.ImageInspectWithRaw(ctx, imgSummary.ID)
+		inspect, err := dp.dCli.ImageInspect(ctx, imgSummary.ID)
 		if err != nil {
 			logger.Get(ctx).Debugf("[Docker Prune] error inspecting image '%s': %v", imgSummary.ID, err)
 			continue
@@ -193,8 +193,8 @@ func (dp *DockerPruner) inspectImages(ctx context.Context, imgs []typesimage.Sum
 }
 
 // Return all image objects that exceed the max age threshold.
-func (dp *DockerPruner) filterImageInspectsByMaxAge(ctx context.Context, inspects []types.ImageInspect, maxAge time.Duration, selectors []container.RefSelector) []types.ImageInspect {
-	result := []types.ImageInspect{}
+func (dp *DockerPruner) filterImageInspectsByMaxAge(ctx context.Context, inspects []typesimage.InspectResponse, maxAge time.Duration, selectors []container.RefSelector) []typesimage.InspectResponse {
+	result := []typesimage.InspectResponse{}
 	for _, inspect := range inspects {
 		namedRefs, err := container.ParseNamedMulti(inspect.RepoTags)
 		if err != nil {
@@ -220,9 +220,9 @@ func (dp *DockerPruner) filterImageInspectsByMaxAge(ctx context.Context, inspect
 
 // Return all image objects that aren't in the N
 // most recently used for each tag.
-func (dp *DockerPruner) filterOutMostRecentInspects(ctx context.Context, inspects []types.ImageInspect, keepRecent int, selectors []container.RefSelector) []types.ImageInspect {
+func (dp *DockerPruner) filterOutMostRecentInspects(ctx context.Context, inspects []typesimage.InspectResponse, keepRecent int, selectors []container.RefSelector) []typesimage.InspectResponse {
 	// First, sort the images in order from most recent to least recent.
-	recentFirst := append([]types.ImageInspect{}, inspects...)
+	recentFirst := append([]typesimage.InspectResponse{}, inspects...)
 	sort.SliceStable(recentFirst, func(i, j int) bool {
 		// LastTagTime indicates the last time the image was built, which is more
 		// meaningful to us than when the image was created.
@@ -230,7 +230,7 @@ func (dp *DockerPruner) filterOutMostRecentInspects(ctx context.Context, inspect
 	})
 
 	// Next, aggregate the images by which selector they match.
-	imgsBySelector := make(map[container.RefSelector][]types.ImageInspect)
+	imgsBySelector := make(map[container.RefSelector][]typesimage.InspectResponse)
 	for _, inspect := range recentFirst {
 		namedRefs, err := container.ParseNamedMulti(inspect.RepoTags)
 		if err != nil {
@@ -254,7 +254,7 @@ func (dp *DockerPruner) filterOutMostRecentInspects(ctx context.Context, inspect
 		}
 	}
 
-	result := []types.ImageInspect{}
+	result := []typesimage.InspectResponse{}
 	for _, inspect := range inspects {
 		if !idsToKeep[inspect.ID] {
 			result = append(result, inspect)
@@ -330,7 +330,7 @@ func prettyStringImgDeleteItem(img typesimage.DeleteResponse) string {
 	return ""
 }
 
-func prettyPrintCachePruneReport(report *types.BuildCachePruneReport, l logger.Logger) {
+func prettyPrintCachePruneReport(report *typesbuild.CachePruneReport, l logger.Logger) {
 	if len(report.CachesDeleted) == 0 && !l.Level().ShouldDisplay(logger.VerboseLvl) {
 		return
 	}

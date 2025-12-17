@@ -4,7 +4,6 @@
 package integration
 
 import (
-	"io/ioutil"
 	"os"
 	"strings"
 	"syscall"
@@ -36,7 +35,7 @@ func TestLocalResource(t *testing.T) {
 	f.logs.AssertEventuallyContains(t, "hello! foo #1", 5*time.Second)
 
 	// write a sentinel file for the probe to find and change its result
-	if assert.NoError(t, ioutil.WriteFile(f.testDirPath("probe-success"), nil, 0777)) {
+	if assert.NoError(t, os.WriteFile(f.testDirPath("probe-success"), nil, 0777)) {
 		f.logs.AssertEventuallyContains(t, readinessProbeSuccessMessage, 5*time.Second)
 	}
 
@@ -48,7 +47,7 @@ func TestLocalResource(t *testing.T) {
 	f.logs.AssertEventuallyContains(t, "hello! bar #1", 5*time.Second)
 
 	// trigger a service restart by changing a watched file
-	if assert.NoError(t, ioutil.WriteFile(f.testDirPath("greeting"), []byte("hola"), 0777)) {
+	if assert.NoError(t, os.WriteFile(f.testDirPath("greeting"), []byte("hola"), 0777)) {
 		f.logs.AssertEventuallyContains(t, "hola! foo #1", 5*time.Second)
 	}
 
@@ -67,7 +66,7 @@ func TestLocalResource(t *testing.T) {
 	}
 
 	// hello.sh writes to cleanup.txt on SIGTERM
-	b, err := ioutil.ReadFile(f.testDirPath(cleanupTxt))
+	b, err := os.ReadFile(f.testDirPath(cleanupTxt))
 	if assert.NoError(t, err) {
 		s := string(b)
 		require.Contains(t, s, "cleaning up: foo")

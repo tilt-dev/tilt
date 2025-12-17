@@ -15,7 +15,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -754,10 +754,10 @@ func TestBoolInput(t *testing.T) {
 		expectedValue string
 	}{
 		{"true, default", v1alpha1.UIBoolInputSpec{}, true, "true"},
-		{"true, custom", v1alpha1.UIBoolInputSpec{TrueString: pointer.String("custom value")}, true, "custom value"},
+		{"true, custom", v1alpha1.UIBoolInputSpec{TrueString: ptr.To("custom value")}, true, "custom value"},
 		{"false, default", v1alpha1.UIBoolInputSpec{}, false, "false"},
-		{"false, custom", v1alpha1.UIBoolInputSpec{FalseString: pointer.String("ooh la la")}, false, "ooh la la"},
-		{"false, empty", v1alpha1.UIBoolInputSpec{FalseString: pointer.String("")}, false, ""},
+		{"false, custom", v1alpha1.UIBoolInputSpec{FalseString: ptr.To("ooh la la")}, false, "ooh la la"},
+		{"false, empty", v1alpha1.UIBoolInputSpec{FalseString: ptr.To("")}, false, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newFixture(t)

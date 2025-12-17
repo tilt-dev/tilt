@@ -65,7 +65,7 @@ type WebsocketSubscriber struct {
 	mu         sync.Mutex
 	conn       WebsocketConn
 
-	q                workqueue.Interface
+	q                workqueue.TypedInterface[bool]
 	dirtyUIResources map[string]*v1alpha1.UIResource
 	dirtyUIButtons   map[string]*v1alpha1.UIButton
 	dirtyUISession   *v1alpha1.UISession
@@ -89,7 +89,7 @@ func NewWebsocketSubscriber(ctx context.Context, ctrlClient ctrlclient.Client, s
 		ctrlClient:       ctrlClient,
 		st:               st,
 		conn:             conn,
-		q:                workqueue.New(),
+		q:                workqueue.NewTyped[bool](),
 		dirtyUIButtons:   make(map[string]*v1alpha1.UIButton),
 		dirtyUIResources: make(map[string]*v1alpha1.UIResource),
 		dirtyClusters:    make(map[string]*v1alpha1.Cluster),

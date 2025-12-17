@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	dtypes "github.com/docker/docker/api/types"
+	typescontainer "github.com/docker/docker/api/types/container"
 	"github.com/jonboulle/clockwork"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -152,7 +152,7 @@ func TestContainerEvent(t *testing.T) {
 	assert.Equal(t, "", status.ApplyError)
 	assert.Equal(t, true, status.ContainerState.Running)
 
-	container := dtypes.ContainerState{
+	container := typescontainer.State{
 		Status:     "exited",
 		Running:    false,
 		ExitCode:   0,
@@ -213,14 +213,14 @@ func TestContainerUnhealthy(t *testing.T) {
 	assert.Equal(t, "", status.ApplyError)
 	assert.Equal(t, true, status.ContainerState.Running)
 
-	container := dtypes.ContainerState{
+	container := typescontainer.State{
 		Status:    "running",
 		Running:   true,
 		ExitCode:  0,
 		StartedAt: "2021-09-08T19:58:01.483005100Z",
-		Health: &dtypes.Health{
-			Status: dtypes.Unhealthy,
-			Log: []*dtypes.HealthcheckResult{
+		Health: &typescontainer.Health{
+			Status: typescontainer.Unhealthy,
+			Log: []*typescontainer.HealthcheckResult{
 				{
 					Output: "healthcheck failed",
 				},
@@ -236,7 +236,7 @@ func TestContainerUnhealthy(t *testing.T) {
 	require.Eventually(t, func() bool {
 		f.MustReconcile(nn)
 		f.MustGet(nn, &obj)
-		return obj.Status.ContainerState.HealthStatus == dtypes.Unhealthy
+		return obj.Status.ContainerState.HealthStatus == typescontainer.Unhealthy
 	}, time.Second, 10*time.Millisecond, "container unhealthy")
 
 	assert.Equal(t, containerID, obj.Status.ContainerID)
@@ -254,7 +254,7 @@ func TestContainerUnhealthy(t *testing.T) {
 		}
 	}
 
-	assert.Equal(t, dtypes.Unhealthy,
+	assert.Equal(t, typescontainer.Unhealthy,
 		s.ManifestTargets["fe"].State.DCRuntimeState().ContainerState.HealthStatus)
 
 	assert.Contains(t, f.Stdout(), "healthcheck failed")

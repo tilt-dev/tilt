@@ -33,7 +33,7 @@ Removing servantes_fortune_1 ... done
 Going to remove servantes_fortune_1
 `
 	f.updateQueue("m1", v1alpha1.DisableStateDisabled)
-	f.clock.BlockUntil(1)
+	f.clock.BlockUntilContext(f.ctx, 1)
 	f.clock.Advance(20 * disableDebounceDelay)
 	f.startTime = f.clock.Now()
 
@@ -50,7 +50,7 @@ func TestDockerComposeDebounce(t *testing.T) {
 
 	f.updateQueue("m2", v1alpha1.DisableStateDisabled)
 
-	f.clock.BlockUntil(2)
+	f.clock.BlockUntilContext(f.ctx, 2)
 	f.clock.Advance(20 * disableDebounceDelay)
 
 	call := f.rmCall(1)
@@ -66,7 +66,7 @@ func TestDockerComposeDontRetryOnSameStartTime(t *testing.T) {
 
 	f.updateQueue("m2", v1alpha1.DisableStateDisabled)
 
-	f.clock.BlockUntil(2)
+	f.clock.BlockUntilContext(f.ctx, 2)
 	f.clock.Advance(2 * disableDebounceDelay)
 
 	call := f.rmCall(1)
@@ -84,10 +84,10 @@ func TestDockerComposeRetryIfStartTimeChanges(t *testing.T) {
 	f.updateQueue("m1", v1alpha1.DisableStateDisabled)
 	f.updateQueue("m2", v1alpha1.DisableStateEnabled)
 	require.Len(t, f.dcClient.RmCalls(), 0)
-	f.clock.BlockUntil(1)
+	f.clock.BlockUntilContext(f.ctx, 1)
 
 	f.updateQueue("m2", v1alpha1.DisableStateDisabled)
-	f.clock.BlockUntil(2)
+	f.clock.BlockUntilContext(f.ctx, 2)
 
 	f.clock.Advance(2 * disableDebounceDelay)
 
@@ -102,7 +102,7 @@ func TestDockerComposeRetryIfStartTimeChanges(t *testing.T) {
 	f.startTime = f.clock.Now()
 	f.updateQueue("m2", v1alpha1.DisableStateDisabled)
 
-	f.clock.BlockUntil(1)
+	f.clock.BlockUntilContext(f.ctx, 1)
 	f.clock.Advance(2 * disableDebounceDelay)
 
 	call = f.rmCall(2)
@@ -114,7 +114,7 @@ func TestDockerComposeDontDisableIfReenabledDuringDebounce(t *testing.T) {
 	f.updateQueue("m1", v1alpha1.DisableStateDisabled)
 	f.updateQueue("m2", v1alpha1.DisableStateDisabled)
 
-	f.clock.BlockUntil(2)
+	f.clock.BlockUntilContext(f.ctx, 2)
 
 	// reenable m2 during debounce
 	f.updateQueue("m2", v1alpha1.DisableStateEnabled)
@@ -132,7 +132,7 @@ func TestDisableError(t *testing.T) {
 	f.dcClient.RmError = errors.New("fake dc error")
 	f.updateQueue("m1", v1alpha1.DisableStateDisabled)
 
-	f.clock.BlockUntil(1)
+	f.clock.BlockUntilContext(f.ctx, 1)
 	f.clock.Advance(2 * disableDebounceDelay)
 
 	require.Eventually(t, func() bool {

@@ -5,7 +5,7 @@ package integration
 
 import (
 	"context"
-	"io/ioutil"
+	"io"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -46,7 +46,7 @@ func TestCRD(t *testing.T) {
 func TestCRDNotFound(t *testing.T) {
 	f := newK8sFixture(t, "crd")
 
-	err := f.tilt.Down(f.ctx, ioutil.Discard)
+	err := f.tilt.Down(f.ctx, io.Discard)
 	require.NoError(t, err)
 }
 
@@ -62,7 +62,7 @@ func TestCRDPartialNotFound(t *testing.T) {
 	_, err = f.runCommand("kubectl", "get", "crd", "uselessmachines.tilt.dev")
 	assert.NoError(t, err)
 
-	err = f.tilt.Down(f.ctx, ioutil.Discard)
+	err = f.tilt.Down(f.ctx, io.Discard)
 	require.NoError(t, err)
 
 	// Make sure the crds were deleted.

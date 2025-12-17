@@ -137,7 +137,7 @@ func (f *dockerBuildFixture) getNameFromTest() wmcontainer.RefSet {
 type expectedFile = testutils.ExpectedFile
 
 func (f *dockerBuildFixture) assertImageHasLabels(ref reference.Named, expected map[string]string) {
-	inspect, _, err := f.dCli.ImageInspectWithRaw(f.ctx, ref.String())
+	inspect, err := f.dCli.ImageInspect(f.ctx, ref.String())
 	if err != nil {
 		f.t.Fatalf("error inspecting image %s: %v", ref.String(), err)
 	}

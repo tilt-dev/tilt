@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/docker/docker/api/types"
+	typesimage "github.com/docker/docker/api/types/image"
 	"github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -79,7 +79,7 @@ func TestDigestFromOutputV1_23(t *testing.T) {
 
 	input := docker.ExampleBuildOutputV1_23
 	expected := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
-	f.fakeDocker.Images["11cd0b38bc3c"] = types.ImageInspect{ID: string(expected)}
+	f.fakeDocker.Images["11cd0b38bc3c"] = typesimage.InspectResponse{ID: string(expected)}
 	actual, _, err := f.b.getDigestFromBuildOutput(f.ctx, bytes.NewBuffer([]byte(input)))
 	if err != nil {
 		t.Fatal(err)
@@ -93,7 +93,7 @@ func TestDumpImageDeployRef(t *testing.T) {
 	f := newFakeDockerBuildFixture(t)
 
 	digest := digest.Digest("sha256:11cd0eb38bc3ceb958ffb2f9bd70be3fb317ce7d255c8a4c3f4af30e298aa1aab")
-	f.fakeDocker.Images["example-image:dev"] = types.ImageInspect{ID: string(digest)}
+	f.fakeDocker.Images["example-image:dev"] = typesimage.InspectResponse{ID: string(digest)}
 	ref, err := f.b.DumpImageDeployRef(f.ctx, "example-image:dev")
 	require.NoError(t, err)
 	assert.Equal(t, "docker.io/library/example-image:tilt-11cd0eb38bc3ceb9", ref.String())

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/docker/docker/client"
+	cerrdefs "github.com/containerd/errdefs"
 
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
@@ -92,7 +92,7 @@ func (r *Reconciler) runProjectWatch(pw *ProjectWatch) {
 			key := serviceKey{service: evt.Service, projectHash: pw.hash}
 			c, err := r.getContainerInfo(ctx, evt.ID)
 			if err != nil {
-				if !client.IsErrNotFound(err) {
+				if !cerrdefs.IsNotFound(err) {
 					logger.Get(ctx).Debugf("[dcwatch]: %v", err)
 				}
 				continue

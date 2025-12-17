@@ -5,7 +5,7 @@ import (
 	"strings"
 	"sync"
 
-	dtypes "github.com/docker/docker/api/types"
+	dtypescontainer "github.com/docker/docker/api/types/container"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -420,7 +420,7 @@ func (r *Reconciler) forceApplyHelper(
 	}
 
 	name := ""
-	var containerState *dtypes.ContainerState
+	var containerState *dtypescontainer.State
 	if containerJSON.ContainerJSONBase != nil && containerJSON.ContainerJSONBase.State != nil {
 		containerState = containerJSON.ContainerJSONBase.State
 
