@@ -31,12 +31,16 @@ var webModeFlag model.WebMode = model.DefaultWebMode
 const DefaultWebDevPort = 46764
 
 var (
-	updateModeFlag   string   = string(liveupdates.UpdateModeAuto)
-	webDevPort                = 0
-	logActionsFlag   bool     = false
-	logSourceFlag    string   = ""
-	logResourcesFlag []string = nil
-	logLevelFlag     string   = ""
+	updateModeFlag    string   = string(liveupdates.UpdateModeAuto)
+	webDevPort                 = 0
+	logActionsFlag    bool     = false
+	logSourceFlag     string   = ""
+	logResourcesFlag  []string = nil
+	logLevelFlag      string   = ""
+	logSinceFlag      string   = ""
+	logTailFlag       int      = -1 // -1 means no limit
+	logJSONFlag       bool     = false
+	logJSONFieldsFlag string   = ""
 )
 
 var userExitError = errors.New("user requested Tilt exit")

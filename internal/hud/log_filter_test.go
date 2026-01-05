@@ -2,8 +2,10 @@ package hud
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
@@ -175,7 +177,7 @@ func TestLogFilterApply(t *testing.T) {
 	testCases := []testCase{
 		{
 			description: "empty filter matches all logs",
-			logFilter:   LogFilter{},
+			logFilter:   LogFilter{tail: -1},
 			input: []logstore.LogLine{
 				{SpanID: "pod:default:nginx"},
 				{SpanID: "build:1"},
@@ -191,7 +193,7 @@ func TestLogFilterApply(t *testing.T) {
 		},
 		{
 			description: "filter with source all matches all logs",
-			logFilter:   LogFilter{source: FilterSourceAll},
+			logFilter:   LogFilter{source: FilterSourceAll, tail: -1},
 			input: []logstore.LogLine{
 				{SpanID: "pod:default:nginx"},
 				{SpanID: "build:1"},
@@ -207,7 +209,7 @@ func TestLogFilterApply(t *testing.T) {
 		},
 		{
 			description: "filter with source build matches build logs",
-			logFilter:   LogFilter{source: FilterSourceBuild},
+			logFilter:   LogFilter{source: FilterSourceBuild, tail: -1},
 			input: []logstore.LogLine{
 				{SpanID: "pod:default:nginx"},
 				{SpanID: "build:1"},
@@ -221,7 +223,7 @@ func TestLogFilterApply(t *testing.T) {
 		},
 		{
 			description: "filter with source runtime matches non-build logs",
-			logFilter:   LogFilter{source: FilterSourceRuntime},
+			logFilter:   LogFilter{source: FilterSourceRuntime, tail: -1},
 			input: []logstore.LogLine{
 				{SpanID: "pod:default:nginx"},
 				{SpanID: "build:1"},
@@ -235,7 +237,7 @@ func TestLogFilterApply(t *testing.T) {
 		},
 		{
 			description: "filter with level warn matches warn logs",
-			logFilter:   LogFilter{source: FilterSourceAll, level: logger.WarnLvl},
+			logFilter:   LogFilter{source: FilterSourceAll, level: logger.WarnLvl, tail: -1},
 			input: []logstore.LogLine{
 				{SpanID: "pod:default:nginx", Level: logger.DebugLvl},
 				{SpanID: "build:1", Level: logger.InfoLvl},
@@ -248,7 +250,7 @@ func TestLogFilterApply(t *testing.T) {
 		},
 		{
 			description: "filter with level error matches error logs",
-			logFilter:   LogFilter{source: FilterSourceAll, level: logger.ErrorLvl},
+			logFilter:   LogFilter{source: FilterSourceAll, level: logger.ErrorLvl, tail: -1},
 			input: []logstore.LogLine{
 				{SpanID: "pod:default:nginx", Level: logger.DebugLvl},
 				{SpanID: "build:1", Level: logger.InfoLvl},
@@ -261,7 +263,7 @@ func TestLogFilterApply(t *testing.T) {
 		},
 		{
 			description: "filter with manifest name matches only logs with the same manifest name",
-			logFilter:   LogFilter{source: FilterSourceAll, resources: FilterResources{"nginx"}},
+			logFilter:   LogFilter{source: FilterSourceAll, resources: FilterResources{"nginx"}, tail: -1},
 			input: []logstore.LogLine{
 				{SpanID: "pod:default:nginx", ManifestName: "nginx"},
 				{SpanID: "build:1", ManifestName: "nginx"},
@@ -280,6 +282,242 @@ func TestLogFilterApply(t *testing.T) {
 		t.Run(tc.description, func(t *testing.T) {
 			actual := tc.logFilter.Apply(tc.input)
 			assert.Equal(t, tc.expected, actual)
+		})
+	}
+}
+
+func TestLogFilterApplyWithSince(t *testing.T) {
+	now := time.Date(2025, 1, 15, 12, 0, 0, 0, time.UTC)
+
+	testCases := []struct {
+		description string
+		since       time.Duration
+		input       []logstore.LogLine
+		expected    []logstore.LogLine
+	}{
+		{
+			description: "since 0 returns all logs",
+			since:       0,
+			input: []logstore.LogLine{
+				{SpanID: "pod:1", Time: now.Add(-1 * time.Hour)},
+				{SpanID: "pod:2", Time: now.Add(-30 * time.Minute)},
+				{SpanID: "pod:3", Time: now.Add(-5 * time.Minute)},
+			},
+			expected: []logstore.LogLine{
+				{SpanID: "pod:1", Time: now.Add(-1 * time.Hour)},
+				{SpanID: "pod:2", Time: now.Add(-30 * time.Minute)},
+				{SpanID: "pod:3", Time: now.Add(-5 * time.Minute)},
+			},
+		},
+		{
+			description: "since 10m filters logs older than 10 minutes",
+			since:       10 * time.Minute,
+			input: []logstore.LogLine{
+				{SpanID: "pod:1", Time: now.Add(-1 * time.Hour)},
+				{SpanID: "pod:2", Time: now.Add(-30 * time.Minute)},
+				{SpanID: "pod:3", Time: now.Add(-5 * time.Minute)},
+			},
+			expected: []logstore.LogLine{
+				{SpanID: "pod:3", Time: now.Add(-5 * time.Minute)},
+			},
+		},
+		{
+			description: "since 1h includes logs at boundary",
+			since:       1 * time.Hour,
+			input: []logstore.LogLine{
+				{SpanID: "pod:1", Time: now.Add(-1 * time.Hour)},
+				{SpanID: "pod:2", Time: now.Add(-30 * time.Minute)},
+			},
+			expected: []logstore.LogLine{
+				{SpanID: "pod:1", Time: now.Add(-1 * time.Hour)},
+				{SpanID: "pod:2", Time: now.Add(-30 * time.Minute)},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			filter := LogFilter{since: tc.since, tail: -1}
+			actual := filter.ApplyWithTime(tc.input, now)
+			assert.Equal(t, tc.expected, actual)
+		})
+	}
+}
+
+func TestLogFilterApplyWithTail(t *testing.T) {
+	testCases := []struct {
+		description string
+		tail        int
+		input       []logstore.LogLine
+		expected    []logstore.LogLine
+	}{
+		{
+			description: "tail -1 returns all logs",
+			tail:        -1,
+			input: []logstore.LogLine{
+				{SpanID: "pod:1"},
+				{SpanID: "pod:2"},
+				{SpanID: "pod:3"},
+				{SpanID: "pod:4"},
+			},
+			expected: []logstore.LogLine{
+				{SpanID: "pod:1"},
+				{SpanID: "pod:2"},
+				{SpanID: "pod:3"},
+				{SpanID: "pod:4"},
+			},
+		},
+		{
+			description: "tail 2 returns last 2 logs",
+			tail:        2,
+			input: []logstore.LogLine{
+				{SpanID: "pod:1"},
+				{SpanID: "pod:2"},
+				{SpanID: "pod:3"},
+				{SpanID: "pod:4"},
+			},
+			expected: []logstore.LogLine{
+				{SpanID: "pod:3"},
+				{SpanID: "pod:4"},
+			},
+		},
+		{
+			description: "tail 0 returns no logs",
+			tail:        0,
+			input: []logstore.LogLine{
+				{SpanID: "pod:1"},
+				{SpanID: "pod:2"},
+			},
+			expected: []logstore.LogLine{},
+		},
+		{
+			description: "tail larger than input returns all",
+			tail:        10,
+			input: []logstore.LogLine{
+				{SpanID: "pod:1"},
+				{SpanID: "pod:2"},
+			},
+			expected: []logstore.LogLine{
+				{SpanID: "pod:1"},
+				{SpanID: "pod:2"},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			filter := LogFilter{tail: tc.tail}
+			actual := filter.Apply(tc.input)
+			assert.Equal(t, tc.expected, actual)
+		})
+	}
+}
+
+func TestLogFilterApplyWithSinceAndTail(t *testing.T) {
+	now := time.Date(2025, 1, 15, 12, 0, 0, 0, time.UTC)
+
+	// Test chaining: since filters first, then tail takes from the result
+	input := []logstore.LogLine{
+		{SpanID: "pod:1", Time: now.Add(-2 * time.Hour)}, // too old
+		{SpanID: "pod:2", Time: now.Add(-45 * time.Minute)},
+		{SpanID: "pod:3", Time: now.Add(-30 * time.Minute)},
+		{SpanID: "pod:4", Time: now.Add(-15 * time.Minute)},
+		{SpanID: "pod:5", Time: now.Add(-5 * time.Minute)},
+	}
+
+	filter := LogFilter{
+		since: 1 * time.Hour, // filters to pod:2, pod:3, pod:4, pod:5
+		tail:  2,             // takes last 2: pod:4, pod:5
+	}
+
+	expected := []logstore.LogLine{
+		{SpanID: "pod:4", Time: now.Add(-15 * time.Minute)},
+		{SpanID: "pod:5", Time: now.Add(-5 * time.Minute)},
+	}
+
+	actual := filter.ApplyWithTime(input, now)
+	assert.Equal(t, expected, actual)
+}
+
+func TestParseJSONFields(t *testing.T) {
+	testCases := []struct {
+		input    string
+		expected JSONFieldSet
+	}{
+		{
+			input:    "",
+			expected: MinimalJSONFields(),
+		},
+		{
+			input:    "minimal",
+			expected: MinimalJSONFields(),
+		},
+		{
+			input:    "full",
+			expected: FullJSONFields(),
+		},
+		{
+			input: "time,resource",
+			expected: JSONFieldSet{
+				Time:     true,
+				Resource: true,
+			},
+		},
+		{
+			input: "minimal,spanid",
+			expected: JSONFieldSet{
+				Time:     true,
+				Resource: true,
+				Level:    true,
+				Message:  true,
+				SpanID:   true,
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.input, func(t *testing.T) {
+			actual, err := ParseJSONFields(tc.input)
+			require.NoError(t, err)
+			assert.Equal(t, tc.expected, actual)
+		})
+	}
+}
+
+func TestParseJSONFieldsUnknown(t *testing.T) {
+	testCases := []struct {
+		input       string
+		expectedErr string
+	}{
+		{
+			input:       "foo",
+			expectedErr: "unknown --json-fields: foo",
+		},
+		{
+			input:       "time,unknown,resource",
+			expectedErr: "unknown --json-fields: unknown",
+		},
+		{
+			input:       "badfield1,badfield2",
+			expectedErr: "unknown --json-fields: badfield1, badfield2",
+		},
+		{
+			// Ensure "full" doesn't bypass unknown field validation
+			input:       "full,typo",
+			expectedErr: "unknown --json-fields: typo",
+		},
+		{
+			// Ensure unknown before "full" is still caught
+			input:       "typo,full",
+			expectedErr: "unknown --json-fields: typo",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.input, func(t *testing.T) {
+			_, err := ParseJSONFields(tc.input)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tc.expectedErr)
 		})
 	}
 }

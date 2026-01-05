@@ -12,6 +12,12 @@ var backoffMultiplier = time.Duration(2)
 
 type Stdout io.Writer
 
+// LogPrinter is the interface for printing log lines.
+type LogPrinter interface {
+	Print(lines []logstore.LogLine)
+	PrintNewline()
+}
+
 type IncrementalPrinter struct {
 	progress map[progressKey]progressStatus
 	stdout   Stdout

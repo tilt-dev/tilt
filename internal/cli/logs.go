@@ -35,6 +35,7 @@ By default, looks for a running Tilt instance on localhost:10350
 
 	addConnectServerFlags(cmd)
 	addLogFilterFlags(cmd, "")
+	addLogOutputFlags(cmd)
 	return cmd
 }
 
@@ -56,5 +57,5 @@ func (c *logsCmd) run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	return server.StreamLogs(ctx, c.follow, logDeps.url, logDeps.filter, logDeps.printer)
+	return server.StreamLogs(ctx, c.follow, logDeps.url, logDeps.filter, logDeps.stdout)
 }

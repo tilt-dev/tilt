@@ -8,6 +8,7 @@ package cli
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/google/wire"
@@ -363,7 +364,20 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	filterSource := provideLogSource()
 	filterResources := provideLogResources()
 	filterLevel := provideLogLevel()
-	logFilter := hud.NewLogFilter(filterSource, filterResources, filterLevel)
+	filterSince, err := provideLogSince()
+	if err != nil {
+		return CmdUpDeps{}, err
+	}
+	filterTail, err := provideLogTail()
+	if err != nil {
+		return CmdUpDeps{}, err
+	}
+	filterJSON := provideLogJSON()
+	filterJSONFields := provideLogJSONFields()
+	logFilter, err := hud.NewLogFilter(filterSource, filterResources, filterLevel, filterSince, filterTail, filterJSON, filterJSONFields)
+	if err != nil {
+		return CmdUpDeps{}, err
+	}
 	terminalStream := hud.NewTerminalStream(incrementalPrinter, logFilter, storeStore)
 	openInput := _wireOpenInputValue
 	terminalPrompt := prompt.NewTerminalPrompt(analytics3, openInput, openURL, stdout, webHost, webURL)
@@ -579,7 +593,20 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	filterSource := provideLogSource()
 	filterResources := provideLogResources()
 	filterLevel := provideLogLevel()
-	logFilter := hud.NewLogFilter(filterSource, filterResources, filterLevel)
+	filterSince, err := provideLogSince()
+	if err != nil {
+		return CmdCIDeps{}, err
+	}
+	filterTail, err := provideLogTail()
+	if err != nil {
+		return CmdCIDeps{}, err
+	}
+	filterJSON := provideLogJSON()
+	filterJSONFields := provideLogJSONFields()
+	logFilter, err := hud.NewLogFilter(filterSource, filterResources, filterLevel, filterSince, filterTail, filterJSON, filterJSONFields)
+	if err != nil {
+		return CmdCIDeps{}, err
+	}
 	terminalStream := hud.NewTerminalStream(incrementalPrinter, logFilter, storeStore)
 	openInput := _wireOpenInputValue
 	terminalPrompt := prompt.NewTerminalPrompt(analytics3, openInput, openURL, stdout, webHost, webURL)
@@ -787,7 +814,20 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	filterSource := provideLogSource()
 	filterResources := provideLogResources()
 	filterLevel := provideLogLevel()
-	logFilter := hud.NewLogFilter(filterSource, filterResources, filterLevel)
+	filterSince, err := provideLogSince()
+	if err != nil {
+		return CmdUpdogDeps{}, err
+	}
+	filterTail, err := provideLogTail()
+	if err != nil {
+		return CmdUpdogDeps{}, err
+	}
+	filterJSON := provideLogJSON()
+	filterJSONFields := provideLogJSONFields()
+	logFilter, err := hud.NewLogFilter(filterSource, filterResources, filterLevel, filterSince, filterTail, filterJSON, filterJSONFields)
+	if err != nil {
+		return CmdUpdogDeps{}, err
+	}
 	terminalStream := hud.NewTerminalStream(incrementalPrinter, logFilter, storeStore)
 	cliUpdogSubscriber := provideUpdogSubscriber(objects, deferredClient)
 	v2 := provideUpdogCmdSubscribers(headsUpServerController, tiltServerControllerManager, controllerBuilder, terminalStream, cliUpdogSubscriber)
@@ -1016,15 +1056,27 @@ func wireLogsDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, s
 		return LogsDeps{}, err
 	}
 	stdout := hud.ProvideStdout()
-	incrementalPrinter := hud.NewIncrementalPrinter(stdout)
 	filterSource := provideLogSource()
 	filterResources := provideLogResources()
 	filterLevel := provideLogLevel()
-	logFilter := hud.NewLogFilter(filterSource, filterResources, filterLevel)
+	filterSince, err := provideLogSince()
+	if err != nil {
+		return LogsDeps{}, err
+	}
+	filterTail, err := provideLogTail()
+	if err != nil {
+		return LogsDeps{}, err
+	}
+	filterJSON := provideLogJSON()
+	filterJSONFields := provideLogJSONFields()
+	logFilter, err := hud.NewLogFilter(filterSource, filterResources, filterLevel, filterSince, filterTail, filterJSON, filterJSONFields)
+	if err != nil {
+		return LogsDeps{}, err
+	}
 	logsDeps := LogsDeps{
-		url:     webURL,
-		printer: incrementalPrinter,
-		filter:  logFilter,
+		url:    webURL,
+		stdout: stdout,
+		filter: logFilter,
 	}
 	return logsDeps, nil
 }
@@ -1118,7 +1170,11 @@ var BaseWireSet = wire.NewSet(
 	K8sWireSet, tiltfile.WireSet, git.ProvideGitRemote, localexec.DefaultEnv, localexec.NewProcessExecer, wire.Bind(new(localexec.Execer), new(*localexec.ProcessExecer)), docker.SwitchWireSet, dockercompose.NewDockerComposeClient, clockwork.NewRealClock, engine.DeployerWireSet, engine.NewBuildController, local.NewServerController, kubernetesdiscovery.NewContainerRestartDetector, k8swatch.NewServiceWatcher, k8swatch.NewEventWatchManager, uisession2.NewSubscriber, uiresource2.NewSubscriber, configs.NewConfigsController, configs.NewTriggerQueueSubscriber, telemetry.NewController, cloud.WireSet, cloudurl.ProvideAddress, k8srollout.NewPodMonitor, telemetry.NewStartTracker, session2.NewController, build.ProvideClock, provideClock,
 	provideLogSource,
 	provideLogResources,
-	provideLogLevel, hud.WireSet, prompt.WireSet, wire.Value(openurl.OpenURL(openurl.BrowserOpen)), provideLogActions, store.NewStore, wire.Bind(new(store.RStore), new(*store.Store)), wire.Bind(new(store.Dispatcher), new(*store.Store)), dockerprune.NewDockerPruner, provideTiltInfo, engine.NewUpper, analytics2.NewAnalyticsUpdater, analytics2.ProvideAnalyticsReporter, provideUpdateModeFlag, fsevent.ProvideWatcherMaker, fsevent.ProvideTimerMaker, controllers.WireSet, provideCITimeoutFlag,
+	provideLogLevel,
+	provideLogSince,
+	provideLogTail,
+	provideLogJSON,
+	provideLogJSONFields, hud.WireSet, prompt.WireSet, wire.Value(openurl.OpenURL(openurl.BrowserOpen)), provideLogActions, store.NewStore, wire.Bind(new(store.RStore), new(*store.Store)), wire.Bind(new(store.Dispatcher), new(*store.Store)), dockerprune.NewDockerPruner, provideTiltInfo, engine.NewUpper, analytics2.NewAnalyticsUpdater, analytics2.ProvideAnalyticsReporter, provideUpdateModeFlag, fsevent.ProvideWatcherMaker, fsevent.ProvideTimerMaker, controllers.WireSet, provideCITimeoutFlag,
 	provideWebVersion,
 	provideWebMode,
 	provideWebURL,
@@ -1169,9 +1225,9 @@ type DownDeps struct {
 }
 
 type LogsDeps struct {
-	url     model.WebURL
-	printer *hud.IncrementalPrinter
-	filter  hud.LogFilter
+	url    model.WebURL
+	stdout hud.Stdout
+	filter hud.LogFilter
 }
 
 func provideClock() func() time.Time {
@@ -1208,4 +1264,33 @@ func provideLogLevel() hud.FilterLevel {
 	default:
 		return hud.FilterLevel(logger.NoneLvl)
 	}
+}
+
+func provideLogSince() (hud.FilterSince, error) {
+	if logSinceFlag == "" {
+		return hud.FilterSince(0), nil
+	}
+	d, err := time.ParseDuration(logSinceFlag)
+	if err != nil {
+		return 0, err
+	}
+	if d < 0 {
+		return 0, fmt.Errorf("--since duration must be positive, got %v", d)
+	}
+	return hud.FilterSince(d), nil
+}
+
+func provideLogTail() (hud.FilterTail, error) {
+	if logTailFlag < -1 {
+		return 0, fmt.Errorf("--tail must be -1 (no limit) or >= 0, got %d", logTailFlag)
+	}
+	return hud.FilterTail(logTailFlag), nil
+}
+
+func provideLogJSON() hud.FilterJSON {
+	return hud.FilterJSON(logJSONFlag)
+}
+
+func provideLogJSONFields() hud.FilterJSONFields {
+	return hud.FilterJSONFields(logJSONFieldsFlag)
 }

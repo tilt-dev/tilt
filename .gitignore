@@ -63,3 +63,9 @@ yarn-error.log*
 # http caches from running kubectl in integration tests
 integration/.kube
 .aider*
+
+# Claude Code state files
+.claude/
+
+# Built binary at repo root
+/tilt
