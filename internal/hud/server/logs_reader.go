@@ -4,7 +4,7 @@ import (
 	"context"
 	"io"
 
-	"github.com/golang/protobuf/jsonpb"
+	"github.com/golang/protobuf/jsonpb" //nolint:staticcheck // SA1019
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
 

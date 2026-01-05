@@ -105,6 +105,19 @@ func TestTopLevelBuiltin(t *testing.T) {
 	assert.Equal(t, 1, e.callCount)
 }
 
+func TestWhile(t *testing.T) {
+	e := NewPluginWithIdentifier("hi")
+	f := NewFixture(t, e)
+	f.File("Tiltfile", `
+while True:
+  hi()
+  break
+`)
+	_, err := f.ExecFile("Tiltfile")
+	assert.NoError(t, err)
+	assert.Equal(t, 1, e.callCount)
+}
+
 func TestModuleBuiltin(t *testing.T) {
 	e := NewPluginWithIdentifier("oh.hai")
 	f := NewFixture(t, e)

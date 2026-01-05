@@ -9,18 +9,19 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
+	"go.starlark.net/syntax"
 
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
-func init() {
-	resolve.AllowSet = true
-	resolve.AllowLambda = true
-	resolve.AllowNestedDef = true
-	resolve.AllowGlobalReassign = true
-	resolve.AllowRecursion = true
+// Starlark options used for all files in the environment.
+var fileOptions = &syntax.FileOptions{
+	Set:             true,
+	GlobalReassign:  true,
+	Recursion:       true,
+	TopLevelControl: true,
+	While:           true,
 }
 
 // The main entrypoint to starkit.
@@ -300,7 +301,7 @@ func (e *Environment) doLoad(t *starlark.Thread, localPath string) (starlark.Str
 	}
 	predeclared["__file__"] = starlark.String(localPath)
 
-	return starlark.ExecFile(t, localPath, bytes, predeclared)
+	return starlark.ExecFileOptions(fileOptions, t, localPath, bytes, predeclared)
 }
 
 type ArgUnpacker func(fnName string, args starlark.Tuple, kwargs []starlark.Tuple, pairs ...interface{}) error
