@@ -12,7 +12,7 @@ import (
 
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
-	"github.com/golang/protobuf/jsonpb"
+	"github.com/golang/protobuf/jsonpb" //nolint:staticcheck // SA1019
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	_ "github.com/gorilla/websocket"

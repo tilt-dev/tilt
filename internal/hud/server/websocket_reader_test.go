@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/jsonpb"
+	"github.com/golang/protobuf/jsonpb" //nolint:staticcheck // SA1019
 	"github.com/stretchr/testify/assert"
 
 	"github.com/tilt-dev/tilt/internal/testutils/bufsync"

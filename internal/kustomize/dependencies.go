@@ -85,7 +85,7 @@ func dependenciesForKustomization(dir string) ([]string, error) {
 		return nil, fmt.Errorf("Failed to read kustomization file under %s:\n"+strings.Join(errs, "\n"), dir)
 	}
 
-	paths := append([]string{}, content.Bases...)
+	paths := append([]string{}, content.Bases...) //nolint:staticcheck // SA1019
 	paths = append(paths, content.Components...)
 	paths = append(paths, content.Resources...)
 
@@ -108,11 +108,11 @@ func dependenciesForKustomization(dir string) ([]string, error) {
 			deps = append(deps, filepath.Join(dir, patch.Path))
 		}
 	}
-	for _, patch := range content.PatchesStrategicMerge {
+	for _, patch := range content.PatchesStrategicMerge { //nolint:staticcheck // SA1019
 		deps = append(deps, filepath.Join(dir, string(patch)))
 	}
 	deps = append(deps, joinPaths(dir, content.Crds)...)
-	for _, patch := range content.PatchesJson6902 {
+	for _, patch := range content.PatchesJson6902 { //nolint:staticcheck // SA1019
 		deps = append(deps, filepath.Join(dir, patch.Path))
 	}
 	for _, generator := range content.ConfigMapGenerator {
