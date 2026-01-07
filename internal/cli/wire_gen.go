@@ -8,15 +8,9 @@ package cli
 
 import (
 	"context"
-	"time"
-
 	"github.com/google/wire"
 	"github.com/jonboulle/clockwork"
 	"github.com/spf13/afero"
-	"go.opentelemetry.io/otel/sdk/trace"
-	version2 "k8s.io/apimachinery/pkg/version"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	"github.com/tilt-dev/clusterid"
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"
@@ -54,6 +48,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/engine"
 	analytics2 "github.com/tilt-dev/tilt/internal/engine/analytics"
 	"github.com/tilt-dev/tilt/internal/engine/buildcontrol"
+	"github.com/tilt-dev/tilt/internal/engine/buildinsights"
 	"github.com/tilt-dev/tilt/internal/engine/configs"
 	"github.com/tilt-dev/tilt/internal/engine/dockerprune"
 	"github.com/tilt-dev/tilt/internal/engine/k8srollout"
@@ -87,7 +82,13 @@ import (
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 	"github.com/tilt-dev/wmclient/pkg/dirs"
+	"go.opentelemetry.io/otel/sdk/trace"
+	version2 "k8s.io/apimachinery/pkg/version"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"time"
+)
 
+import (
 	_ "embed"
 )
 
@@ -251,7 +252,12 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	}
 	websocketList := server.NewWebsocketList()
 	deferredClient := controllers.ProvideDeferredClient()
-	headsUpServer, err := server.ProvideHeadsUpServer(ctx, storeStore, assetsServer, analytics3, websocketList, deferredClient)
+	buildInsightsStore, err := buildinsights.ProvideInsightsStore(base)
+	if err != nil {
+		return CmdUpDeps{}, err
+	}
+	insightsHandler := server.ProvideInsightsHandler(buildInsightsStore)
+	headsUpServer, err := server.ProvideHeadsUpServer(ctx, storeStore, assetsServer, analytics3, websocketList, deferredClient, insightsHandler)
 	if err != nil {
 		return CmdUpDeps{}, err
 	}
@@ -467,7 +473,12 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	}
 	websocketList := server.NewWebsocketList()
 	deferredClient := controllers.ProvideDeferredClient()
-	headsUpServer, err := server.ProvideHeadsUpServer(ctx, storeStore, assetsServer, analytics3, websocketList, deferredClient)
+	buildInsightsStore, err := buildinsights.ProvideInsightsStore(base)
+	if err != nil {
+		return CmdCIDeps{}, err
+	}
+	insightsHandler := server.ProvideInsightsHandler(buildInsightsStore)
+	headsUpServer, err := server.ProvideHeadsUpServer(ctx, storeStore, assetsServer, analytics3, websocketList, deferredClient, insightsHandler)
 	if err != nil {
 		return CmdCIDeps{}, err
 	}
@@ -679,7 +690,12 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	}
 	websocketList := server.NewWebsocketList()
 	deferredClient := controllers.ProvideDeferredClient()
-	headsUpServer, err := server.ProvideHeadsUpServer(ctx, storeStore, assetsServer, analytics3, websocketList, deferredClient)
+	buildInsightsStore, err := buildinsights.ProvideInsightsStore(base)
+	if err != nil {
+		return CmdUpdogDeps{}, err
+	}
+	insightsHandler := server.ProvideInsightsHandler(buildInsightsStore)
+	headsUpServer, err := server.ProvideHeadsUpServer(ctx, storeStore, assetsServer, analytics3, websocketList, deferredClient, insightsHandler)
 	if err != nil {
 		return CmdUpdogDeps{}, err
 	}
@@ -1123,7 +1139,7 @@ var BaseWireSet = wire.NewSet(
 	provideWebMode,
 	provideWebURL,
 	provideWebPort,
-	provideWebHost, server.WireSet, server.ProvideDefaultConnProvider, provideAssetServer, tracer.NewSpanCollector, wire.Bind(new(trace.SpanExporter), new(*tracer.SpanCollector)), wire.Bind(new(tracer.SpanSource), new(*tracer.SpanCollector)), dirs.UseTiltDevDir, xdg.NewTiltDevBase, token.GetOrCreateToken, build.NewKINDLoader, wire.Value(feature.MainDefaults),
+	provideWebHost, server.WireSet, server.ProvideDefaultConnProvider, provideAssetServer, tracer.NewSpanCollector, wire.Bind(new(trace.SpanExporter), new(*tracer.SpanCollector)), wire.Bind(new(tracer.SpanSource), new(*tracer.SpanCollector)), dirs.UseTiltDevDir, xdg.NewTiltDevBase, token.GetOrCreateToken, build.NewKINDLoader, buildinsights.ProvideInsightsStore, wire.Value(feature.MainDefaults),
 )
 
 var CLIClientWireSet = wire.NewSet(

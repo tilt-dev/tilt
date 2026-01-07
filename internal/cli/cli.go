@@ -82,6 +82,7 @@ up-to-date in real-time. Think 'docker build && kubectl apply' or 'docker-compos
 	addCommand(rootCmd, newEnableCmd())
 	addCommand(rootCmd, newDisableCmd())
 	addCommand(rootCmd, newTriggerCmd(streams))
+	addCommand(rootCmd, &insightsCmd{})
 
 	rootCmd.AddCommand(analytics.NewCommand())
 	rootCmd.AddCommand(newDumpCmd(rootCmd, streams))

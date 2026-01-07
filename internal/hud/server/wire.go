@@ -18,4 +18,11 @@ var WireSet = wire.NewSet(
 	ProvideHeadsUpServer,
 	ProvideHeadsUpServerController,
 	NewWebsocketList,
+	ProvideInsightsHandler,
 )
+
+// ProvideInsightsHandler creates an InsightsHandler.
+// If store is nil, the handler will return appropriate errors.
+func ProvideInsightsHandler(store model.BuildInsightsStore) *InsightsHandler {
+	return NewInsightsHandler(store)
+}

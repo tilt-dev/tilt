@@ -57,6 +57,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/token"
 	"github.com/tilt-dev/tilt/internal/tracer"
 	"github.com/tilt-dev/tilt/internal/xdg"
+	"github.com/tilt-dev/tilt/internal/engine/buildinsights"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
@@ -153,6 +154,8 @@ var BaseWireSet = wire.NewSet(
 	token.GetOrCreateToken,
 
 	build.NewKINDLoader,
+
+	buildinsights.ProvideInsightsStore,
 
 	wire.Value(feature.MainDefaults),
 )

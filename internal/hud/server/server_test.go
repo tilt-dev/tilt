@@ -341,7 +341,10 @@ func newTestFixture(t *testing.T) *serverFixture {
 
 	ctx := context.Background()
 
-	serv, err := server.ProvideHeadsUpServer(ctx, st, assets.NewFakeServer(), ta, wsl, ctrlClient)
+	// Create a nil InsightsHandler for tests that don't need insights
+	var insightsHandler *server.InsightsHandler
+
+	serv, err := server.ProvideHeadsUpServer(ctx, st, assets.NewFakeServer(), ta, wsl, ctrlClient, insightsHandler)
 	if err != nil {
 		t.Fatal(err)
 	}

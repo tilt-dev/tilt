@@ -58,12 +58,13 @@ type overrideTriggerModePayload struct {
 }
 
 type HeadsUpServer struct {
-	ctx        context.Context
-	store      *store.Store
-	router     *mux.Router
-	a          *tiltanalytics.TiltAnalytics
-	wsList     *WebsocketList
-	ctrlClient ctrlclient.Client
+	ctx             context.Context
+	store           *store.Store
+	router          *mux.Router
+	a               *tiltanalytics.TiltAnalytics
+	wsList          *WebsocketList
+	ctrlClient      ctrlclient.Client
+	insightsHandler *InsightsHandler
 }
 
 func ProvideHeadsUpServer(
@@ -72,15 +73,17 @@ func ProvideHeadsUpServer(
 	assetServer assets.Server,
 	analytics *tiltanalytics.TiltAnalytics,
 	wsList *WebsocketList,
-	ctrlClient ctrlclient.Client) (*HeadsUpServer, error) {
+	ctrlClient ctrlclient.Client,
+	insightsHandler *InsightsHandler) (*HeadsUpServer, error) {
 	r := mux.NewRouter().UseEncodedPath()
 	s := &HeadsUpServer{
-		ctx:        ctx,
-		store:      store,
-		router:     r,
-		a:          analytics,
-		wsList:     wsList,
-		ctrlClient: ctrlClient,
+		ctx:             ctx,
+		store:           store,
+		router:          r,
+		a:               analytics,
+		wsList:          wsList,
+		ctrlClient:      ctrlClient,
+		insightsHandler: insightsHandler,
 	}
 
 	r.HandleFunc("/api/view", s.ViewJSON)
@@ -94,6 +97,14 @@ func ProvideHeadsUpServer(
 	r.HandleFunc("/api/websocket_token", s.WebsocketToken)
 	r.HandleFunc("/ws/view", s.ViewWebsocket)
 	r.HandleFunc("/api/set_tiltfile_args", s.HandleSetTiltfileArgs).Methods("POST")
+
+	// Build insights API endpoints
+	if insightsHandler != nil {
+		r.HandleFunc("/api/insights", insightsHandler.HandleInsights).Methods("GET")
+		r.HandleFunc("/api/insights/summary", insightsHandler.HandleSummary).Methods("GET")
+		r.HandleFunc("/api/insights/builds", insightsHandler.HandleRecentBuilds).Methods("GET")
+		r.HandleFunc("/api/insights/resource", insightsHandler.HandleResourceStats).Methods("GET")
+	}
 
 	r.PathPrefix("/").Handler(s.cookieWrapper(assetServer))
 
