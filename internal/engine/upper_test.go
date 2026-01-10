@@ -3206,8 +3206,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	lsc := local.NewServerController(cdc)
 	sr := ctrlsession.NewReconciler(cdc, st, clock)
 	sessionController := session.NewController(sr)
-	logFilter, err := hud.NewLogFilter(hud.FilterSourceAll, nil, hud.FilterLevel(logger.NoneLvl), hud.FilterSince(0), hud.FilterTail(-1), hud.FilterJSON(false), hud.FilterJSONFields(""))
-	require.NoError(t, err)
+	logFilter := hud.NewLogFilter(hud.FilterSourceAll, nil, hud.FilterLevel(logger.NoneLvl), hud.FilterSince{}, hud.FilterTail(-1), hud.FilterJSON(false))
 	ts := hud.NewTerminalStream(hud.NewIncrementalPrinter(log), logFilter, st)
 	tp := prompt.NewTerminalPrompt(ta, prompt.TTYOpen, openurl.BrowserOpen,
 		log, "localhost", model.WebURL{})

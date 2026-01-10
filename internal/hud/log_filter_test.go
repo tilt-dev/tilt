@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
@@ -291,13 +290,13 @@ func TestLogFilterApplyWithSince(t *testing.T) {
 
 	testCases := []struct {
 		description string
-		since       time.Duration
+		since       time.Time // cutoff timestamp (zero means no filter)
 		input       []logstore.LogLine
 		expected    []logstore.LogLine
 	}{
 		{
-			description: "since 0 returns all logs",
-			since:       0,
+			description: "zero since returns all logs",
+			since:       time.Time{},
 			input: []logstore.LogLine{
 				{SpanID: "pod:1", Time: now.Add(-1 * time.Hour)},
 				{SpanID: "pod:2", Time: now.Add(-30 * time.Minute)},
@@ -310,8 +309,8 @@ func TestLogFilterApplyWithSince(t *testing.T) {
 			},
 		},
 		{
-			description: "since 10m filters logs older than 10 minutes",
-			since:       10 * time.Minute,
+			description: "since 10m ago filters logs older than 10 minutes",
+			since:       now.Add(-10 * time.Minute),
 			input: []logstore.LogLine{
 				{SpanID: "pod:1", Time: now.Add(-1 * time.Hour)},
 				{SpanID: "pod:2", Time: now.Add(-30 * time.Minute)},
@@ -322,8 +321,8 @@ func TestLogFilterApplyWithSince(t *testing.T) {
 			},
 		},
 		{
-			description: "since 1h includes logs at boundary",
-			since:       1 * time.Hour,
+			description: "since 1h ago includes logs at boundary",
+			since:       now.Add(-1 * time.Hour),
 			input: []logstore.LogLine{
 				{SpanID: "pod:1", Time: now.Add(-1 * time.Hour)},
 				{SpanID: "pod:2", Time: now.Add(-30 * time.Minute)},
@@ -338,7 +337,7 @@ func TestLogFilterApplyWithSince(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.description, func(t *testing.T) {
 			filter := LogFilter{since: tc.since, tail: -1}
-			actual := filter.ApplyWithTime(tc.input, now)
+			actual := filter.Apply(tc.input)
 			assert.Equal(t, tc.expected, actual)
 		})
 	}
@@ -426,8 +425,8 @@ func TestLogFilterApplyWithSinceAndTail(t *testing.T) {
 	}
 
 	filter := LogFilter{
-		since: 1 * time.Hour, // filters to pod:2, pod:3, pod:4, pod:5
-		tail:  2,             // takes last 2: pod:4, pod:5
+		since: now.Add(-1 * time.Hour), // cutoff: 1 hour ago, filters to pod:2, pod:3, pod:4, pod:5
+		tail:  2,                       // takes last 2: pod:4, pod:5
 	}
 
 	expected := []logstore.LogLine{
@@ -435,89 +434,6 @@ func TestLogFilterApplyWithSinceAndTail(t *testing.T) {
 		{SpanID: "pod:5", Time: now.Add(-5 * time.Minute)},
 	}
 
-	actual := filter.ApplyWithTime(input, now)
+	actual := filter.Apply(input)
 	assert.Equal(t, expected, actual)
-}
-
-func TestParseJSONFields(t *testing.T) {
-	testCases := []struct {
-		input    string
-		expected JSONFieldSet
-	}{
-		{
-			input:    "",
-			expected: MinimalJSONFields(),
-		},
-		{
-			input:    "minimal",
-			expected: MinimalJSONFields(),
-		},
-		{
-			input:    "full",
-			expected: FullJSONFields(),
-		},
-		{
-			input: "time,resource",
-			expected: JSONFieldSet{
-				Time:     true,
-				Resource: true,
-			},
-		},
-		{
-			input: "minimal,spanid",
-			expected: JSONFieldSet{
-				Time:     true,
-				Resource: true,
-				Level:    true,
-				Message:  true,
-				SpanID:   true,
-			},
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.input, func(t *testing.T) {
-			actual, err := ParseJSONFields(tc.input)
-			require.NoError(t, err)
-			assert.Equal(t, tc.expected, actual)
-		})
-	}
-}
-
-func TestParseJSONFieldsUnknown(t *testing.T) {
-	testCases := []struct {
-		input       string
-		expectedErr string
-	}{
-		{
-			input:       "foo",
-			expectedErr: "unknown --json-fields: foo",
-		},
-		{
-			input:       "time,unknown,resource",
-			expectedErr: "unknown --json-fields: unknown",
-		},
-		{
-			input:       "badfield1,badfield2",
-			expectedErr: "unknown --json-fields: badfield1, badfield2",
-		},
-		{
-			// Ensure "full" doesn't bypass unknown field validation
-			input:       "full,typo",
-			expectedErr: "unknown --json-fields: typo",
-		},
-		{
-			// Ensure unknown before "full" is still caught
-			input:       "typo,full",
-			expectedErr: "unknown --json-fields: typo",
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.input, func(t *testing.T) {
-			_, err := ParseJSONFields(tc.input)
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), tc.expectedErr)
-		})
-	}
 }

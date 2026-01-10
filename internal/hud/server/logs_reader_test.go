@@ -187,15 +187,13 @@ type logStreamerFixture struct {
 func newLogStreamerFixture(t *testing.T) *logStreamerFixture {
 	fakeStdout := &bytes.Buffer{}
 	printer := hud.NewIncrementalPrinter(hud.Stdout(fakeStdout))
-	filter, err := hud.NewLogFilter(
+	filter := hud.NewLogFilter(
 		hud.FilterSourceAll,
 		hud.FilterResources{},
 		hud.FilterLevel(logger.InfoLvl),
-		hud.FilterSince(0),
+		hud.FilterSince{},
 		hud.FilterTail(-1),
-		hud.FilterJSON(false),
-		hud.FilterJSONFields(""))
-	require.NoError(t, err)
+		hud.FilterJSON(false))
 	return &logStreamerFixture{
 		t:          t,
 		fakeStdout: fakeStdout,
@@ -209,29 +207,25 @@ func (f *logStreamerFixture) withResourceNames(resourceNames ...string) *logStre
 	for _, rn := range resourceNames {
 		resources = append(resources, model.ManifestName(rn))
 	}
-	filter, err := hud.NewLogFilter(
+	filter := hud.NewLogFilter(
 		hud.FilterSourceAll,
 		hud.FilterResources(resources),
 		hud.FilterLevel(logger.InfoLvl),
-		hud.FilterSince(0),
+		hud.FilterSince{},
 		hud.FilterTail(-1),
-		hud.FilterJSON(false),
-		hud.FilterJSONFields(""))
-	require.NoError(f.t, err)
+		hud.FilterJSON(false))
 	f.ls.filter = filter
 	return f
 }
 
 func (f *logStreamerFixture) withTail(tail int) *logStreamerFixture {
-	filter, err := hud.NewLogFilter(
+	filter := hud.NewLogFilter(
 		hud.FilterSourceAll,
 		hud.FilterResources{},
 		hud.FilterLevel(logger.InfoLvl),
-		hud.FilterSince(0),
+		hud.FilterSince{},
 		hud.FilterTail(tail),
-		hud.FilterJSON(false),
-		hud.FilterJSONFields(""))
-	require.NoError(f.t, err)
+		hud.FilterJSON(false))
 	f.ls.filter = filter
 	return f
 }

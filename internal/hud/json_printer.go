@@ -32,14 +32,12 @@ func stringPtr(s string) *string {
 // JSONPrinter outputs log lines as JSON Lines (one JSON object per line).
 type JSONPrinter struct {
 	stdout Stdout
-	fields JSONFieldSet
 }
 
-// NewJSONPrinter creates a new JSON printer with the specified field set.
-func NewJSONPrinter(stdout Stdout, fields JSONFieldSet) *JSONPrinter {
+// NewJSONPrinter creates a new JSON printer.
+func NewJSONPrinter(stdout Stdout) *JSONPrinter {
 	return &JSONPrinter{
 		stdout: stdout,
-		fields: fields,
 	}
 }
 
@@ -58,39 +56,21 @@ func (p *JSONPrinter) Print(lines []logstore.LogLine) {
 }
 
 func (p *JSONPrinter) toJSONLine(line logstore.LogLine) JSONLogLine {
-	result := JSONLogLine{}
-
-	if p.fields.Time {
-		result.Time = stringPtr(line.Time.Format(time.RFC3339))
-	}
-	if p.fields.Resource {
-		result.Resource = stringPtr(string(line.ManifestName))
-	}
-	if p.fields.Level {
-		result.Level = stringPtr(levelToString(line.Level))
-	}
-	if p.fields.Message {
-		// Strip trailing newline from message for cleaner JSON
-		result.Message = stringPtr(strings.TrimSuffix(line.Text, "\n"))
-	}
-	if p.fields.SpanID {
-		result.SpanID = stringPtr(string(line.SpanID))
-	}
-	if p.fields.ProgressID {
-		result.ProgressID = stringPtr(line.ProgressID)
-	}
-	if p.fields.BuildEvent {
-		result.BuildEvent = stringPtr(line.BuildEvent)
-	}
-	if p.fields.Source {
-		if isBuildSpanID(line.SpanID) {
-			result.Source = stringPtr("build")
-		} else {
-			result.Source = stringPtr("runtime")
-		}
+	source := "runtime"
+	if isBuildSpanID(line.SpanID) {
+		source = "build"
 	}
 
-	return result
+	return JSONLogLine{
+		Time:       stringPtr(line.Time.Format(time.RFC3339)),
+		Resource:   stringPtr(string(line.ManifestName)),
+		Level:      stringPtr(levelToString(line.Level)),
+		Message:    stringPtr(strings.TrimSuffix(line.Text, "\n")),
+		SpanID:     stringPtr(string(line.SpanID)),
+		ProgressID: stringPtr(line.ProgressID),
+		BuildEvent: stringPtr(line.BuildEvent),
+		Source:     stringPtr(source),
+	}
 }
 
 func levelToString(level logger.Level) string {

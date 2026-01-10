@@ -14,18 +14,20 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
 )
 
-func TestJSONPrinterMinimalFields(t *testing.T) {
+func TestJSONPrinterAllFields(t *testing.T) {
 	buf := &bytes.Buffer{}
-	printer := NewJSONPrinter(Stdout(buf), MinimalJSONFields())
+	printer := NewJSONPrinter(Stdout(buf))
 
 	testTime := time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC)
 	lines := []logstore.LogLine{
 		{
-			Text:         "Server started\n",
-			SpanID:       "pod:default:api",
+			Text:         "Build started\n",
+			SpanID:       "build:1",
 			ManifestName: "api",
 			Level:        logger.InfoLvl,
 			Time:         testTime,
+			ProgressID:   "",
+			BuildEvent:   "",
 		},
 	}
 
@@ -38,61 +40,20 @@ func TestJSONPrinterMinimalFields(t *testing.T) {
 	err := json.Unmarshal([]byte(output), &result)
 	require.NoError(t, err)
 
-	// Minimal fields should be present
-	assert.Equal(t, "2025-01-15T10:30:00Z", result["time"])
-	assert.Equal(t, "api", result["resource"])
-	assert.Equal(t, "info", result["level"])
-	assert.Equal(t, "Server started", result["message"])
-
-	// Other fields should NOT be present
-	_, hasSpanID := result["spanID"]
-	_, hasProgressID := result["progressID"]
-	_, hasBuildEvent := result["buildEvent"]
-	_, hasSource := result["source"]
-	assert.False(t, hasSpanID, "minimal should not include spanID")
-	assert.False(t, hasProgressID, "minimal should not include progressID")
-	assert.False(t, hasBuildEvent, "minimal should not include buildEvent")
-	assert.False(t, hasSource, "minimal should not include source")
-}
-
-func TestJSONPrinterFullFields(t *testing.T) {
-	buf := &bytes.Buffer{}
-	printer := NewJSONPrinter(Stdout(buf), FullJSONFields())
-
-	testTime := time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC)
-	lines := []logstore.LogLine{
-		{
-			Text:         "Build started\n",
-			SpanID:       "build:1",
-			ManifestName: "api",
-			Level:        logger.InfoLvl,
-			Time:         testTime,
-			ProgressID:   "", // empty but should be included
-			BuildEvent:   "", // empty but should be included
-		},
-	}
-
-	printer.Print(lines)
-
-	output := buf.String()
-	var result map[string]interface{}
-	err := json.Unmarshal([]byte(output), &result)
-	require.NoError(t, err)
-
-	// All fields should be present, even empty ones
+	// All fields should be present
 	assert.Equal(t, "2025-01-15T10:30:00Z", result["time"])
 	assert.Equal(t, "api", result["resource"])
 	assert.Equal(t, "info", result["level"])
 	assert.Equal(t, "Build started", result["message"])
 	assert.Equal(t, "build:1", result["spanID"])
-	assert.Equal(t, "", result["progressID"], "empty progressID should be included")
-	assert.Equal(t, "", result["buildEvent"], "empty buildEvent should be included")
+	assert.Equal(t, "", result["progressID"])
+	assert.Equal(t, "", result["buildEvent"])
 	assert.Equal(t, "build", result["source"])
 }
 
 func TestJSONPrinterMultipleLines(t *testing.T) {
 	buf := &bytes.Buffer{}
-	printer := NewJSONPrinter(Stdout(buf), MinimalJSONFields())
+	printer := NewJSONPrinter(Stdout(buf))
 
 	testTime := time.Date(2025, 1, 15, 10, 30, 0, 0, time.UTC)
 	lines := []logstore.LogLine{
@@ -129,7 +90,7 @@ func TestJSONPrinterSourceField(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.spanID, func(t *testing.T) {
 			buf := &bytes.Buffer{}
-			printer := NewJSONPrinter(Stdout(buf), FullJSONFields())
+			printer := NewJSONPrinter(Stdout(buf))
 
 			lines := []logstore.LogLine{
 				{Text: "test\n", SpanID: logstore.SpanID(tc.spanID), Time: time.Now()},
@@ -144,35 +105,4 @@ func TestJSONPrinterSourceField(t *testing.T) {
 			assert.Equal(t, tc.expectedSource, result["source"])
 		})
 	}
-}
-
-func TestJSONPrinterCustomFields(t *testing.T) {
-	buf := &bytes.Buffer{}
-	fields := JSONFieldSet{
-		Time:   true,
-		SpanID: true,
-		// Only time and spanID, no message or resource
-	}
-	printer := NewJSONPrinter(Stdout(buf), fields)
-
-	lines := []logstore.LogLine{
-		{Text: "test\n", SpanID: "build:1", ManifestName: "api", Time: time.Now()},
-	}
-
-	printer.Print(lines)
-
-	var result map[string]interface{}
-	err := json.Unmarshal(buf.Bytes(), &result)
-	require.NoError(t, err)
-
-	// Only requested fields should be present
-	_, hasTime := result["time"]
-	_, hasSpanID := result["spanID"]
-	_, hasMessage := result["message"]
-	_, hasResource := result["resource"]
-
-	assert.True(t, hasTime, "time should be included")
-	assert.True(t, hasSpanID, "spanID should be included")
-	assert.False(t, hasMessage, "message should not be included")
-	assert.False(t, hasResource, "resource should not be included")
 }

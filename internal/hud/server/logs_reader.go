@@ -34,7 +34,7 @@ type WebsocketReader struct {
 func newWebsocketReaderForLogs(conn WebsocketConn, persistent bool, filter hud.LogFilter, stdout hud.Stdout) *WebsocketReader {
 	var printer hud.LogPrinter
 	if filter.JSONOutput() {
-		printer = hud.NewJSONPrinter(stdout, filter.JSONFields())
+		printer = hud.NewJSONPrinter(stdout)
 	} else {
 		printer = hud.NewIncrementalPrinter(stdout)
 	}

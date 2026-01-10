@@ -9,15 +9,9 @@ package cli
 import (
 	"context"
 	"fmt"
-	"time"
-
 	"github.com/google/wire"
 	"github.com/jonboulle/clockwork"
 	"github.com/spf13/afero"
-	"go.opentelemetry.io/otel/sdk/trace"
-	version2 "k8s.io/apimachinery/pkg/version"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	"github.com/tilt-dev/clusterid"
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"
@@ -88,7 +82,13 @@ import (
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 	"github.com/tilt-dev/wmclient/pkg/dirs"
+	"go.opentelemetry.io/otel/sdk/trace"
+	version2 "k8s.io/apimachinery/pkg/version"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"time"
+)
 
+import (
 	_ "embed"
 )
 
@@ -237,7 +237,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	if err != nil {
 		return CmdUpDeps{}, err
 	}
-	apiserverConfig, err := server.ProvideTiltServerOptions(ctx, tiltBuild, connProvider, bearerToken, generatableKeyCert, apiServerPort)
+	v, err := server.ProvideTiltServerOptions(ctx, tiltBuild, connProvider, bearerToken, generatableKeyCert, apiServerPort)
 	if err != nil {
 		return CmdUpDeps{}, err
 	}
@@ -260,10 +260,10 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	if err != nil {
 		return CmdUpDeps{}, err
 	}
-	headsUpServerController := server.ProvideHeadsUpServerController(configAccess, apiServerName, webListener, apiserverConfig, headsUpServer, assetsServer, webURL)
+	headsUpServerController := server.ProvideHeadsUpServerController(configAccess, apiServerName, webListener, v, headsUpServer, assetsServer, webURL)
 	scheme := v1alpha1.NewScheme()
 	uncachedObjects := controllers.ProvideUncachedObjects()
-	tiltServerControllerManager, err := controllers.NewTiltServerControllerManager(apiserverConfig, scheme, deferredClient, uncachedObjects)
+	tiltServerControllerManager, err := controllers.NewTiltServerControllerManager(v, scheme, deferredClient, uncachedObjects)
 	if err != nil {
 		return CmdUpDeps{}, err
 	}
@@ -353,10 +353,10 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	imagemapReconciler := imagemap.NewReconciler(deferredClient, storeStore)
 	dockercomposelogstreamReconciler := dockercomposelogstream.NewReconciler(deferredClient, storeStore, dockerComposeClient, compositeClient)
 	sessionReconciler := session.NewReconciler(deferredClient, storeStore, clock)
-	v := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, kubernetesapplyReconciler, uisessionReconciler, uiresourceReconciler, uibuttonReconciler, portforwardReconciler, tiltfileReconciler, togglebuttonReconciler, extensionReconciler, extensionrepoReconciler, liveupdateReconciler, configmapReconciler, dockerimageReconciler, cmdimageReconciler, clusterReconciler, dockercomposeserviceReconciler, imagemapReconciler, dockercomposelogstreamReconciler, sessionReconciler)
-	controllerBuilder := controllers.NewControllerBuilder(tiltServerControllerManager, v)
-	v2 := provideClock()
-	renderer := hud.NewRenderer(v2)
+	v2 := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, kubernetesapplyReconciler, uisessionReconciler, uiresourceReconciler, uibuttonReconciler, portforwardReconciler, tiltfileReconciler, togglebuttonReconciler, extensionReconciler, extensionrepoReconciler, liveupdateReconciler, configmapReconciler, dockerimageReconciler, cmdimageReconciler, clusterReconciler, dockercomposeserviceReconciler, imagemapReconciler, dockercomposelogstreamReconciler, sessionReconciler)
+	controllerBuilder := controllers.NewControllerBuilder(tiltServerControllerManager, v2)
+	v3 := provideClock()
+	renderer := hud.NewRenderer(v3)
 	openURL := _wireOpenURLValue
 	headsUpDisplay := hud.NewHud(renderer, webURL, analytics3, openURL)
 	stdout := hud.ProvideStdout()
@@ -373,11 +373,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 		return CmdUpDeps{}, err
 	}
 	filterJSON := provideLogJSON()
-	filterJSONFields := provideLogJSONFields()
-	logFilter, err := hud.NewLogFilter(filterSource, filterResources, filterLevel, filterSince, filterTail, filterJSON, filterJSONFields)
-	if err != nil {
-		return CmdUpDeps{}, err
-	}
+	logFilter := hud.NewLogFilter(filterSource, filterResources, filterLevel, filterSince, filterTail, filterJSON)
 	terminalStream := hud.NewTerminalStream(incrementalPrinter, logFilter, storeStore)
 	openInput := _wireOpenInputValue
 	terminalPrompt := prompt.NewTerminalPrompt(analytics3, openInput, openURL, stdout, webHost, webURL)
@@ -404,8 +400,8 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	sessionController := session2.NewController(sessionReconciler)
 	subscriber := uisession2.NewSubscriber(deferredClient)
 	uiresourceSubscriber := uiresource2.NewSubscriber(deferredClient)
-	v3 := engine.ProvideSubscribers(headsUpServerController, tiltServerControllerManager, controllerBuilder, headsUpDisplay, terminalStream, terminalPrompt, serviceWatcher, buildController, configsController, triggerQueueSubscriber, analyticsReporter, analyticsUpdater, eventWatchManager, cloudStatusManager, dockerPruner, telemetryController, serverController, podMonitor, sessionController, subscriber, uiresourceSubscriber)
-	upper, err := engine.NewUpper(ctx, storeStore, v3)
+	v4 := engine.ProvideSubscribers(headsUpServerController, tiltServerControllerManager, controllerBuilder, headsUpDisplay, terminalStream, terminalPrompt, serviceWatcher, buildController, configsController, triggerQueueSubscriber, analyticsReporter, analyticsUpdater, eventWatchManager, cloudStatusManager, dockerPruner, telemetryController, serverController, podMonitor, sessionController, subscriber, uiresourceSubscriber)
+	upper, err := engine.NewUpper(ctx, storeStore, v4)
 	if err != nil {
 		return CmdUpDeps{}, err
 	}
@@ -466,7 +462,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	if err != nil {
 		return CmdCIDeps{}, err
 	}
-	apiserverConfig, err := server.ProvideTiltServerOptions(ctx, tiltBuild, connProvider, bearerToken, generatableKeyCert, apiServerPort)
+	v, err := server.ProvideTiltServerOptions(ctx, tiltBuild, connProvider, bearerToken, generatableKeyCert, apiServerPort)
 	if err != nil {
 		return CmdCIDeps{}, err
 	}
@@ -489,10 +485,10 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	if err != nil {
 		return CmdCIDeps{}, err
 	}
-	headsUpServerController := server.ProvideHeadsUpServerController(configAccess, apiServerName, webListener, apiserverConfig, headsUpServer, assetsServer, webURL)
+	headsUpServerController := server.ProvideHeadsUpServerController(configAccess, apiServerName, webListener, v, headsUpServer, assetsServer, webURL)
 	scheme := v1alpha1.NewScheme()
 	uncachedObjects := controllers.ProvideUncachedObjects()
-	tiltServerControllerManager, err := controllers.NewTiltServerControllerManager(apiserverConfig, scheme, deferredClient, uncachedObjects)
+	tiltServerControllerManager, err := controllers.NewTiltServerControllerManager(v, scheme, deferredClient, uncachedObjects)
 	if err != nil {
 		return CmdCIDeps{}, err
 	}
@@ -582,10 +578,10 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	imagemapReconciler := imagemap.NewReconciler(deferredClient, storeStore)
 	dockercomposelogstreamReconciler := dockercomposelogstream.NewReconciler(deferredClient, storeStore, dockerComposeClient, compositeClient)
 	sessionReconciler := session.NewReconciler(deferredClient, storeStore, clock)
-	v := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, kubernetesapplyReconciler, uisessionReconciler, uiresourceReconciler, uibuttonReconciler, portforwardReconciler, tiltfileReconciler, togglebuttonReconciler, extensionReconciler, extensionrepoReconciler, liveupdateReconciler, configmapReconciler, dockerimageReconciler, cmdimageReconciler, clusterReconciler, dockercomposeserviceReconciler, imagemapReconciler, dockercomposelogstreamReconciler, sessionReconciler)
-	controllerBuilder := controllers.NewControllerBuilder(tiltServerControllerManager, v)
-	v2 := provideClock()
-	renderer := hud.NewRenderer(v2)
+	v2 := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, kubernetesapplyReconciler, uisessionReconciler, uiresourceReconciler, uibuttonReconciler, portforwardReconciler, tiltfileReconciler, togglebuttonReconciler, extensionReconciler, extensionrepoReconciler, liveupdateReconciler, configmapReconciler, dockerimageReconciler, cmdimageReconciler, clusterReconciler, dockercomposeserviceReconciler, imagemapReconciler, dockercomposelogstreamReconciler, sessionReconciler)
+	controllerBuilder := controllers.NewControllerBuilder(tiltServerControllerManager, v2)
+	v3 := provideClock()
+	renderer := hud.NewRenderer(v3)
 	openURL := _wireOpenURLValue
 	headsUpDisplay := hud.NewHud(renderer, webURL, analytics3, openURL)
 	stdout := hud.ProvideStdout()
@@ -602,11 +598,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 		return CmdCIDeps{}, err
 	}
 	filterJSON := provideLogJSON()
-	filterJSONFields := provideLogJSONFields()
-	logFilter, err := hud.NewLogFilter(filterSource, filterResources, filterLevel, filterSince, filterTail, filterJSON, filterJSONFields)
-	if err != nil {
-		return CmdCIDeps{}, err
-	}
+	logFilter := hud.NewLogFilter(filterSource, filterResources, filterLevel, filterSince, filterTail, filterJSON)
 	terminalStream := hud.NewTerminalStream(incrementalPrinter, logFilter, storeStore)
 	openInput := _wireOpenInputValue
 	terminalPrompt := prompt.NewTerminalPrompt(analytics3, openInput, openURL, stdout, webHost, webURL)
@@ -634,8 +626,8 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	sessionController := session2.NewController(sessionReconciler)
 	subscriber := uisession2.NewSubscriber(deferredClient)
 	uiresourceSubscriber := uiresource2.NewSubscriber(deferredClient)
-	v3 := engine.ProvideSubscribers(headsUpServerController, tiltServerControllerManager, controllerBuilder, headsUpDisplay, terminalStream, terminalPrompt, serviceWatcher, buildController, configsController, triggerQueueSubscriber, analyticsReporter, analyticsUpdater, eventWatchManager, cloudStatusManager, dockerPruner, telemetryController, serverController, podMonitor, sessionController, subscriber, uiresourceSubscriber)
-	upper, err := engine.NewUpper(ctx, storeStore, v3)
+	v4 := engine.ProvideSubscribers(headsUpServerController, tiltServerControllerManager, controllerBuilder, headsUpDisplay, terminalStream, terminalPrompt, serviceWatcher, buildController, configsController, triggerQueueSubscriber, analyticsReporter, analyticsUpdater, eventWatchManager, cloudStatusManager, dockerPruner, telemetryController, serverController, podMonitor, sessionController, subscriber, uiresourceSubscriber)
+	upper, err := engine.NewUpper(ctx, storeStore, v4)
 	if err != nil {
 		return CmdCIDeps{}, err
 	}
@@ -691,7 +683,7 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	if err != nil {
 		return CmdUpdogDeps{}, err
 	}
-	apiserverConfig, err := server.ProvideTiltServerOptions(ctx, tiltBuild, connProvider, bearerToken, generatableKeyCert, apiServerPort)
+	v, err := server.ProvideTiltServerOptions(ctx, tiltBuild, connProvider, bearerToken, generatableKeyCert, apiServerPort)
 	if err != nil {
 		return CmdUpdogDeps{}, err
 	}
@@ -714,10 +706,10 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	if err != nil {
 		return CmdUpdogDeps{}, err
 	}
-	headsUpServerController := server.ProvideHeadsUpServerController(configAccess, apiServerName, webListener, apiserverConfig, headsUpServer, assetsServer, webURL)
+	headsUpServerController := server.ProvideHeadsUpServerController(configAccess, apiServerName, webListener, v, headsUpServer, assetsServer, webURL)
 	scheme := v1alpha1.NewScheme()
 	uncachedObjects := controllers.ProvideUncachedObjects()
-	tiltServerControllerManager, err := controllers.NewTiltServerControllerManager(apiserverConfig, scheme, deferredClient, uncachedObjects)
+	tiltServerControllerManager, err := controllers.NewTiltServerControllerManager(v, scheme, deferredClient, uncachedObjects)
 	if err != nil {
 		return CmdUpdogDeps{}, err
 	}
@@ -807,8 +799,8 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	imagemapReconciler := imagemap.NewReconciler(deferredClient, storeStore)
 	dockercomposelogstreamReconciler := dockercomposelogstream.NewReconciler(deferredClient, storeStore, dockerComposeClient, compositeClient)
 	sessionReconciler := session.NewReconciler(deferredClient, storeStore, clock)
-	v := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, kubernetesapplyReconciler, uisessionReconciler, uiresourceReconciler, uibuttonReconciler, portforwardReconciler, tiltfileReconciler, togglebuttonReconciler, extensionReconciler, extensionrepoReconciler, liveupdateReconciler, configmapReconciler, dockerimageReconciler, cmdimageReconciler, clusterReconciler, dockercomposeserviceReconciler, imagemapReconciler, dockercomposelogstreamReconciler, sessionReconciler)
-	controllerBuilder := controllers.NewControllerBuilder(tiltServerControllerManager, v)
+	v2 := controllers.ProvideControllers(controller, cmdController, podlogstreamController, reconciler, kubernetesapplyReconciler, uisessionReconciler, uiresourceReconciler, uibuttonReconciler, portforwardReconciler, tiltfileReconciler, togglebuttonReconciler, extensionReconciler, extensionrepoReconciler, liveupdateReconciler, configmapReconciler, dockerimageReconciler, cmdimageReconciler, clusterReconciler, dockercomposeserviceReconciler, imagemapReconciler, dockercomposelogstreamReconciler, sessionReconciler)
+	controllerBuilder := controllers.NewControllerBuilder(tiltServerControllerManager, v2)
 	stdout := hud.ProvideStdout()
 	incrementalPrinter := hud.NewIncrementalPrinter(stdout)
 	filterSource := provideLogSource()
@@ -823,15 +815,11 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 		return CmdUpdogDeps{}, err
 	}
 	filterJSON := provideLogJSON()
-	filterJSONFields := provideLogJSONFields()
-	logFilter, err := hud.NewLogFilter(filterSource, filterResources, filterLevel, filterSince, filterTail, filterJSON, filterJSONFields)
-	if err != nil {
-		return CmdUpdogDeps{}, err
-	}
+	logFilter := hud.NewLogFilter(filterSource, filterResources, filterLevel, filterSince, filterTail, filterJSON)
 	terminalStream := hud.NewTerminalStream(incrementalPrinter, logFilter, storeStore)
 	cliUpdogSubscriber := provideUpdogSubscriber(objects, deferredClient)
-	v2 := provideUpdogCmdSubscribers(headsUpServerController, tiltServerControllerManager, controllerBuilder, terminalStream, cliUpdogSubscriber)
-	upper, err := engine.NewUpper(ctx, storeStore, v2)
+	v3 := provideUpdogCmdSubscribers(headsUpServerController, tiltServerControllerManager, controllerBuilder, terminalStream, cliUpdogSubscriber)
+	upper, err := engine.NewUpper(ctx, storeStore, v3)
 	if err != nil {
 		return CmdUpdogDeps{}, err
 	}
@@ -1068,11 +1056,7 @@ func wireLogsDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, s
 		return LogsDeps{}, err
 	}
 	filterJSON := provideLogJSON()
-	filterJSONFields := provideLogJSONFields()
-	logFilter, err := hud.NewLogFilter(filterSource, filterResources, filterLevel, filterSince, filterTail, filterJSON, filterJSONFields)
-	if err != nil {
-		return LogsDeps{}, err
-	}
+	logFilter := hud.NewLogFilter(filterSource, filterResources, filterLevel, filterSince, filterTail, filterJSON)
 	logsDeps := LogsDeps{
 		url:    webURL,
 		stdout: stdout,
@@ -1173,8 +1157,7 @@ var BaseWireSet = wire.NewSet(
 	provideLogLevel,
 	provideLogSince,
 	provideLogTail,
-	provideLogJSON,
-	provideLogJSONFields, hud.WireSet, prompt.WireSet, wire.Value(openurl.OpenURL(openurl.BrowserOpen)), provideLogActions, store.NewStore, wire.Bind(new(store.RStore), new(*store.Store)), wire.Bind(new(store.Dispatcher), new(*store.Store)), dockerprune.NewDockerPruner, provideTiltInfo, engine.NewUpper, analytics2.NewAnalyticsUpdater, analytics2.ProvideAnalyticsReporter, provideUpdateModeFlag, fsevent.ProvideWatcherMaker, fsevent.ProvideTimerMaker, controllers.WireSet, provideCITimeoutFlag,
+	provideLogJSON, hud.WireSet, prompt.WireSet, wire.Value(openurl.OpenURL(openurl.BrowserOpen)), provideLogActions, store.NewStore, wire.Bind(new(store.RStore), new(*store.Store)), wire.Bind(new(store.Dispatcher), new(*store.Store)), dockerprune.NewDockerPruner, provideTiltInfo, engine.NewUpper, analytics2.NewAnalyticsUpdater, analytics2.ProvideAnalyticsReporter, provideUpdateModeFlag, fsevent.ProvideWatcherMaker, fsevent.ProvideTimerMaker, controllers.WireSet, provideCITimeoutFlag,
 	provideWebVersion,
 	provideWebMode,
 	provideWebURL,
@@ -1268,16 +1251,17 @@ func provideLogLevel() hud.FilterLevel {
 
 func provideLogSince() (hud.FilterSince, error) {
 	if logSinceFlag == "" {
-		return hud.FilterSince(0), nil
+		return hud.FilterSince{}, nil
 	}
 	d, err := time.ParseDuration(logSinceFlag)
 	if err != nil {
-		return 0, err
+		return hud.FilterSince{}, err
 	}
 	if d < 0 {
-		return 0, fmt.Errorf("--since duration must be positive, got %v", d)
+		return hud.FilterSince{}, fmt.Errorf("--since duration must be positive, got %v", d)
 	}
-	return hud.FilterSince(d), nil
+
+	return hud.FilterSince(time.Now().Add(-d)), nil
 }
 
 func provideLogTail() (hud.FilterTail, error) {
@@ -1289,8 +1273,4 @@ func provideLogTail() (hud.FilterTail, error) {
 
 func provideLogJSON() hud.FilterJSON {
 	return hud.FilterJSON(logJSONFlag)
-}
-
-func provideLogJSONFields() hud.FilterJSONFields {
-	return hud.FilterJSONFields(logJSONFieldsFlag)
 }

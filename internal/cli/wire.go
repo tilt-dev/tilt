@@ -117,7 +117,6 @@ var BaseWireSet = wire.NewSet(
 	provideLogSince,
 	provideLogTail,
 	provideLogJSON,
-	provideLogJSONFields,
 	hud.WireSet,
 	prompt.WireSet,
 	wire.Value(openurl.OpenURL(openurl.BrowserOpen)),
@@ -374,16 +373,17 @@ func provideLogLevel() hud.FilterLevel {
 
 func provideLogSince() (hud.FilterSince, error) {
 	if logSinceFlag == "" {
-		return hud.FilterSince(0), nil
+		return hud.FilterSince{}, nil
 	}
 	d, err := time.ParseDuration(logSinceFlag)
 	if err != nil {
-		return 0, err
+		return hud.FilterSince{}, err
 	}
 	if d < 0 {
-		return 0, fmt.Errorf("--since duration must be positive, got %v", d)
+		return hud.FilterSince{}, fmt.Errorf("--since duration must be positive, got %v", d)
 	}
-	return hud.FilterSince(d), nil
+	// Convert duration to absolute timestamp at CLI layer
+	return hud.FilterSince(time.Now().Add(-d)), nil
 }
 
 func provideLogTail() (hud.FilterTail, error) {
@@ -395,8 +395,4 @@ func provideLogTail() (hud.FilterTail, error) {
 
 func provideLogJSON() hud.FilterJSON {
 	return hud.FilterJSON(logJSONFlag)
-}
-
-func provideLogJSONFields() hud.FilterJSONFields {
-	return hud.FilterJSONFields(logJSONFieldsFlag)
 }
