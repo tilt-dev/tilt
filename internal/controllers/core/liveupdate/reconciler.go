@@ -114,8 +114,13 @@ func NewFakeReconciler(
 }
 
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+	state := r.store.RLockState()
+	available := state.AvailableBuildSlots()
+	r.store.RUnlockState()
+
+	if available < 1 {
+		return ctrl.Result{RequeueAfter: 100 * time.Millisecond}, nil
+	}
 
 	lu := &v1alpha1.LiveUpdate{}
 	err := r.client.Get(ctx, req.NamespacedName, lu)
@@ -126,7 +131,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	if apierrors.IsNotFound(err) || lu.ObjectMeta.DeletionTimestamp != nil {
 		r.store.Dispatch(liveupdates.NewLiveUpdateDeleteAction(req.Name))
-		delete(r.monitors, req.Name)
+		r.deleteMonitor(req.Name)
 		return ctrl.Result{}, nil
 	}
 
@@ -249,9 +254,19 @@ func (r *Reconciler) handleFailure(ctx context.Context, lu *v1alpha1.LiveUpdate,
 	return ctrl.Result{}, err
 }
 
+// deleteMonitor removes a monitor from the map with proper locking.
+func (r *Reconciler) deleteMonitor(name string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	delete(r.monitors, name)
+}
+
 // Create the monitor that tracks a live update. If the live update
 // spec changes, wipe out all accumulated state.
 func (r *Reconciler) ensureMonitorExists(name string, obj *v1alpha1.LiveUpdate) *monitor {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	spec := obj.Spec
 	m, ok := r.monitors[name]
 	if ok && apicmp.DeepEqual(obj.Spec, m.spec) {
