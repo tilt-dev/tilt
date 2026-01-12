@@ -12,8 +12,8 @@ import {
 } from "./constants"
 import { FeaturesContext, Flag, useFeatures } from "./feature"
 import {
-  GroupByLabelView,
-  orderLabels,
+  buildGroupTree,
+  GroupTreeNode,
   TILTFILE_LABEL,
   UNLABELED_LABEL,
 } from "./labels"
@@ -136,6 +136,14 @@ const SidebarLabelSection = styled(Accordion)`
   &.MuiAccordion-root,
   &.MuiAccordion-root.Mui-expanded {
     margin: ${SizeUnit(1 / 3)} ${SizeUnit(1 / 2)};
+  }
+`
+
+const NestedSidebarLabelSection = styled(SidebarLabelSection)`
+  &.MuiAccordion-root,
+  &.MuiAccordion-root.Mui-expanded {
+    margin-left: 0;
+    margin-right: 0;
   }
 `
 
@@ -358,38 +366,89 @@ function SidebarGroupListSection(props: { label: string } & SidebarProps) {
   )
 }
 
-function resourcesLabelView(
-  items: SidebarItem[]
-): GroupByLabelView<SidebarItem> {
-  const labelsToResources: { [key: string]: SidebarItem[] } = {}
-  const unlabeled: SidebarItem[] = []
-  const tiltfile: SidebarItem[] = []
+// Styled component for nested group indentation
+const SidebarNestedGroupSummary = styled(SidebarGroupSummary)<{
+  depth: number
+}>`
+  .MuiAccordionSummary-content {
+    margin: 0 0 0 ${(props) => props.depth * 16}px;
 
-  items.forEach((item) => {
-    if (item.labels.length) {
-      item.labels.forEach((label) => {
-        if (!labelsToResources.hasOwnProperty(label)) {
-          labelsToResources[label] = []
-        }
-
-        labelsToResources[label].push(item)
-      })
-    } else if (item.isTiltfile) {
-      tiltfile.push(item)
-    } else {
-      unlabeled.push(item)
+    &.Mui-expanded {
+      margin: 0 0 0 ${(props) => props.depth * 16}px;
     }
+  }
+`
+
+type SidebarGroupTreeNodeProps = {
+  node: GroupTreeNode<SidebarItem>
+  depth: number
+} & SidebarProps
+
+function SidebarGroupTreeNode(props: SidebarGroupTreeNodeProps) {
+  const { node, depth, ...sidebarProps } = props
+  const { getGroup, toggleGroupExpanded } = useResourceGroups()
+
+  let { expanded } = getGroup(node.path)
+
+  // Auto-expand if selected item is in this group
+  const isSelected = node.aggregatedResources.some(
+    (item) => item.name === sidebarProps.selected
+  )
+  if (isSelected) expanded = true
+
+  const handleChange = (_e: ChangeEvent<{}>) => toggleGroupExpanded(node.path)
+  const labelNameId = `sidebarItem-${node.path}`
+
+  // Use nested styling (no horizontal margins) for non-root groups
+  const AccordionComponent =
+    depth === 0 ? SidebarLabelSection : NestedSidebarLabelSection
+
+  return (
+    <AccordionComponent expanded={expanded} onChange={handleChange}>
+      <SidebarNestedGroupSummary id={labelNameId} depth={depth}>
+        <ResourceGroupSummaryIcon role="presentation" />
+        <SidebarGroupName>{node.name}</SidebarGroupName>
+        <SidebarGroupStatusSummary
+          labelText={`Status summary for ${node.path} group`}
+          resources={node.aggregatedResources}
+        />
+      </SidebarNestedGroupSummary>
+      <SidebarGroupDetails aria-labelledby={labelNameId}>
+        {node.resources.length > 0 && (
+          <SidebarListSection
+            {...sidebarProps}
+            items={node.resources}
+            groupView
+          />
+        )}
+        {node.children.map((child) => (
+          <SidebarGroupTreeNode
+            key={child.path}
+            node={child}
+            depth={depth + 1}
+            {...sidebarProps}
+          />
+        ))}
+      </SidebarGroupDetails>
+    </AccordionComponent>
+  )
+}
+
+// Helper to collect all resources from tree in visual order (for keyboard navigation)
+function collectTreeResources(node: GroupTreeNode<SidebarItem>): SidebarItem[] {
+  let result: SidebarItem[] = []
+  result.push(...enabledItemsFirst(node.resources))
+  node.children.forEach((child) => {
+    result.push(...collectTreeResources(child))
   })
-
-  // Labels are always displayed in sorted order
-  const labels = orderLabels(Object.keys(labelsToResources))
-
-  return { labels, labelsToResources, tiltfile, unlabeled }
+  return result
 }
 
 function SidebarGroupedByLabels(props: SidebarGroupedByProps) {
-  const { labels, labelsToResources, tiltfile, unlabeled } = resourcesLabelView(
-    props.items
+  const { roots, tiltfile, unlabeled } = buildGroupTree(
+    props.items,
+    (item) => item.labels,
+    (item) => item.isTiltfile
   )
 
   // NOTE(nick): We need the visual order of the items to pass
@@ -397,20 +456,20 @@ function SidebarGroupedByLabels(props: SidebarGroupedByProps) {
   // each section component does its own ordering. So we cheat
   // here and replicate the logic for determining the order.
   let totalOrder: SidebarItem[] = []
-  labels.map((label) => {
-    totalOrder.push(...enabledItemsFirst(labelsToResources[label]))
+  roots.forEach((root) => {
+    totalOrder.push(...collectTreeResources(root))
   })
   totalOrder.push(...enabledItemsFirst(unlabeled))
   totalOrder.push(...enabledItemsFirst(tiltfile))
 
   return (
     <>
-      {labels.map((label) => (
-        <SidebarGroupListSection
+      {roots.map((root) => (
+        <SidebarGroupTreeNode
+          key={root.path}
+          node={root}
+          depth={0}
           {...props}
-          key={`sidebarItem-${label}`}
-          label={label}
-          items={labelsToResources[label]}
         />
       ))}
       <SidebarGroupListSection

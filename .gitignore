@@ -34,11 +34,15 @@ tilt_option.json
 # goreleaser binaries
 dist
 
+# Local build artifacts
+tilt
+
 # web dependencies
 /web/node_modules
 /web/.pnp
 /web/.yarn/*.gz
 /web/.yarn/cache
+/web/package-lock.json
 .pnp.js
 
 # web testing
@@ -63,3 +67,8 @@ yarn-error.log*
 # http caches from running kubectl in integration tests
 integration/.kube
 .aider*
+
+# Our custom local configs
+thoughts/private
+pull_request_description.md
+code_walkthrough_plan.md

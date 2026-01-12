@@ -15,7 +15,7 @@ func (lv *LabelValue) Unpack(v starlark.Value) error {
 	if !ok {
 		return fmt.Errorf("Value should be convertible to string, but is type %s", v.Type())
 	}
-
+	
 	validationErrors := validation.IsQualifiedName(str)
 	if len(validationErrors) != 0 {
 		return fmt.Errorf("Invalid label %q: %s", str, strings.Join(validationErrors, ", "))
