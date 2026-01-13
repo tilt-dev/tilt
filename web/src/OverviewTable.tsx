@@ -34,8 +34,10 @@ import {
 import Features, { Flag, useFeatures } from "./feature"
 import { Hold } from "./Hold"
 import {
+  buildGroupTree,
   getResourceLabels,
   GroupByLabelView,
+  GroupTreeNode,
   orderLabels,
   TILTFILE_LABEL,
   UNLABELED_LABEL,
@@ -751,26 +753,139 @@ function TableGroup(props: TableGroupProps) {
   )
 }
 
+// Styled component for nested group indentation
+const OverviewNestedGroupSummary = styled(OverviewGroupSummary)<{
+  depth: number
+}>`
+  .MuiAccordionSummary-content {
+    margin: 0 0 0 ${(props) => props.depth * 24}px;
+
+    &.Mui-expanded {
+      margin: 0 0 0 ${(props) => props.depth * 24}px;
+    }
+  }
+`
+
+type TableGroupTreeNodeProps = {
+  node: GroupTreeNode<RowValues>
+  depth: number
+  setGlobalSortBy: (id: string) => void
+  focused: string
+} & Omit<TableOptions<RowValues>, "data">
+
+function TableGroupTreeNode(props: TableGroupTreeNodeProps) {
+  const { node, depth, ...tableProps } = props
+  const { getGroup, toggleGroupExpanded } = useResourceGroups()
+  const { expanded } = getGroup(node.path)
+
+  const handleChange = (_e: ChangeEvent<{}>) => toggleGroupExpanded(node.path)
+  const labelNameId = `tableOverview-${node.path}`
+
+  return (
+    <OverviewGroup expanded={expanded} onChange={handleChange}>
+      <OverviewNestedGroupSummary id={labelNameId} depth={depth}>
+        <ResourceGroupSummaryIcon role="presentation" />
+        <OverviewGroupName>{node.name}</OverviewGroupName>
+        <TableGroupStatusSummary
+          labelText={`Status summary for ${node.path} group`}
+          resources={node.aggregatedResources}
+        />
+      </OverviewNestedGroupSummary>
+      <OverviewGroupDetails>
+        {node.resources.length > 0 && (
+          <Table {...tableProps} data={node.resources} />
+        )}
+        {node.children.map((child) => (
+          <TableGroupTreeNode
+            key={child.path}
+            node={child}
+            depth={depth + 1}
+            {...tableProps}
+          />
+        ))}
+      </OverviewGroupDetails>
+    </OverviewGroup>
+  )
+}
+
+// Helper to collect all resources from tree in visual order (for keyboard navigation)
+function collectTreeRows(node: GroupTreeNode<RowValues>): RowValues[] {
+  let result: RowValues[] = []
+  result.push(...enabledRowsFirst(node.resources))
+  node.children.forEach((child) => {
+    result.push(...collectTreeRows(child))
+  })
+  return result
+}
+
+// Helper type for resources with their labels pre-computed
+type ResourceWithLabels = {
+  resource: UIResource
+  labels: string[]
+  cell: RowValues
+}
+
 export function TableGroupedByLabels({
   resources,
   buttons,
 }: TableWrapperProps) {
-  const features = useFeatures()
   const logAlertIndex = useLogAlertIndex()
-  const data = useMemo(
-    () => labeledResourcesToTableCells(resources, buttons, logAlertIndex),
-    [resources, buttons]
-  )
+
+  // Build hierarchical tree from resources
+  const data = useMemo(() => {
+    if (!resources) {
+      return buildGroupTree<ResourceWithLabels>(
+        [],
+        (item) => item.labels,
+        (item) => item.resource.metadata?.name === ResourceName.tiltfile
+      )
+    }
+
+    // First, convert resources to items with their labels and cells pre-computed
+    const items: ResourceWithLabels[] = resources.map((r) => ({
+      resource: r,
+      labels: getResourceLabels(r),
+      cell: uiResourceToCell(r, buttons, logAlertIndex),
+    }))
+
+    return buildGroupTree(
+      items,
+      (item) => item.labels,
+      (item) => item.resource.metadata?.name === ResourceName.tiltfile
+    )
+  }, [resources, buttons, logAlertIndex])
+
+  // Convert tree nodes from ResourceWithLabels to RowValues
+  const convertedData = useMemo(() => {
+    function convertNode(
+      node: GroupTreeNode<ResourceWithLabels>
+    ): GroupTreeNode<RowValues> {
+      return {
+        name: node.name,
+        path: node.path,
+        resources: node.resources.map((r) => r.cell),
+        children: node.children.map(convertNode),
+        aggregatedResources: node.aggregatedResources.map((r) => r.cell),
+      }
+    }
+
+    return {
+      roots: data.roots.map(convertNode),
+      tiltfile: data.tiltfile.map((r) => r.cell),
+      unlabeled: data.unlabeled.map((r) => r.cell),
+    }
+  }, [data])
 
   const totalOrder = useMemo(() => {
-    let totalOrder = []
-    data.labels.forEach((label) =>
-      totalOrder.push(...enabledRowsFirst(data.labelsToResources[label]))
-    )
-    totalOrder.push(...enabledRowsFirst(data.unlabeled))
-    totalOrder.push(...enabledRowsFirst(data.tiltfile))
-    return totalOrder
-  }, [data])
+    let order: RowValues[] = []
+    convertedData.roots.forEach((root) => {
+      order.push(...collectTreeRows(root))
+    })
+    order.push(...enabledRowsFirst(convertedData.unlabeled))
+    order.push(...enabledRowsFirst(convertedData.tiltfile))
+    return order
+  }, [convertedData])
+
   let [focused, setFocused] = useState("")
 
   // Global table settings are currently used to sort multiple
@@ -791,11 +906,11 @@ export function TableGroupedByLabels({
 
   return (
     <>
-      {data.labels.map((label) => (
-        <TableGroup
-          key={label}
-          label={label}
-          data={data.labelsToResources[label]}
+      {convertedData.roots.map((root) => (
+        <TableGroupTreeNode
+          key={root.path}
+          node={root}
+          depth={0}
           columns={COLUMNS}
           useControlledState={useControlledState}
           setGlobalSortBy={setGlobalSortBy}
@@ -804,7 +919,7 @@ export function TableGroupedByLabels({
       ))}
       <TableGroup
         label={UNLABELED_LABEL}
-        data={data.unlabeled}
+        data={convertedData.unlabeled}
         columns={COLUMNS}
         useControlledState={useControlledState}
         setGlobalSortBy={setGlobalSortBy}
@@ -812,7 +927,7 @@ export function TableGroupedByLabels({
       />
       <TableGroup
         label={TILTFILE_LABEL}
-        data={data.tiltfile}
+        data={convertedData.tiltfile}
         columns={COLUMNS}
         useControlledState={useControlledState}
         setGlobalSortBy={setGlobalSortBy}
