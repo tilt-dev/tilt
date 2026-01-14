@@ -254,7 +254,8 @@ func (r *Reconciler) handleFailure(ctx context.Context, lu *v1alpha1.LiveUpdate,
 	return ctrl.Result{}, err
 }
 
-// deleteMonitor removes a monitor from the map with proper locking.
+// Remove a monitor when its LiveUpdate is deleted.
+// Locks because r.monitors may be accessed concurrently.
 func (r *Reconciler) deleteMonitor(name string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -263,6 +264,7 @@ func (r *Reconciler) deleteMonitor(name string) {
 
 // Create the monitor that tracks a live update. If the live update
 // spec changes, wipe out all accumulated state.
+// Locks because r.monitors may be accessed concurrently.
 func (r *Reconciler) ensureMonitorExists(name string, obj *v1alpha1.LiveUpdate) *monitor {
 	r.mu.Lock()
 	defer r.mu.Unlock()
