@@ -158,6 +158,17 @@ const SidebarGroupSummary = styled(AccordionSummary)`
     border-radius: ${SizeUnit(1 / 8)};
     font-size: ${FontSize.small};
   }
+
+  /* Visual indicator when collapsed group contains selected resource */
+  &.hasSelectedChild .MuiAccordionSummary-content {
+    background-color: ${Color.white};
+    color: ${Color.gray30};
+    border-color: ${Color.white};
+  }
+
+  &.hasSelectedChild ${ResourceGroupSummaryIcon} .fillStd {
+    fill: ${Color.gray30};
+  }
 `
 
 export const SidebarGroupName = styled.span`
@@ -331,27 +342,23 @@ function SidebarGroupListSection(props: { label: string } & SidebarProps) {
   const labelNameId = `sidebarItem-${props.label}`
 
   const { getGroup, toggleGroupExpanded } = useResourceGroups()
-  let { expanded } = getGroup(props.label)
+  const { expanded } = getGroup(props.label)
 
-  let isSelected = props.items.some((item) => item.name == props.selected)
-
-  if (isSelected) {
-    // If an item in the group is selected, expand the group
-    // without writing it back to persistent state.
-    //
-    // This creates a nice interaction, where if you're keyboard-navigating
-    // through sidebar items, we expand the group you navigate into and expand
-    // it when you navigate out again.
-    expanded = true
-  }
+  const hasSelectedChild = props.items.some(
+    (item) => item.name == props.selected
+  )
 
   const handleChange = (_e: ChangeEvent<{}>) => toggleGroupExpanded(props.label)
+
+  // Add class when collapsed and contains selected child
+  const hasSelectedChildClass =
+    hasSelectedChild && !expanded ? "hasSelectedChild" : ""
 
   // TODO (lizz): Improve the accessibility interface for accordion feature by adding focus styles
   // according to https://www.w3.org/TR/wai-aria-practices-1.1/examples/accordion/accordion.html
   return (
     <SidebarLabelSection expanded={expanded} onChange={handleChange}>
-      <SidebarGroupSummary id={labelNameId}>
+      <SidebarGroupSummary id={labelNameId} className={hasSelectedChildClass}>
         <ResourceGroupSummaryIcon role="presentation" />
         <SidebarGroupName>{formattedLabel}</SidebarGroupName>
         <SidebarGroupStatusSummary
@@ -388,16 +395,19 @@ function SidebarGroupTreeNode(props: SidebarGroupTreeNodeProps) {
   const { node, depth, ...sidebarProps } = props
   const { getGroup, toggleGroupExpanded } = useResourceGroups()
 
-  let { expanded } = getGroup(node.path)
+  const { expanded } = getGroup(node.path)
 
-  // Auto-expand if selected item is in this group
-  const isSelected = node.aggregatedResources.some(
+  // Check if selected item is in this group (direct or descendant)
+  const hasSelectedChild = node.aggregatedResources.some(
     (item) => item.name === sidebarProps.selected
   )
-  if (isSelected) expanded = true
 
   const handleChange = (_e: ChangeEvent<{}>) => toggleGroupExpanded(node.path)
   const labelNameId = `sidebarItem-${node.path}`
+
+  // Add class when collapsed and contains selected child
+  const hasSelectedChildClass =
+    hasSelectedChild && !expanded ? "hasSelectedChild" : ""
 
   // Use nested styling (no horizontal margins) for non-root groups
   const AccordionComponent =
@@ -405,7 +415,11 @@ function SidebarGroupTreeNode(props: SidebarGroupTreeNodeProps) {
 
   return (
     <AccordionComponent expanded={expanded} onChange={handleChange}>
-      <SidebarNestedGroupSummary id={labelNameId} depth={depth}>
+      <SidebarNestedGroupSummary
+        id={labelNameId}
+        depth={depth}
+        className={hasSelectedChildClass}
+      >
         <ResourceGroupSummaryIcon role="presentation" />
         <SidebarGroupName>{node.name}</SidebarGroupName>
         <SidebarGroupStatusSummary
