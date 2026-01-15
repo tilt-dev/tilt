@@ -260,17 +260,45 @@ func FilterByMatchesPodTemplateSpec(withPodSpec K8sEntity, entities []K8sEntity)
 		return nil, entities, nil
 	}
 
+	// Get the namespace of the workload - only match Services in the same namespace
+	workloadNamespace := withPodSpec.Namespace()
+
 	var allMatches []K8sEntity
 	remaining := append([]K8sEntity{}, entities...)
 	for _, template := range podTemplates {
-		match, rest, err := FilterBySelectorMatchesLabels(remaining, template.Labels)
+		// Filter by both: selector matches labels AND same namespace
+		match, rest, err := filterBySelectorMatchesLabelsAndNamespace(remaining, template.Labels, workloadNamespace)
 		if err != nil {
-			return nil, nil, errors.Wrap(err, "filtering entities by label")
+			return nil, nil, errors.Wrap(err, "filtering entities by label and namespace")
 		}
 		allMatches = append(allMatches, match...)
 		remaining = rest
 	}
 	return allMatches, remaining, nil
+}
+
+// filterBySelectorMatchesLabelsAndNamespace filters entities that match both:
+// 1. The selector matches the given labels
+// 2. The entity is in the same namespace as the workload (or has no explicit namespace)
+// This fixes https://github.com/tilt-dev/tilt/issues/6311
+func filterBySelectorMatchesLabelsAndNamespace(entities []K8sEntity, labels map[string]string, workloadNamespace Namespace) (passing, rest []K8sEntity, err error) {
+	return Filter(entities, func(e K8sEntity) (bool, error) {
+		// Must match selector labels
+		if !e.SelectorMatchesLabels(labels) {
+			return false, nil
+		}
+		// Check namespace matching:
+		// - If entity has no explicit namespace (uses default), allow matching any workload
+		//   (maintains backward compatibility)
+		// - If entity has an explicit namespace, it must match the workload's namespace
+		entityNamespace := e.Namespace()
+		if entityNamespace == DefaultNamespace {
+			// No explicit namespace on entity, allow matching
+			return true, nil
+		}
+		// Entity has explicit namespace, must match workload's namespace
+		return entityNamespace == workloadNamespace, nil
+	})
 }
 
 func (e K8sEntity) HasName(name string) bool {
