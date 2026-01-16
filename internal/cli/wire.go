@@ -7,6 +7,7 @@ package cli
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/spf13/afero"
@@ -113,6 +114,9 @@ var BaseWireSet = wire.NewSet(
 	provideLogSource,
 	provideLogResources,
 	provideLogLevel,
+	provideLogSince,
+	provideLogTail,
+	provideLogJSON,
 	hud.WireSet,
 	prompt.WireSet,
 	wire.Value(openurl.OpenURL(openurl.BrowserOpen)),
@@ -304,9 +308,9 @@ func wireLogsDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, s
 }
 
 type LogsDeps struct {
-	url     model.WebURL
-	printer *hud.IncrementalPrinter
-	filter  hud.LogFilter
+	url    model.WebURL
+	stdout hud.Stdout
+	filter hud.LogFilter
 }
 
 func provideClock() func() time.Time {
@@ -365,4 +369,30 @@ func provideLogLevel() hud.FilterLevel {
 	default:
 		return hud.FilterLevel(logger.NoneLvl)
 	}
+}
+
+func provideLogSince() (hud.FilterSince, error) {
+	if logSinceFlag == "" {
+		return hud.FilterSince{}, nil
+	}
+	d, err := time.ParseDuration(logSinceFlag)
+	if err != nil {
+		return hud.FilterSince{}, err
+	}
+	if d < 0 {
+		return hud.FilterSince{}, fmt.Errorf("--since duration must be positive, got %v", d)
+	}
+	// Convert duration to absolute timestamp at CLI layer
+	return hud.FilterSince(time.Now().Add(-d)), nil
+}
+
+func provideLogTail() (hud.FilterTail, error) {
+	if logTailFlag < -1 {
+		return 0, fmt.Errorf("--tail must be -1 (no limit) or >= 0, got %d", logTailFlag)
+	}
+	return hud.FilterTail(logTailFlag), nil
+}
+
+func provideLogJSON() hud.FilterJSON {
+	return hud.FilterJSON(logJSONFlag)
 }

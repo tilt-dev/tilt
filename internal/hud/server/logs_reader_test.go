@@ -132,6 +132,51 @@ func TestLogStreamerCheckpointHandlingWithFiltering(t *testing.T) {
 	f.assertExpectedLogLines(expected)
 }
 
+// TestLogStreamerTailWithEmptyInitialHistory verifies that --tail doesn't drop
+// new logs when the initial history is empty (FromCheckpoint == -1).
+func TestLogStreamerTailWithEmptyInitialHistory(t *testing.T) {
+	f := newLogStreamerFixture(t).withTail(0) // tail 0 = show no history
+
+	// First view has no logs (empty initial history)
+	emptyView := &proto_webview.View{
+		LogList: &proto_webview.LogList{
+			FromCheckpoint: -1, // signals no logs
+		},
+	}
+	f.handle(emptyView)
+
+	// Second view has actual logs - these should NOT be dropped
+	view := f.newViewWithLogsForManifest(alphabet[:3], "foo", 0)
+	f.handle(view)
+
+	// All 3 logs should appear (tail only applies to initial history)
+	expected := f.expectedLinesWithPrefix(alphabet[:3], "")
+	f.assertExpectedLogLines(expected)
+}
+
+// TestLogStreamerTailWithHistory verifies --tail works correctly with initial history.
+func TestLogStreamerTailWithHistory(t *testing.T) {
+	f := newLogStreamerFixture(t).withTail(2) // show last 2 lines of history
+
+	// First view has 5 logs
+	view := f.newViewWithLogsForManifest(alphabet[:5], "foo", 0)
+	f.handle(view)
+
+	// Should only see last 2 from initial history
+	expected := f.expectedLinesWithPrefix([]string{"delta", "echo"}, "")
+	f.assertExpectedLogLines(expected)
+
+	// Clear buffer for next assertion
+	f.fakeStdout.Reset()
+
+	// Second view has more logs - these should all appear
+	view = f.newViewWithLogsForManifest(alphabet[5:8], "foo", view.LogList.ToCheckpoint)
+	f.handle(view)
+
+	expected = f.expectedLinesWithPrefix([]string{"foxtrot", "golf", "hotel"}, "")
+	f.assertExpectedLogLines(expected)
+}
+
 type logStreamerFixture struct {
 	t          *testing.T
 	fakeStdout *bytes.Buffer
@@ -145,7 +190,10 @@ func newLogStreamerFixture(t *testing.T) *logStreamerFixture {
 	filter := hud.NewLogFilter(
 		hud.FilterSourceAll,
 		hud.FilterResources{},
-		hud.FilterLevel(logger.InfoLvl))
+		hud.FilterLevel(logger.InfoLvl),
+		hud.FilterSince{},
+		hud.FilterTail(-1),
+		hud.FilterJSON(false))
 	return &logStreamerFixture{
 		t:          t,
 		fakeStdout: fakeStdout,
@@ -159,10 +207,26 @@ func (f *logStreamerFixture) withResourceNames(resourceNames ...string) *logStre
 	for _, rn := range resourceNames {
 		resources = append(resources, model.ManifestName(rn))
 	}
-	f.ls.filter = hud.NewLogFilter(
+	filter := hud.NewLogFilter(
 		hud.FilterSourceAll,
 		hud.FilterResources(resources),
-		hud.FilterLevel(logger.InfoLvl))
+		hud.FilterLevel(logger.InfoLvl),
+		hud.FilterSince{},
+		hud.FilterTail(-1),
+		hud.FilterJSON(false))
+	f.ls.filter = filter
+	return f
+}
+
+func (f *logStreamerFixture) withTail(tail int) *logStreamerFixture {
+	filter := hud.NewLogFilter(
+		hud.FilterSourceAll,
+		hud.FilterResources{},
+		hud.FilterLevel(logger.InfoLvl),
+		hud.FilterSince{},
+		hud.FilterTail(tail),
+		hud.FilterJSON(false))
+	f.ls.filter = filter
 	return f
 }
 

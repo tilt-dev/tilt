@@ -122,6 +122,12 @@ func addLogFilterFlags(cmd *cobra.Command, prefix string) {
 	)
 }
 
+func addLogOutputFlags(cmd *cobra.Command) {
+	cmd.Flags().StringVar(&logSinceFlag, "since", "", `Only show logs since duration ago (e.g., "5m", "1h", "30s")`)
+	cmd.Flags().IntVar(&logTailFlag, "tail", -1, `Number of lines to show from the end of logs (-1 for all)`)
+	cmd.Flags().BoolVar(&logJSONFlag, "json", false, `Output logs in JSON Lines format`)
+}
+
 var kubeContextOverride string
 
 func ProvideKubeContextOverride() k8s.KubeContextOverride {

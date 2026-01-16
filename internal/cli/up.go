@@ -37,6 +37,9 @@ var (
 	logSourceFlag    string   = ""
 	logResourcesFlag []string = nil
 	logLevelFlag     string   = ""
+	logSinceFlag     string   = ""
+	logTailFlag      int      = -1 // -1 means no limit
+	logJSONFlag      bool     = false
 )
 
 var userExitError = errors.New("user requested Tilt exit")

@@ -31,8 +31,14 @@ type WebsocketReader struct {
 	handler      ViewHandler
 }
 
-func newWebsocketReaderForLogs(conn WebsocketConn, persistent bool, filter hud.LogFilter, p *hud.IncrementalPrinter) *WebsocketReader {
-	ls := NewLogStreamer(filter, p)
+func newWebsocketReaderForLogs(conn WebsocketConn, persistent bool, filter hud.LogFilter, stdout hud.Stdout) *WebsocketReader {
+	var printer hud.LogPrinter
+	if filter.JSONOutput() {
+		printer = hud.NewJSONPrinter(stdout)
+	} else {
+		printer = hud.NewIncrementalPrinter(stdout)
+	}
+	ls := NewLogStreamer(filter, printer)
 	return newWebsocketReader(conn, persistent, ls)
 }
 
@@ -60,20 +66,26 @@ type LogStreamer struct {
 	// This value should only be used to compare to other server values, NOT client checkpoints.
 	serverWatermark int32
 	filter          hud.LogFilter
-	printer         *hud.IncrementalPrinter
+	printer         hud.LogPrinter
+	// isFirstBatch tracks whether we've received the first batch of logs.
+	// Tail limit only applies to the first batch (initial history).
+	isFirstBatch bool
 }
 
-func NewLogStreamer(filter hud.LogFilter, p *hud.IncrementalPrinter) *LogStreamer {
+func NewLogStreamer(filter hud.LogFilter, p hud.LogPrinter) *LogStreamer {
 	return &LogStreamer{
-		filter:   filter,
-		logstore: logstore.NewLogStore(),
-		printer:  p,
+		filter:       filter,
+		logstore:     logstore.NewLogStore(),
+		printer:      p,
+		isFirstBatch: true,
 	}
 }
 
 func (ls *LogStreamer) Handle(v *proto_webview.View) error {
 	if v == nil || v.LogList == nil || v.LogList.FromCheckpoint == -1 {
-		// Server has no new logs to send
+		// Server has no new logs to send.
+		// Mark first batch as processed so --tail doesn't apply to future logs.
+		ls.isFirstBatch = false
 		return nil
 	}
 
@@ -92,7 +104,16 @@ func (ls *LogStreamer) Handle(v *proto_webview.View) error {
 	lines := ls.logstore.ContinuingLinesWithOptions(ls.checkpoint, logstore.LineOptions{
 		SuppressPrefix: ls.filter.SuppressPrefix(),
 	})
-	lines = ls.filter.Apply(lines)
+
+	// Apply tail limit only on the first batch (initial history).
+	// Subsequent batches in follow mode should show all new logs.
+	if ls.isFirstBatch {
+		lines = ls.filter.Apply(lines)
+		ls.isFirstBatch = false
+	} else {
+		lines = ls.filter.ApplyWithoutTail(lines)
+	}
+
 	ls.printer.Print(lines)
 
 	ls.checkpoint = ls.logstore.Checkpoint()
@@ -101,7 +122,7 @@ func (ls *LogStreamer) Handle(v *proto_webview.View) error {
 	return nil
 }
 
-func StreamLogs(ctx context.Context, follow bool, url model.WebURL, filter hud.LogFilter, printer *hud.IncrementalPrinter) error {
+func StreamLogs(ctx context.Context, follow bool, url model.WebURL, filter hud.LogFilter, stdout hud.Stdout) error {
 	url.Scheme = "ws"
 	url.Path = "/ws/view"
 	logger.Get(ctx).Debugf("connecting to %s", url.String())
@@ -112,7 +133,7 @@ func StreamLogs(ctx context.Context, follow bool, url model.WebURL, filter hud.L
 	}
 	defer conn.Close()
 
-	wsr := newWebsocketReaderForLogs(conn, follow, filter, printer)
+	wsr := newWebsocketReaderForLogs(conn, follow, filter, stdout)
 	return wsr.Listen(ctx)
 }
 
