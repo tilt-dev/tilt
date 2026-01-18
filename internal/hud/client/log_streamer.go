@@ -1,4 +1,4 @@
-package server
+package client
 
 import (
 	"context"
@@ -16,13 +16,45 @@ import (
 	proto_webview "github.com/tilt-dev/tilt/pkg/webview"
 )
 
-// This file defines machinery to connect to the HUD server websocket and
-// read logs from a running Tilt instance.
-// In future, we can use WebsocketReader more generically to read state
-// from a running Tilt, and do different things with that state depending
-// on the handler provided (if we ever implement e.g. `tilt status`).
-// (If we never use the WebsocketReader elsewhere, we might want to collapse
-// it and the LogStreamer handler into a single struct.)
+type FollowFlag bool
+
+type LogStreamer struct {
+	follow  FollowFlag
+	url     model.WebURL
+	filter  hud.LogFilter
+	printer hud.LogPrinter
+}
+
+func NewLogStreamer(follow FollowFlag, url model.WebURL, filter hud.LogFilter, printer hud.LogPrinter) *LogStreamer {
+	return &LogStreamer{
+		follow:  follow,
+		url:     url,
+		filter:  filter,
+		printer: printer,
+	}
+}
+
+func (ls *LogStreamer) Stream(ctx context.Context) error {
+	url := ls.url
+	url.Scheme = "ws"
+	url.Path = "/ws/view"
+	logger.Get(ctx).Debugf("connecting to %s", url.String())
+
+	conn, _, err := websocket.DefaultDialer.Dial(url.String(), nil)
+	if err != nil {
+		return errors.Wrapf(err, "dialing websocket %s", url.String())
+	}
+	defer conn.Close()
+
+	wsr := newWebsocketReaderForLogs(conn, bool(ls.follow), ls.filter, ls.printer)
+	return wsr.Listen(ctx)
+}
+
+type WebsocketConn interface {
+	NextReader() (int, io.Reader, error)
+	Close() error
+	NextWriter(messageType int) (io.WriteCloser, error)
+}
 
 type WebsocketReader struct {
 	conn         WebsocketConn
@@ -31,14 +63,8 @@ type WebsocketReader struct {
 	handler      ViewHandler
 }
 
-func newWebsocketReaderForLogs(conn WebsocketConn, persistent bool, filter hud.LogFilter, stdout hud.Stdout) *WebsocketReader {
-	var printer hud.LogPrinter
-	if filter.JSONOutput() {
-		printer = hud.NewJSONPrinter(stdout)
-	} else {
-		printer = hud.NewIncrementalPrinter(stdout)
-	}
-	ls := NewLogStreamer(filter, printer)
+func newWebsocketReaderForLogs(conn WebsocketConn, persistent bool, filter hud.LogFilter, printer hud.LogPrinter) *WebsocketReader {
+	ls := newLogViewHandler(filter, printer)
 	return newWebsocketReader(conn, persistent, ls)
 }
 
@@ -55,7 +81,7 @@ type ViewHandler interface {
 	Handle(v *proto_webview.View) error
 }
 
-type LogStreamer struct {
+type logViewHandler struct {
 	logstore *logstore.LogStore
 	// checkpoint tracks the client's latest printed logs.
 	//
@@ -72,8 +98,8 @@ type LogStreamer struct {
 	isFirstBatch bool
 }
 
-func NewLogStreamer(filter hud.LogFilter, p hud.LogPrinter) *LogStreamer {
-	return &LogStreamer{
+func newLogViewHandler(filter hud.LogFilter, p hud.LogPrinter) *logViewHandler {
+	return &logViewHandler{
 		filter:       filter,
 		logstore:     logstore.NewLogStore(),
 		printer:      p,
@@ -81,7 +107,7 @@ func NewLogStreamer(filter hud.LogFilter, p hud.LogPrinter) *LogStreamer {
 	}
 }
 
-func (ls *LogStreamer) Handle(v *proto_webview.View) error {
+func (ls *logViewHandler) Handle(v *proto_webview.View) error {
 	if v == nil || v.LogList == nil || v.LogList.FromCheckpoint == -1 {
 		// Server has no new logs to send.
 		// Mark first batch as processed so --tail doesn't apply to future logs.
@@ -120,21 +146,6 @@ func (ls *LogStreamer) Handle(v *proto_webview.View) error {
 	ls.serverWatermark = v.LogList.ToCheckpoint
 
 	return nil
-}
-
-func StreamLogs(ctx context.Context, follow bool, url model.WebURL, filter hud.LogFilter, stdout hud.Stdout) error {
-	url.Scheme = "ws"
-	url.Path = "/ws/view"
-	logger.Get(ctx).Debugf("connecting to %s", url.String())
-
-	conn, _, err := websocket.DefaultDialer.Dial(url.String(), nil)
-	if err != nil {
-		return errors.Wrapf(err, "dialing websocket %s", url.String())
-	}
-	defer conn.Close()
-
-	wsr := newWebsocketReaderForLogs(conn, follow, filter, stdout)
-	return wsr.Listen(ctx)
 }
 
 func (wsr *WebsocketReader) Listen(ctx context.Context) error {

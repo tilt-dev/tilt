@@ -1,4 +1,4 @@
-package server
+package client
 
 import (
 	"bytes"
@@ -181,7 +181,7 @@ type logStreamerFixture struct {
 	t          *testing.T
 	fakeStdout *bytes.Buffer
 	printer    *hud.IncrementalPrinter
-	ls         *LogStreamer
+	ls         *logViewHandler
 }
 
 func newLogStreamerFixture(t *testing.T) *logStreamerFixture {
@@ -198,7 +198,7 @@ func newLogStreamerFixture(t *testing.T) *logStreamerFixture {
 		t:          t,
 		fakeStdout: fakeStdout,
 		printer:    printer,
-		ls:         NewLogStreamer(filter, printer),
+		ls:         newLogViewHandler(filter, printer),
 	}
 }
 

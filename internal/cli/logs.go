@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/tilt-dev/tilt/internal/hud/server"
+	hudclient "github.com/tilt-dev/tilt/internal/hud/client"
 	"github.com/tilt-dev/tilt/pkg/model"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
@@ -52,10 +52,10 @@ func (c *logsCmd) run(ctx context.Context, args []string) error {
 	// For `tilt logs`, the resources are passed as extra args.
 	logResourcesFlag = args
 
-	logDeps, err := wireLogsDeps(ctx, a, "logs")
+	logStreamer, err := wireLogStreamer(ctx, a, "logs", hudclient.FollowFlag(c.follow))
 	if err != nil {
 		return err
 	}
 
-	return server.StreamLogs(ctx, c.follow, logDeps.url, logDeps.filter, logDeps.stdout)
+	return logStreamer.Stream(ctx)
 }
