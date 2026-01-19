@@ -48,6 +48,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/feature"
 	"github.com/tilt-dev/tilt/internal/git"
 	"github.com/tilt-dev/tilt/internal/hud"
+	hudclient "github.com/tilt-dev/tilt/internal/hud/client"
 	"github.com/tilt-dev/tilt/internal/hud/prompt"
 	"github.com/tilt-dev/tilt/internal/hud/server"
 	"github.com/tilt-dev/tilt/internal/k8s"
@@ -145,6 +146,7 @@ var BaseWireSet = wire.NewSet(
 	provideWebPort,
 	provideWebHost,
 	server.WireSet,
+	hudclient.WireSet,
 	server.ProvideDefaultConnProvider,
 	provideAssetServer,
 
@@ -301,16 +303,9 @@ type DownDeps struct {
 	fs               afero.Fs
 }
 
-func wireLogsDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, subcommand model.TiltSubcommand) (LogsDeps, error) {
-	wire.Build(UpWireSet,
-		wire.Struct(new(LogsDeps), "*"))
-	return LogsDeps{}, nil
-}
-
-type LogsDeps struct {
-	url    model.WebURL
-	stdout hud.Stdout
-	filter hud.LogFilter
+func wireLogStreamer(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, subcommand model.TiltSubcommand, follow hudclient.FollowFlag) (*hudclient.LogStreamer, error) {
+	wire.Build(UpWireSet)
+	return nil, nil
 }
 
 func provideClock() func() time.Time {

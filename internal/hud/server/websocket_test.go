@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"fmt"
-	"io"
 	"runtime"
 	"testing"
 	"time"
@@ -16,6 +15,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils"
+	"github.com/tilt-dev/tilt/internal/testutils/fakeconn"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 )
@@ -28,7 +28,7 @@ func TestWebsocketCloseOnReadErr(t *testing.T) {
 	st, _ := store.NewStoreWithFakeReducer()
 	_ = st.SetUpSubscribersForTesting(ctx)
 
-	conn := newFakeConn()
+	conn := fakeconn.NewFakeConn()
 	ctrlClient := fake.NewFakeTiltClient()
 	ws := NewWebsocketSubscriber(ctx, ctrlClient, st, conn)
 	require.NoError(t, st.AddSubscriber(ctx, ws))
@@ -48,7 +48,7 @@ func TestWebsocketCloseOnReadErr(t *testing.T) {
 	writeLogAndNotify(ctx, st)
 	conn.AssertNextWriteMsg(t).Ack()
 
-	conn.readCh <- readerOrErr{err: fmt.Errorf("read error")}
+	conn.ReadCh <- fakeconn.ReaderOrErr{Err: fmt.Errorf("read error")}
 
 	conn.AssertClose(t, done)
 }
@@ -58,7 +58,7 @@ func TestWebsocketReadErrDuringMsg(t *testing.T) {
 	st, _ := store.NewStoreWithFakeReducer()
 	_ = st.SetUpSubscribersForTesting(ctx)
 
-	conn := newFakeConn()
+	conn := fakeconn.NewFakeConn()
 	ctrlClient := fake.NewFakeTiltClient()
 	ws := NewWebsocketSubscriber(ctx, ctrlClient, st, conn)
 	require.NoError(t, st.AddSubscriber(ctx, ws))
@@ -78,9 +78,9 @@ func TestWebsocketReadErrDuringMsg(t *testing.T) {
 
 	// Send a read error, and make sure the connection
 	// doesn't close immediately.
-	conn.readCh <- readerOrErr{err: fmt.Errorf("read error")}
+	conn.ReadCh <- fakeconn.ReaderOrErr{Err: fmt.Errorf("read error")}
 	time.Sleep(10 * time.Millisecond)
-	assert.False(t, conn.closed)
+	assert.False(t, conn.Closed)
 
 	// Finish the write
 	m.Ack()
@@ -93,8 +93,8 @@ func TestWebsocketNextWriterError(t *testing.T) {
 	st, _ := store.NewStoreWithFakeReducer()
 	_ = st.SetUpSubscribersForTesting(ctx)
 
-	conn := newFakeConn()
-	conn.nextWriterError = fmt.Errorf("fake NextWriter error")
+	conn := fakeconn.NewFakeConn()
+	conn.NextWriterError = fmt.Errorf("fake NextWriter error")
 	ctrlClient := fake.NewFakeTiltClient()
 	ws := NewWebsocketSubscriber(ctx, ctrlClient, st, conn)
 	require.NoError(t, st.AddSubscriber(ctx, ws))
@@ -109,7 +109,7 @@ func TestWebsocketNextWriterError(t *testing.T) {
 	writeLogAndNotify(ctx, st)
 	time.Sleep(10 * time.Millisecond)
 
-	conn.readCh <- readerOrErr{err: fmt.Errorf("read error")}
+	conn.ReadCh <- fakeconn.ReaderOrErr{Err: fmt.Errorf("read error")}
 	conn.AssertClose(t, done)
 }
 
@@ -190,7 +190,7 @@ type wsFixture struct {
 	ws   *WebsocketSubscriber
 	ctx  context.Context
 	st   *store.Store
-	conn *fakeConn
+	conn *fakeconn.FakeConn
 }
 
 func newWSFixture(t *testing.T) *wsFixture {
@@ -198,7 +198,7 @@ func newWSFixture(t *testing.T) *wsFixture {
 	st, _ := store.NewStoreWithFakeReducer()
 	_ = st.SetUpSubscribersForTesting(ctx)
 
-	conn := newFakeConn()
+	conn := fakeconn.NewFakeConn()
 	ctrlClient := fake.NewFakeTiltClient()
 	ws := NewWebsocketSubscriber(ctx, ctrlClient, st, conn)
 	require.NoError(t, st.AddSubscriber(ctx, ws))
@@ -208,97 +208,6 @@ func newWSFixture(t *testing.T) *wsFixture {
 		ws:   ws,
 		conn: conn,
 	}
-}
-
-type readerOrErr struct {
-	reader io.Reader
-	err    error
-}
-type fakeConn struct {
-	// Write an error to this channel to stop the Read consumer
-	readCh chan readerOrErr
-
-	// Consume messages written to this channel. The caller should Ack() to acknowledge receipt.
-	writeCh chan msg
-
-	closed bool
-
-	nextWriterError error
-}
-
-func newFakeConn() *fakeConn {
-	return &fakeConn{
-		readCh:  make(chan readerOrErr),
-		writeCh: make(chan msg),
-	}
-}
-
-func (c *fakeConn) NextReader() (int, io.Reader, error) {
-	next := <-c.readCh
-	return 1, next.reader, next.err
-}
-
-func (c *fakeConn) Close() error {
-	c.closed = true
-	return nil
-}
-
-func (c *fakeConn) newMessageToRead(r io.Reader) {
-	c.readCh <- readerOrErr{reader: r}
-}
-
-func (c *fakeConn) AssertNextWriteMsg(t *testing.T) msg {
-	select {
-	case <-time.After(250 * time.Millisecond):
-		t.Fatal("timed out waiting for Writer to Close")
-	case msg := <-c.writeCh:
-		return msg
-	}
-	return msg{}
-}
-
-func (c *fakeConn) AssertClose(t *testing.T, done chan bool) {
-	t.Helper()
-	select {
-	case <-time.After(250 * time.Millisecond):
-		t.Fatal("timed out waiting for close")
-	case <-done:
-		assert.True(t, c.closed)
-	}
-}
-
-func (c *fakeConn) NextWriter(messagetype int) (io.WriteCloser, error) {
-	if c.nextWriterError != nil {
-		return nil, c.nextWriterError
-	}
-	return c.writer(), nil
-}
-
-func (c *fakeConn) writer() io.WriteCloser {
-	return &fakeConnWriter{c: c}
-}
-
-type fakeConnWriter struct {
-	c *fakeConn
-}
-
-func (f *fakeConnWriter) Write(p []byte) (int, error) {
-	return len(p), nil
-}
-
-func (f *fakeConnWriter) Close() error {
-	cb := make(chan error)
-	f.c.writeCh <- msg{callback: cb}
-	return <-cb
-}
-
-type msg struct {
-	callback chan error
-}
-
-func (m msg) Ack() {
-	m.callback <- nil
-	close(m.callback)
 }
 
 func writeLogAndNotify(ctx context.Context, st *store.Store) {

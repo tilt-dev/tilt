@@ -1,4 +1,4 @@
-package server
+package client
 
 import (
 	"bytes"
@@ -13,6 +13,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/testutils/bufsync"
 
 	"github.com/tilt-dev/tilt/internal/testutils"
+	"github.com/tilt-dev/tilt/internal/testutils/fakeconn"
 	proto_webview "github.com/tilt-dev/tilt/pkg/webview"
 )
 
@@ -63,7 +64,7 @@ func TestWebsocketCloseOnNextReaderError(t *testing.T) {
 	f := newWebsocketReaderFixture(t)
 	f.start()
 
-	f.conn.readCh <- readerOrErr{err: fmt.Errorf("read error")}
+	f.conn.ReadCh <- fakeconn.ReaderOrErr{Err: fmt.Errorf("read error")}
 
 	time.Sleep(10 * time.Millisecond)
 	f.assertDone()
@@ -74,7 +75,7 @@ type websocketReaderFixture struct {
 	ctx     context.Context
 	cancel  context.CancelFunc
 	out     *bufsync.ThreadSafeBuffer
-	conn    *fakeConn
+	conn    *fakeconn.FakeConn
 	handler *fakeViewHandler
 	wsr     *WebsocketReader
 	done    chan error
@@ -84,7 +85,7 @@ func newWebsocketReaderFixture(t *testing.T) *websocketReaderFixture {
 	out := bufsync.NewThreadSafeBuffer()
 	baseCtx, _, _ := testutils.ForkedCtxAndAnalyticsForTest(out)
 	ctx, cancel := context.WithCancel(baseCtx)
-	conn := newFakeConn()
+	conn := fakeconn.NewFakeConn()
 	handler := &fakeViewHandler{}
 
 	ret := &websocketReaderFixture{
@@ -120,7 +121,7 @@ func (f *websocketReaderFixture) sendView(v *proto_webview.View) {
 	err := (&jsonpb.Marshaler{}).Marshal(buf, v)
 	assert.NoError(f.t, err)
 
-	f.conn.newMessageToRead(buf)
+	f.conn.NewMessageToRead(buf)
 }
 
 func (f *websocketReaderFixture) assertHandlerCallCount(n int) {
