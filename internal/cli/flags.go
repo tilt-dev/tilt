@@ -8,7 +8,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/tilt-dev/tilt/internal/hud"
+	hudclient "github.com/tilt-dev/tilt/internal/hud/client"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/tiltfile"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -107,9 +107,9 @@ func addLogFilterFlags(cmd *cobra.Command, prefix string) {
 		func(_ *cobra.Command, _ []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			var completions []string
 			options := []string{
-				hud.FilterSourceAll.String(),
-				hud.FilterSourceBuild.String(),
-				hud.FilterSourceRuntime.String(),
+				hudclient.FilterSourceAll.String(),
+				hudclient.FilterSourceBuild.String(),
+				hudclient.FilterSourceRuntime.String(),
 			}
 			for _, option := range options {
 				if strings.Contains(option, strings.ToLower(toComplete)) {

@@ -14,6 +14,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/engine/uiresource"
 	"github.com/tilt-dev/tilt/internal/engine/uisession"
 	"github.com/tilt-dev/tilt/internal/hud"
+	hudclient "github.com/tilt-dev/tilt/internal/hud/client"
 	"github.com/tilt-dev/tilt/internal/hud/prompt"
 	"github.com/tilt-dev/tilt/internal/hud/server"
 	"github.com/tilt-dev/tilt/internal/store"
@@ -25,7 +26,7 @@ func ProvideSubscribersAPIOnly(
 	hudsc *server.HeadsUpServerController,
 	tscm *controllers.TiltServerControllerManager,
 	cb *controllers.ControllerBuilder,
-	ts *hud.TerminalStream,
+	ts *hudclient.TerminalStream,
 ) []store.Subscriber {
 	return []store.Subscriber{
 		// The API server must go before other subscribers,
@@ -45,7 +46,7 @@ func ProvideSubscribers(
 	tscm *controllers.TiltServerControllerManager,
 	cb *controllers.ControllerBuilder,
 	hud hud.HeadsUpDisplay,
-	ts *hud.TerminalStream,
+	ts *hudclient.TerminalStream,
 	tp *prompt.TerminalPrompt,
 	sw *k8swatch.ServiceWatcher,
 	bc *BuildController,

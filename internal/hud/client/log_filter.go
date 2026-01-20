@@ -1,4 +1,4 @@
-package hud
+package client
 
 import (
 	"strings"
@@ -90,9 +90,11 @@ func (f LogFilter) matchesLevelFilter(line logstore.LogLine) bool {
 	return f.level == line.Level
 }
 
-// if printing logs for only one resource, don't need resource name prefix
+// don't need the resource name prefix if:
+// - printing logs for only one resource
+// - printing logs to json
 func (f LogFilter) SuppressPrefix() bool {
-	return len(f.resources) == 1
+	return len(f.resources) == 1 || f.jsonOutput
 }
 
 // matchesSinceFilter checks if the log line is at or after the since timestamp.

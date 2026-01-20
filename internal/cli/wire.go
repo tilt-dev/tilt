@@ -15,6 +15,7 @@ import (
 	"github.com/tilt-dev/clusterid"
 	cliclient "github.com/tilt-dev/tilt/internal/cli/client"
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch/fsevent"
+	"github.com/tilt-dev/tilt/internal/hud"
 	"github.com/tilt-dev/tilt/internal/k8s/kubeconfig"
 
 	"github.com/google/wire"
@@ -47,7 +48,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/engine/uisession"
 	"github.com/tilt-dev/tilt/internal/feature"
 	"github.com/tilt-dev/tilt/internal/git"
-	"github.com/tilt-dev/tilt/internal/hud"
 	hudclient "github.com/tilt-dev/tilt/internal/hud/client"
 	"github.com/tilt-dev/tilt/internal/hud/prompt"
 	"github.com/tilt-dev/tilt/internal/hud/server"
@@ -343,51 +343,51 @@ func provideCITimeoutFlag() model.CITimeoutFlag {
 	return model.CITimeoutFlag(ciTimeout)
 }
 
-func provideLogSource() hud.FilterSource {
-	return hud.FilterSource(logSourceFlag)
+func provideLogSource() hudclient.FilterSource {
+	return hudclient.FilterSource(logSourceFlag)
 }
 
-func provideLogResources() hud.FilterResources {
+func provideLogResources() hudclient.FilterResources {
 	result := []model.ManifestName{}
 	for _, r := range logResourcesFlag {
 		result = append(result, model.ManifestName(r))
 	}
-	return hud.FilterResources(result)
+	return hudclient.FilterResources(result)
 }
 
-func provideLogLevel() hud.FilterLevel {
+func provideLogLevel() hudclient.FilterLevel {
 	switch logLevelFlag {
 	case "warn", "WARN", "warning", "WARNING":
-		return hud.FilterLevel(logger.WarnLvl)
+		return hudclient.FilterLevel(logger.WarnLvl)
 	case "error", "ERROR":
-		return hud.FilterLevel(logger.ErrorLvl)
+		return hudclient.FilterLevel(logger.ErrorLvl)
 	default:
-		return hud.FilterLevel(logger.NoneLvl)
+		return hudclient.FilterLevel(logger.NoneLvl)
 	}
 }
 
-func provideLogSince() (hud.FilterSince, error) {
+func provideLogSince() (hudclient.FilterSince, error) {
 	if logSinceFlag == "" {
-		return hud.FilterSince{}, nil
+		return hudclient.FilterSince{}, nil
 	}
 	d, err := time.ParseDuration(logSinceFlag)
 	if err != nil {
-		return hud.FilterSince{}, err
+		return hudclient.FilterSince{}, err
 	}
 	if d < 0 {
-		return hud.FilterSince{}, fmt.Errorf("--since duration must be positive, got %v", d)
+		return hudclient.FilterSince{}, fmt.Errorf("--since duration must be positive, got %v", d)
 	}
 	// Convert duration to absolute timestamp at CLI layer
-	return hud.FilterSince(time.Now().Add(-d)), nil
+	return hudclient.FilterSince(time.Now().Add(-d)), nil
 }
 
-func provideLogTail() (hud.FilterTail, error) {
+func provideLogTail() (hudclient.FilterTail, error) {
 	if logTailFlag < -1 {
 		return 0, fmt.Errorf("--tail must be -1 (no limit) or >= 0, got %d", logTailFlag)
 	}
-	return hud.FilterTail(logTailFlag), nil
+	return hudclient.FilterTail(logTailFlag), nil
 }
 
-func provideLogJSON() hud.FilterJSON {
-	return hud.FilterJSON(logJSONFlag)
+func provideLogJSON() hudclient.FilterJSON {
+	return hudclient.FilterJSON(logJSONFlag)
 }

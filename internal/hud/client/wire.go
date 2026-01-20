@@ -2,18 +2,25 @@ package client
 
 import (
 	"github.com/google/wire"
-
-	"github.com/tilt-dev/tilt/internal/hud"
+	"github.com/mattn/go-colorable"
 )
 
 var WireSet = wire.NewSet(
 	NewLogStreamer,
 	ProvideLogPrinter,
+	NewLogFilter,
+	ProvideStdout,
+	NewIncrementalPrinter,
+	NewTerminalStream,
 )
 
-func ProvideLogPrinter(filter hud.LogFilter, stdout hud.Stdout) hud.LogPrinter {
+func ProvideLogPrinter(filter LogFilter, stdout Stdout) LogPrinter {
 	if filter.JSONOutput() {
-		return hud.NewJSONPrinter(stdout)
+		return NewJSONPrinter(stdout)
 	}
-	return hud.NewIncrementalPrinter(stdout)
+	return NewIncrementalPrinter(stdout)
+}
+
+func ProvideStdout() Stdout {
+	return Stdout(colorable.NewColorableStdout())
 }

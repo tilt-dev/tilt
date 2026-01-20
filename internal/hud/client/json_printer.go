@@ -1,4 +1,4 @@
-package hud
+package client
 
 import (
 	"encoding/json"

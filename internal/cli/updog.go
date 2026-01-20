@@ -18,7 +18,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers"
 	"github.com/tilt-dev/tilt/internal/engine"
 	engineanalytics "github.com/tilt-dev/tilt/internal/engine/analytics"
-	"github.com/tilt-dev/tilt/internal/hud"
+	hudclient "github.com/tilt-dev/tilt/internal/hud/client"
 	"github.com/tilt-dev/tilt/internal/hud/server"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -171,7 +171,7 @@ func provideUpdogCmdSubscribers(
 	hudsc *server.HeadsUpServerController,
 	tscm *controllers.TiltServerControllerManager,
 	cb *controllers.ControllerBuilder,
-	ts *hud.TerminalStream,
+	ts *hudclient.TerminalStream,
 	us *updogSubscriber) []store.Subscriber {
 	return append(engine.ProvideSubscribersAPIOnly(hudsc, tscm, cb, ts), us)
 }

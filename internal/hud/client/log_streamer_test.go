@@ -12,7 +12,6 @@ import (
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 
-	"github.com/tilt-dev/tilt/internal/hud"
 	proto_webview "github.com/tilt-dev/tilt/pkg/webview"
 )
 
@@ -180,20 +179,20 @@ func TestLogStreamerTailWithHistory(t *testing.T) {
 type logStreamerFixture struct {
 	t          *testing.T
 	fakeStdout *bytes.Buffer
-	printer    *hud.IncrementalPrinter
+	printer    *IncrementalPrinter
 	ls         *logViewHandler
 }
 
 func newLogStreamerFixture(t *testing.T) *logStreamerFixture {
 	fakeStdout := &bytes.Buffer{}
-	printer := hud.NewIncrementalPrinter(hud.Stdout(fakeStdout))
-	filter := hud.NewLogFilter(
-		hud.FilterSourceAll,
-		hud.FilterResources{},
-		hud.FilterLevel(logger.InfoLvl),
-		hud.FilterSince{},
-		hud.FilterTail(-1),
-		hud.FilterJSON(false))
+	printer := NewIncrementalPrinter(Stdout(fakeStdout))
+	filter := NewLogFilter(
+		FilterSourceAll,
+		FilterResources{},
+		FilterLevel(logger.InfoLvl),
+		FilterSince{},
+		FilterTail(-1),
+		FilterJSON(false))
 	return &logStreamerFixture{
 		t:          t,
 		fakeStdout: fakeStdout,
@@ -207,25 +206,25 @@ func (f *logStreamerFixture) withResourceNames(resourceNames ...string) *logStre
 	for _, rn := range resourceNames {
 		resources = append(resources, model.ManifestName(rn))
 	}
-	filter := hud.NewLogFilter(
-		hud.FilterSourceAll,
-		hud.FilterResources(resources),
-		hud.FilterLevel(logger.InfoLvl),
-		hud.FilterSince{},
-		hud.FilterTail(-1),
-		hud.FilterJSON(false))
+	filter := NewLogFilter(
+		FilterSourceAll,
+		FilterResources(resources),
+		FilterLevel(logger.InfoLvl),
+		FilterSince{},
+		FilterTail(-1),
+		FilterJSON(false))
 	f.ls.filter = filter
 	return f
 }
 
 func (f *logStreamerFixture) withTail(tail int) *logStreamerFixture {
-	filter := hud.NewLogFilter(
-		hud.FilterSourceAll,
-		hud.FilterResources{},
-		hud.FilterLevel(logger.InfoLvl),
-		hud.FilterSince{},
-		hud.FilterTail(tail),
-		hud.FilterJSON(false))
+	filter := NewLogFilter(
+		FilterSourceAll,
+		FilterResources{},
+		FilterLevel(logger.InfoLvl),
+		FilterSince{},
+		FilterTail(tail),
+		FilterJSON(false))
 	f.ls.filter = filter
 	return f
 }
