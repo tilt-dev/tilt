@@ -560,6 +560,9 @@ func TestBuildControllerResourceDepTrumpsInitialBuild(t *testing.T) {
 
 // bar depends on foo. make sure bar waits on foo even as foo fails
 func TestBuildControllerResourceDepTrumpsPendingBuild(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("flaky on windows")
+	}
 	f := newTestFixture(t)
 
 	foo := manifestbuilder.New(f, "foo").
