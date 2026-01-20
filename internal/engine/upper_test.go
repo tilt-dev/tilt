@@ -76,6 +76,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/engine/uisession"
 	"github.com/tilt-dev/tilt/internal/feature"
 	"github.com/tilt-dev/tilt/internal/hud"
+	hudclient "github.com/tilt-dev/tilt/internal/hud/client"
 	"github.com/tilt-dev/tilt/internal/hud/prompt"
 	"github.com/tilt-dev/tilt/internal/hud/server"
 	"github.com/tilt-dev/tilt/internal/hud/view"
@@ -3099,7 +3100,7 @@ type testFixture struct {
 	docker                     *docker.FakeClient
 	kClient                    *k8s.FakeK8sClient
 	hud                        hud.HeadsUpDisplay
-	ts                         *hud.TerminalStream
+	ts                         *hudclient.TerminalStream
 	upperInitResult            chan error
 	log                        *bufsync.ThreadSafeBuffer
 	store                      *store.Store
@@ -3206,10 +3207,10 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	lsc := local.NewServerController(cdc)
 	sr := ctrlsession.NewReconciler(cdc, st, clock)
 	sessionController := session.NewController(sr)
-	logFilter := hud.NewLogFilter(hud.FilterSourceAll, nil, hud.FilterLevel(logger.NoneLvl), hud.FilterSince{}, hud.FilterTail(-1), hud.FilterJSON(false))
-	ts := hud.NewTerminalStream(hud.NewIncrementalPrinter(log), logFilter, st)
+	logFilter := hudclient.NewLogFilter(hudclient.FilterSourceAll, nil, hudclient.FilterLevel(logger.NoneLvl), hudclient.FilterSince{}, hudclient.FilterTail(-1), hudclient.FilterJSON(false))
+	ts := hudclient.NewTerminalStream(hudclient.NewIncrementalPrinter(hudclient.Stdout(log)), logFilter, st)
 	tp := prompt.NewTerminalPrompt(ta, prompt.TTYOpen, openurl.BrowserOpen,
-		log, "localhost", model.WebURL{})
+		hudclient.Stdout(log), "localhost", model.WebURL{})
 	h := hud.NewFakeHud()
 
 	uncached := controllers.UncachedObjects{}

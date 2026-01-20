@@ -8,7 +8,6 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
 
-	"github.com/tilt-dev/tilt/internal/hud"
 	"github.com/tilt-dev/tilt/internal/hud/webview"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -21,11 +20,11 @@ type FollowFlag bool
 type LogStreamer struct {
 	follow  FollowFlag
 	url     model.WebURL
-	filter  hud.LogFilter
-	printer hud.LogPrinter
+	filter  LogFilter
+	printer LogPrinter
 }
 
-func NewLogStreamer(follow FollowFlag, url model.WebURL, filter hud.LogFilter, printer hud.LogPrinter) *LogStreamer {
+func NewLogStreamer(follow FollowFlag, url model.WebURL, filter LogFilter, printer LogPrinter) *LogStreamer {
 	return &LogStreamer{
 		follow:  follow,
 		url:     url,
@@ -63,7 +62,7 @@ type WebsocketReader struct {
 	handler      ViewHandler
 }
 
-func newWebsocketReaderForLogs(conn WebsocketConn, persistent bool, filter hud.LogFilter, printer hud.LogPrinter) *WebsocketReader {
+func newWebsocketReaderForLogs(conn WebsocketConn, persistent bool, filter LogFilter, printer LogPrinter) *WebsocketReader {
 	ls := newLogViewHandler(filter, printer)
 	return newWebsocketReader(conn, persistent, ls)
 }
@@ -91,14 +90,14 @@ type logViewHandler struct {
 	//
 	// This value should only be used to compare to other server values, NOT client checkpoints.
 	serverWatermark int32
-	filter          hud.LogFilter
-	printer         hud.LogPrinter
+	filter          LogFilter
+	printer         LogPrinter
 	// isFirstBatch tracks whether we've received the first batch of logs.
 	// Tail limit only applies to the first batch (initial history).
 	isFirstBatch bool
 }
 
-func newLogViewHandler(filter hud.LogFilter, p hud.LogPrinter) *logViewHandler {
+func newLogViewHandler(filter LogFilter, p LogPrinter) *logViewHandler {
 	return &logViewHandler{
 		filter:       filter,
 		logstore:     logstore.NewLogStore(),

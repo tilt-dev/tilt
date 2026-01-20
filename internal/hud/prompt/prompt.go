@@ -11,7 +11,7 @@ import (
 	tty "github.com/mattn/go-tty"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
-	"github.com/tilt-dev/tilt/internal/hud"
+	hudclient "github.com/tilt-dev/tilt/internal/hud/client"
 	"github.com/tilt-dev/tilt/internal/openurl"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -47,7 +47,7 @@ type TerminalPrompt struct {
 	a         *analytics.TiltAnalytics
 	openInput OpenInput
 	openURL   openurl.OpenURL
-	stdout    hud.Stdout
+	stdout    hudclient.Stdout
 	host      model.WebHost
 	url       model.WebURL
 
@@ -62,7 +62,7 @@ type TerminalPrompt struct {
 }
 
 func NewTerminalPrompt(a *analytics.TiltAnalytics, openInput OpenInput,
-	openURL openurl.OpenURL, stdout hud.Stdout,
+	openURL openurl.OpenURL, stdout hudclient.Stdout,
 	host model.WebHost, url model.WebURL) *TerminalPrompt {
 
 	return &TerminalPrompt{
