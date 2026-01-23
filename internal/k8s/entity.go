@@ -232,10 +232,6 @@ func FilterByImage(entities []K8sEntity, img container.RefSelector, locators []I
 	return Filter(entities, func(e K8sEntity) (bool, error) { return e.HasImage(img, locators, inEnvVars) })
 }
 
-func FilterBySelectorMatchesLabels(entities []K8sEntity, labels map[string]string) (passing, rest []K8sEntity, err error) {
-	return Filter(entities, func(e K8sEntity) (bool, error) { return e.SelectorMatchesLabels(labels), nil })
-}
-
 func FilterByMetadataLabels(entities []K8sEntity, labels map[string]string) (passing, rest []K8sEntity, err error) {
 	return Filter(entities, func(e K8sEntity) (bool, error) { return e.MatchesMetadataLabels(labels) })
 }

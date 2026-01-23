@@ -311,3 +311,115 @@ func mustParseYAML(t *testing.T, yaml string) []K8sEntity {
 	}
 	return entities
 }
+
+// TestFilterByMatchesPodTemplateSpecNamespace tests that Services are only matched
+// to Deployments in the same namespace. This is a regression test for:
+// https://github.com/tilt-dev/tilt/issues/6311
+func TestFilterByMatchesPodTemplateSpecNamespace(t *testing.T) {
+	// Deployment in namespace "ns-a" with label app=myapp
+	deploymentNsA := `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapp
+  namespace: ns-a
+  labels:
+    app: myapp
+spec:
+  selector:
+    matchLabels:
+      app: myapp
+  template:
+    metadata:
+      labels:
+        app: myapp
+    spec:
+      containers:
+      - name: myapp
+        image: myapp:latest
+`
+
+	// Service in namespace "ns-b" with selector app=myapp (different namespace)
+	serviceNsB := `
+apiVersion: v1
+kind: Service
+metadata:
+  name: myapp
+  namespace: ns-b
+spec:
+  selector:
+    app: myapp
+  ports:
+  - port: 80
+`
+
+	// Service in namespace "ns-a" with selector app=myapp (same namespace)
+	serviceNsA := `
+apiVersion: v1
+kind: Service
+metadata:
+  name: myapp
+  namespace: ns-a
+spec:
+  selector:
+    app: myapp
+  ports:
+  - port: 80
+`
+
+	// Service without explicit namespace (should match for backward compatibility)
+	serviceNoNs := `
+apiVersion: v1
+kind: Service
+metadata:
+  name: myapp
+spec:
+  selector:
+    app: myapp
+  ports:
+  - port: 80
+`
+
+	t.Run("service in different namespace should not match", func(t *testing.T) {
+		deployment := mustParseYAML(t, deploymentNsA)[0]
+		service := mustParseYAML(t, serviceNsB)[0]
+
+		matches, rest, err := FilterByMatchesPodTemplateSpec(deployment, []K8sEntity{service})
+		require.NoError(t, err)
+		assert.Empty(t, matches, "service in ns-b should not match deployment in ns-a")
+		assert.Len(t, rest, 1, "service should remain in rest")
+	})
+
+	t.Run("service in same namespace should match", func(t *testing.T) {
+		deployment := mustParseYAML(t, deploymentNsA)[0]
+		service := mustParseYAML(t, serviceNsA)[0]
+
+		matches, rest, err := FilterByMatchesPodTemplateSpec(deployment, []K8sEntity{service})
+		require.NoError(t, err)
+		assert.Len(t, matches, 1, "service in ns-a should match deployment in ns-a")
+		assert.Empty(t, rest, "no services should remain")
+	})
+
+	t.Run("service without namespace should match any deployment (backward compatibility)", func(t *testing.T) {
+		deployment := mustParseYAML(t, deploymentNsA)[0]
+		service := mustParseYAML(t, serviceNoNs)[0]
+
+		matches, rest, err := FilterByMatchesPodTemplateSpec(deployment, []K8sEntity{service})
+		require.NoError(t, err)
+		assert.Len(t, matches, 1, "service without namespace should match deployment in ns-a")
+		assert.Empty(t, rest, "no services should remain")
+	})
+
+	t.Run("only matching namespace service should be selected", func(t *testing.T) {
+		deployment := mustParseYAML(t, deploymentNsA)[0]
+		serviceA := mustParseYAML(t, serviceNsA)[0]
+		serviceB := mustParseYAML(t, serviceNsB)[0]
+
+		matches, rest, err := FilterByMatchesPodTemplateSpec(deployment, []K8sEntity{serviceA, serviceB})
+		require.NoError(t, err)
+		assert.Len(t, matches, 1, "only service in ns-a should match")
+		assert.Equal(t, "ns-a", string(matches[0].Namespace()))
+		assert.Len(t, rest, 1, "service in ns-b should remain")
+		assert.Equal(t, "ns-b", string(rest[0].Namespace()))
+	})
+}
