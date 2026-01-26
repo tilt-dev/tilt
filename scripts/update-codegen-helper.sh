@@ -85,7 +85,11 @@ FIXUPS=(
 ./pkg/apis/core/zz_generated.deepcopy.go
 )
 
-if [[ "$CODEGEN_UID" != "$(id -u)" ]]; then
+USER_ID=$(id -u)
+
+# uid = 0 means we're running in docker desktop with
+# a fake user.
+if [[ "$USER_ID" != "0" && "$CODEGEN_UID" != "$USER_ID" ]]; then
     groupadd --gid "$CODEGEN_GID" codegen-user
     useradd --uid "$CODEGEN_UID" -g codegen-user codegen-user
 
