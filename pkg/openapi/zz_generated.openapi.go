@@ -22,7 +22,10 @@ limitations under the License.
 package openapi
 
 import (
+	resource "k8s.io/apimachinery/pkg/api/resource"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	runtime "k8s.io/apimachinery/pkg/runtime"
+	version "k8s.io/apimachinery/pkg/version"
 	common "k8s.io/kube-openapi/pkg/common"
 	spec "k8s.io/kube-openapi/pkg/validation/spec"
 )
@@ -219,59 +222,60 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UITextInputSpec":                   schema_pkg_apis_core_v1alpha1_UITextInputSpec(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UITextInputStatus":                 schema_pkg_apis_core_v1alpha1_UITextInputStatus(ref),
 		"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.VersionSettings":                   schema_pkg_apis_core_v1alpha1_VersionSettings(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.APIGroup":                                     schema_pkg_apis_meta_v1_APIGroup(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.APIGroupList":                                 schema_pkg_apis_meta_v1_APIGroupList(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.APIResource":                                  schema_pkg_apis_meta_v1_APIResource(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.APIResourceList":                              schema_pkg_apis_meta_v1_APIResourceList(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.APIVersions":                                  schema_pkg_apis_meta_v1_APIVersions(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.ApplyOptions":                                 schema_pkg_apis_meta_v1_ApplyOptions(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.Condition":                                    schema_pkg_apis_meta_v1_Condition(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.CreateOptions":                                schema_pkg_apis_meta_v1_CreateOptions(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.DeleteOptions":                                schema_pkg_apis_meta_v1_DeleteOptions(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.Duration":                                     schema_pkg_apis_meta_v1_Duration(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.FieldSelectorRequirement":                     schema_pkg_apis_meta_v1_FieldSelectorRequirement(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.FieldsV1":                                     schema_pkg_apis_meta_v1_FieldsV1(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.GetOptions":                                   schema_pkg_apis_meta_v1_GetOptions(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.GroupKind":                                    schema_pkg_apis_meta_v1_GroupKind(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.GroupResource":                                schema_pkg_apis_meta_v1_GroupResource(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.GroupVersion":                                 schema_pkg_apis_meta_v1_GroupVersion(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.GroupVersionForDiscovery":                     schema_pkg_apis_meta_v1_GroupVersionForDiscovery(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.GroupVersionKind":                             schema_pkg_apis_meta_v1_GroupVersionKind(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.GroupVersionResource":                         schema_pkg_apis_meta_v1_GroupVersionResource(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.InternalEvent":                                schema_pkg_apis_meta_v1_InternalEvent(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.LabelSelector":                                schema_pkg_apis_meta_v1_LabelSelector(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.LabelSelectorRequirement":                     schema_pkg_apis_meta_v1_LabelSelectorRequirement(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.List":                                         schema_pkg_apis_meta_v1_List(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta":                                     schema_pkg_apis_meta_v1_ListMeta(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.ListOptions":                                  schema_pkg_apis_meta_v1_ListOptions(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.ManagedFieldsEntry":                           schema_pkg_apis_meta_v1_ManagedFieldsEntry(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime":                                    schema_pkg_apis_meta_v1_MicroTime(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta":                                   schema_pkg_apis_meta_v1_ObjectMeta(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.OwnerReference":                               schema_pkg_apis_meta_v1_OwnerReference(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.PartialObjectMetadata":                        schema_pkg_apis_meta_v1_PartialObjectMetadata(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.PartialObjectMetadataList":                    schema_pkg_apis_meta_v1_PartialObjectMetadataList(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.Patch":                                        schema_pkg_apis_meta_v1_Patch(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.PatchOptions":                                 schema_pkg_apis_meta_v1_PatchOptions(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.Preconditions":                                schema_pkg_apis_meta_v1_Preconditions(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.RootPaths":                                    schema_pkg_apis_meta_v1_RootPaths(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.ServerAddressByClientCIDR":                    schema_pkg_apis_meta_v1_ServerAddressByClientCIDR(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.Status":                                       schema_pkg_apis_meta_v1_Status(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.StatusCause":                                  schema_pkg_apis_meta_v1_StatusCause(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.StatusDetails":                                schema_pkg_apis_meta_v1_StatusDetails(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.Table":                                        schema_pkg_apis_meta_v1_Table(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.TableColumnDefinition":                        schema_pkg_apis_meta_v1_TableColumnDefinition(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.TableOptions":                                 schema_pkg_apis_meta_v1_TableOptions(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.TableRow":                                     schema_pkg_apis_meta_v1_TableRow(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.TableRowCondition":                            schema_pkg_apis_meta_v1_TableRowCondition(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.Time":                                         schema_pkg_apis_meta_v1_Time(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.Timestamp":                                    schema_pkg_apis_meta_v1_Timestamp(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.TypeMeta":                                     schema_pkg_apis_meta_v1_TypeMeta(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.UpdateOptions":                                schema_pkg_apis_meta_v1_UpdateOptions(ref),
-		"k8s.io/apimachinery/pkg/apis/meta/v1.WatchEvent":                                   schema_pkg_apis_meta_v1_WatchEvent(ref),
-		"k8s.io/apimachinery/pkg/runtime.RawExtension":                                      schema_k8sio_apimachinery_pkg_runtime_RawExtension(ref),
-		"k8s.io/apimachinery/pkg/runtime.TypeMeta":                                          schema_k8sio_apimachinery_pkg_runtime_TypeMeta(ref),
-		"k8s.io/apimachinery/pkg/runtime.Unknown":                                           schema_k8sio_apimachinery_pkg_runtime_Unknown(ref),
-		"k8s.io/apimachinery/pkg/version.Info":                                              schema_k8sio_apimachinery_pkg_version_Info(ref),
+		resource.Quantity{}.OpenAPIModelName():                                              schema_apimachinery_pkg_api_resource_Quantity(ref),
+		v1.APIGroup{}.OpenAPIModelName():                                                    schema_pkg_apis_meta_v1_APIGroup(ref),
+		v1.APIGroupList{}.OpenAPIModelName():                                                schema_pkg_apis_meta_v1_APIGroupList(ref),
+		v1.APIResource{}.OpenAPIModelName():                                                 schema_pkg_apis_meta_v1_APIResource(ref),
+		v1.APIResourceList{}.OpenAPIModelName():                                             schema_pkg_apis_meta_v1_APIResourceList(ref),
+		v1.APIVersions{}.OpenAPIModelName():                                                 schema_pkg_apis_meta_v1_APIVersions(ref),
+		v1.ApplyOptions{}.OpenAPIModelName():                                                schema_pkg_apis_meta_v1_ApplyOptions(ref),
+		v1.Condition{}.OpenAPIModelName():                                                   schema_pkg_apis_meta_v1_Condition(ref),
+		v1.CreateOptions{}.OpenAPIModelName():                                               schema_pkg_apis_meta_v1_CreateOptions(ref),
+		v1.DeleteOptions{}.OpenAPIModelName():                                               schema_pkg_apis_meta_v1_DeleteOptions(ref),
+		v1.Duration{}.OpenAPIModelName():                                                    schema_pkg_apis_meta_v1_Duration(ref),
+		v1.FieldSelectorRequirement{}.OpenAPIModelName():                                    schema_pkg_apis_meta_v1_FieldSelectorRequirement(ref),
+		v1.FieldsV1{}.OpenAPIModelName():                                                    schema_pkg_apis_meta_v1_FieldsV1(ref),
+		v1.GetOptions{}.OpenAPIModelName():                                                  schema_pkg_apis_meta_v1_GetOptions(ref),
+		v1.GroupKind{}.OpenAPIModelName():                                                   schema_pkg_apis_meta_v1_GroupKind(ref),
+		v1.GroupResource{}.OpenAPIModelName():                                               schema_pkg_apis_meta_v1_GroupResource(ref),
+		v1.GroupVersion{}.OpenAPIModelName():                                                schema_pkg_apis_meta_v1_GroupVersion(ref),
+		v1.GroupVersionForDiscovery{}.OpenAPIModelName():                                    schema_pkg_apis_meta_v1_GroupVersionForDiscovery(ref),
+		v1.GroupVersionKind{}.OpenAPIModelName():                                            schema_pkg_apis_meta_v1_GroupVersionKind(ref),
+		v1.GroupVersionResource{}.OpenAPIModelName():                                        schema_pkg_apis_meta_v1_GroupVersionResource(ref),
+		v1.InternalEvent{}.OpenAPIModelName():                                               schema_pkg_apis_meta_v1_InternalEvent(ref),
+		v1.LabelSelector{}.OpenAPIModelName():                                               schema_pkg_apis_meta_v1_LabelSelector(ref),
+		v1.LabelSelectorRequirement{}.OpenAPIModelName():                                    schema_pkg_apis_meta_v1_LabelSelectorRequirement(ref),
+		v1.List{}.OpenAPIModelName():                                                        schema_pkg_apis_meta_v1_List(ref),
+		v1.ListMeta{}.OpenAPIModelName():                                                    schema_pkg_apis_meta_v1_ListMeta(ref),
+		v1.ListOptions{}.OpenAPIModelName():                                                 schema_pkg_apis_meta_v1_ListOptions(ref),
+		v1.ManagedFieldsEntry{}.OpenAPIModelName():                                          schema_pkg_apis_meta_v1_ManagedFieldsEntry(ref),
+		v1.MicroTime{}.OpenAPIModelName():                                                   schema_pkg_apis_meta_v1_MicroTime(ref),
+		v1.ObjectMeta{}.OpenAPIModelName():                                                  schema_pkg_apis_meta_v1_ObjectMeta(ref),
+		v1.OwnerReference{}.OpenAPIModelName():                                              schema_pkg_apis_meta_v1_OwnerReference(ref),
+		v1.PartialObjectMetadata{}.OpenAPIModelName():                                       schema_pkg_apis_meta_v1_PartialObjectMetadata(ref),
+		v1.PartialObjectMetadataList{}.OpenAPIModelName():                                   schema_pkg_apis_meta_v1_PartialObjectMetadataList(ref),
+		v1.Patch{}.OpenAPIModelName():                                                       schema_pkg_apis_meta_v1_Patch(ref),
+		v1.PatchOptions{}.OpenAPIModelName():                                                schema_pkg_apis_meta_v1_PatchOptions(ref),
+		v1.Preconditions{}.OpenAPIModelName():                                               schema_pkg_apis_meta_v1_Preconditions(ref),
+		v1.RootPaths{}.OpenAPIModelName():                                                   schema_pkg_apis_meta_v1_RootPaths(ref),
+		v1.ServerAddressByClientCIDR{}.OpenAPIModelName():                                   schema_pkg_apis_meta_v1_ServerAddressByClientCIDR(ref),
+		v1.Status{}.OpenAPIModelName():                                                      schema_pkg_apis_meta_v1_Status(ref),
+		v1.StatusCause{}.OpenAPIModelName():                                                 schema_pkg_apis_meta_v1_StatusCause(ref),
+		v1.StatusDetails{}.OpenAPIModelName():                                               schema_pkg_apis_meta_v1_StatusDetails(ref),
+		v1.Table{}.OpenAPIModelName():                                                       schema_pkg_apis_meta_v1_Table(ref),
+		v1.TableColumnDefinition{}.OpenAPIModelName():                                       schema_pkg_apis_meta_v1_TableColumnDefinition(ref),
+		v1.TableOptions{}.OpenAPIModelName():                                                schema_pkg_apis_meta_v1_TableOptions(ref),
+		v1.TableRow{}.OpenAPIModelName():                                                    schema_pkg_apis_meta_v1_TableRow(ref),
+		v1.TableRowCondition{}.OpenAPIModelName():                                           schema_pkg_apis_meta_v1_TableRowCondition(ref),
+		v1.Time{}.OpenAPIModelName():                                                        schema_pkg_apis_meta_v1_Time(ref),
+		v1.Timestamp{}.OpenAPIModelName():                                                   schema_pkg_apis_meta_v1_Timestamp(ref),
+		v1.TypeMeta{}.OpenAPIModelName():                                                    schema_pkg_apis_meta_v1_TypeMeta(ref),
+		v1.UpdateOptions{}.OpenAPIModelName():                                               schema_pkg_apis_meta_v1_UpdateOptions(ref),
+		v1.WatchEvent{}.OpenAPIModelName():                                                  schema_pkg_apis_meta_v1_WatchEvent(ref),
+		runtime.RawExtension{}.OpenAPIModelName():                                           schema_k8sio_apimachinery_pkg_runtime_RawExtension(ref),
+		runtime.TypeMeta{}.OpenAPIModelName():                                               schema_k8sio_apimachinery_pkg_runtime_TypeMeta(ref),
+		runtime.Unknown{}.OpenAPIModelName():                                                schema_k8sio_apimachinery_pkg_runtime_Unknown(ref),
+		version.Info{}.OpenAPIModelName():                                                   schema_k8sio_apimachinery_pkg_version_Info(ref),
 	}
 }
 
@@ -299,7 +303,7 @@ func schema_pkg_apis_core_v1alpha1_Cluster(ref common.ReferenceCallback) common.
 					"metadata": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+							Ref:     ref(v1.ObjectMeta{}.OpenAPIModelName()),
 						},
 					},
 					"spec": {
@@ -318,7 +322,7 @@ func schema_pkg_apis_core_v1alpha1_Cluster(ref common.ReferenceCallback) common.
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ClusterSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ClusterStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ClusterSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ClusterStatus", v1.ObjectMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -394,7 +398,7 @@ func schema_pkg_apis_core_v1alpha1_ClusterList(ref common.ReferenceCallback) com
 					"metadata": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+							Ref:     ref(v1.ListMeta{}.OpenAPIModelName()),
 						},
 					},
 					"items": {
@@ -415,7 +419,7 @@ func schema_pkg_apis_core_v1alpha1_ClusterList(ref common.ReferenceCallback) com
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Cluster", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Cluster", v1.ListMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -470,7 +474,7 @@ func schema_pkg_apis_core_v1alpha1_ClusterStatus(ref common.ReferenceCallback) c
 					"connectedAt": {
 						SchemaProps: spec.SchemaProps{
 							Description: "ConnectedAt indicates the time at which the cluster connection was established.\n\nConsumers can use this to detect when the underlying config has changed and refresh their client/connection accordingly.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+							Ref:         ref(v1.MicroTime{}.OpenAPIModelName()),
 						},
 					},
 					"registry": {
@@ -496,7 +500,7 @@ func schema_pkg_apis_core_v1alpha1_ClusterStatus(ref common.ReferenceCallback) c
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ClusterConnectionStatus", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.RegistryHosting", "k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ClusterConnectionStatus", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.RegistryHosting", v1.MicroTime{}.OpenAPIModelName()},
 	}
 }
 
@@ -524,7 +528,7 @@ func schema_pkg_apis_core_v1alpha1_Cmd(ref common.ReferenceCallback) common.Open
 					"metadata": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+							Ref:     ref(v1.ObjectMeta{}.OpenAPIModelName()),
 						},
 					},
 					"spec": {
@@ -543,7 +547,7 @@ func schema_pkg_apis_core_v1alpha1_Cmd(ref common.ReferenceCallback) common.Open
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdStatus", v1.ObjectMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -571,7 +575,7 @@ func schema_pkg_apis_core_v1alpha1_CmdImage(ref common.ReferenceCallback) common
 					"metadata": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+							Ref:     ref(v1.ObjectMeta{}.OpenAPIModelName()),
 						},
 					},
 					"spec": {
@@ -590,7 +594,7 @@ func schema_pkg_apis_core_v1alpha1_CmdImage(ref common.ReferenceCallback) common
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdImageSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdImageStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdImageSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdImageStatus", v1.ObjectMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -618,7 +622,7 @@ func schema_pkg_apis_core_v1alpha1_CmdImageList(ref common.ReferenceCallback) co
 					"metadata": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+							Ref:     ref(v1.ListMeta{}.OpenAPIModelName()),
 						},
 					},
 					"items": {
@@ -639,7 +643,7 @@ func schema_pkg_apis_core_v1alpha1_CmdImageList(ref common.ReferenceCallback) co
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdImage", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.CmdImage", v1.ListMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -769,14 +773,14 @@ func schema_pkg_apis_core_v1alpha1_CmdImageStateBuilding(ref common.ReferenceCal
 					"startedAt": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Time when the build started.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+							Ref:         ref(v1.MicroTime{}.OpenAPIModelName()),
 						},
 					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+			v1.MicroTime{}.OpenAPIModelName()},
 	}
 }
 
@@ -804,20 +808,20 @@ func schema_pkg_apis_core_v1alpha1_CmdImageStateCompleted(ref common.ReferenceCa
 					"startedAt": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Time when we started building an image.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+							Ref:         ref(v1.MicroTime{}.OpenAPIModelName()),
 						},
 					},
 					"finishedAt": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Time when we finished building an image",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+							Ref:         ref(v1.MicroTime{}.OpenAPIModelName()),
 						},
 					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+			v1.MicroTime{}.OpenAPIModelName()},
 	}
 }
 
@@ -905,7 +909,7 @@ func schema_pkg_apis_core_v1alpha1_CmdList(ref common.ReferenceCallback) common.
 					"metadata": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+							Ref:     ref(v1.ListMeta{}.OpenAPIModelName()),
 						},
 					},
 					"items": {
@@ -926,7 +930,7 @@ func schema_pkg_apis_core_v1alpha1_CmdList(ref common.ReferenceCallback) common.
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Cmd", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Cmd", v1.ListMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -1024,7 +1028,7 @@ func schema_pkg_apis_core_v1alpha1_CmdStateRunning(ref common.ReferenceCallback)
 					"startedAt": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Time at which the command was last started.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+							Ref:         ref(v1.MicroTime{}.OpenAPIModelName()),
 						},
 					},
 				},
@@ -1032,7 +1036,7 @@ func schema_pkg_apis_core_v1alpha1_CmdStateRunning(ref common.ReferenceCallback)
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+			v1.MicroTime{}.OpenAPIModelName()},
 	}
 }
 
@@ -1062,13 +1066,13 @@ func schema_pkg_apis_core_v1alpha1_CmdStateTerminated(ref common.ReferenceCallba
 					"startedAt": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Time at which previous execution of the command started",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+							Ref:         ref(v1.MicroTime{}.OpenAPIModelName()),
 						},
 					},
 					"finishedAt": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Time at which the command last terminated",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+							Ref:         ref(v1.MicroTime{}.OpenAPIModelName()),
 						},
 					},
 					"reason": {
@@ -1083,7 +1087,7 @@ func schema_pkg_apis_core_v1alpha1_CmdStateTerminated(ref common.ReferenceCallba
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+			v1.MicroTime{}.OpenAPIModelName()},
 	}
 }
 
@@ -1177,7 +1181,7 @@ func schema_pkg_apis_core_v1alpha1_ConfigMap(ref common.ReferenceCallback) commo
 					"metadata": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+							Ref:     ref(v1.ObjectMeta{}.OpenAPIModelName()),
 						},
 					},
 					"data": {
@@ -1200,7 +1204,7 @@ func schema_pkg_apis_core_v1alpha1_ConfigMap(ref common.ReferenceCallback) commo
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+			v1.ObjectMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -1258,7 +1262,7 @@ func schema_pkg_apis_core_v1alpha1_ConfigMapList(ref common.ReferenceCallback) c
 					"metadata": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+							Ref:     ref(v1.ListMeta{}.OpenAPIModelName()),
 						},
 					},
 					"items": {
@@ -1279,7 +1283,7 @@ func schema_pkg_apis_core_v1alpha1_ConfigMapList(ref common.ReferenceCallback) c
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ConfigMap", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ConfigMap", v1.ListMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -1490,7 +1494,7 @@ func schema_pkg_apis_core_v1alpha1_ContainerStateRunning(ref common.ReferenceCal
 					"startedAt": {
 						SchemaProps: spec.SchemaProps{
 							Description: "StartedAt is the time the container began running.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+							Ref:         ref(v1.Time{}.OpenAPIModelName()),
 						},
 					},
 				},
@@ -1498,7 +1502,7 @@ func schema_pkg_apis_core_v1alpha1_ContainerStateRunning(ref common.ReferenceCal
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+			v1.Time{}.OpenAPIModelName()},
 	}
 }
 
@@ -1512,13 +1516,13 @@ func schema_pkg_apis_core_v1alpha1_ContainerStateTerminated(ref common.Reference
 					"startedAt": {
 						SchemaProps: spec.SchemaProps{
 							Description: "StartedAt is the time the container began running.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+							Ref:         ref(v1.Time{}.OpenAPIModelName()),
 						},
 					},
 					"finishedAt": {
 						SchemaProps: spec.SchemaProps{
 							Description: "FinishedAt is the time the container stopped running.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+							Ref:         ref(v1.Time{}.OpenAPIModelName()),
 						},
 					},
 					"reason": {
@@ -1541,7 +1545,7 @@ func schema_pkg_apis_core_v1alpha1_ContainerStateTerminated(ref common.Reference
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+			v1.Time{}.OpenAPIModelName()},
 	}
 }
 
@@ -1673,7 +1677,7 @@ func schema_pkg_apis_core_v1alpha1_DisableStatus(ref common.ReferenceCallback) c
 					"lastUpdateTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The last time this status was updated.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+							Ref:         ref(v1.Time{}.OpenAPIModelName()),
 						},
 					},
 					"reason": {
@@ -1697,7 +1701,7 @@ func schema_pkg_apis_core_v1alpha1_DisableStatus(ref common.ReferenceCallback) c
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+			v1.Time{}.OpenAPIModelName()},
 	}
 }
 
@@ -1744,7 +1748,7 @@ func schema_pkg_apis_core_v1alpha1_DockerComposeLogStream(ref common.ReferenceCa
 					"metadata": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+							Ref:     ref(v1.ObjectMeta{}.OpenAPIModelName()),
 						},
 					},
 					"spec": {
@@ -1763,7 +1767,7 @@ func schema_pkg_apis_core_v1alpha1_DockerComposeLogStream(ref common.ReferenceCa
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerComposeLogStreamSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerComposeLogStreamStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerComposeLogStreamSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerComposeLogStreamStatus", v1.ObjectMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -1791,7 +1795,7 @@ func schema_pkg_apis_core_v1alpha1_DockerComposeLogStreamList(ref common.Referen
 					"metadata": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+							Ref:     ref(v1.ListMeta{}.OpenAPIModelName()),
 						},
 					},
 					"items": {
@@ -1812,7 +1816,7 @@ func schema_pkg_apis_core_v1alpha1_DockerComposeLogStreamList(ref common.Referen
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerComposeLogStream", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerComposeLogStream", v1.ListMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -1857,7 +1861,7 @@ func schema_pkg_apis_core_v1alpha1_DockerComposeLogStreamStatus(ref common.Refer
 					"startedAt": {
 						SchemaProps: spec.SchemaProps{
 							Description: "When we last started the log streamer.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+							Ref:         ref(v1.MicroTime{}.OpenAPIModelName()),
 						},
 					},
 					"error": {
@@ -1871,7 +1875,7 @@ func schema_pkg_apis_core_v1alpha1_DockerComposeLogStreamStatus(ref common.Refer
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+			v1.MicroTime{}.OpenAPIModelName()},
 	}
 }
 
@@ -1976,7 +1980,7 @@ func schema_pkg_apis_core_v1alpha1_DockerComposeService(ref common.ReferenceCall
 					"metadata": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+							Ref:     ref(v1.ObjectMeta{}.OpenAPIModelName()),
 						},
 					},
 					"spec": {
@@ -1995,7 +1999,7 @@ func schema_pkg_apis_core_v1alpha1_DockerComposeService(ref common.ReferenceCall
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerComposeServiceSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerComposeServiceStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerComposeServiceSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerComposeServiceStatus", v1.ObjectMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -2023,7 +2027,7 @@ func schema_pkg_apis_core_v1alpha1_DockerComposeServiceList(ref common.Reference
 					"metadata": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+							Ref:     ref(v1.ListMeta{}.OpenAPIModelName()),
 						},
 					},
 					"items": {
@@ -2044,7 +2048,7 @@ func schema_pkg_apis_core_v1alpha1_DockerComposeServiceList(ref common.Reference
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerComposeService", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerComposeService", v1.ListMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -2157,20 +2161,20 @@ func schema_pkg_apis_core_v1alpha1_DockerComposeServiceStatus(ref common.Referen
 					"lastApplyStartTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Timestamp of when we last started bringing up this service in Docker Compose.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+							Ref:         ref(v1.MicroTime{}.OpenAPIModelName()),
 						},
 					},
 					"lastApplyFinishTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Timestamp of when we last finished bringing up this service in Docker Compose.\n\nWhen populated, must be equal or after the LastApplyStartTime field.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+							Ref:         ref(v1.MicroTime{}.OpenAPIModelName()),
 						},
 					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableStatus", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerContainerState", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerPortBinding", "k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableStatus", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerContainerState", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerPortBinding", v1.MicroTime{}.OpenAPIModelName()},
 	}
 }
 
@@ -2212,13 +2216,13 @@ func schema_pkg_apis_core_v1alpha1_DockerContainerState(ref common.ReferenceCall
 					"startedAt": {
 						SchemaProps: spec.SchemaProps{
 							Description: "When the container process started.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+							Ref:         ref(v1.MicroTime{}.OpenAPIModelName()),
 						},
 					},
 					"finishedAt": {
 						SchemaProps: spec.SchemaProps{
 							Description: "When the container process finished.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+							Ref:         ref(v1.MicroTime{}.OpenAPIModelName()),
 						},
 					},
 					"healthStatus": {
@@ -2232,7 +2236,7 @@ func schema_pkg_apis_core_v1alpha1_DockerContainerState(ref common.ReferenceCall
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+			v1.MicroTime{}.OpenAPIModelName()},
 	}
 }
 
@@ -2260,7 +2264,7 @@ func schema_pkg_apis_core_v1alpha1_DockerImage(ref common.ReferenceCallback) com
 					"metadata": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+							Ref:     ref(v1.ObjectMeta{}.OpenAPIModelName()),
 						},
 					},
 					"spec": {
@@ -2279,7 +2283,7 @@ func schema_pkg_apis_core_v1alpha1_DockerImage(ref common.ReferenceCallback) com
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerImageSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerImageStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerImageSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerImageStatus", v1.ObjectMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -2307,7 +2311,7 @@ func schema_pkg_apis_core_v1alpha1_DockerImageList(ref common.ReferenceCallback)
 					"metadata": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+							Ref:     ref(v1.ListMeta{}.OpenAPIModelName()),
 						},
 					},
 					"items": {
@@ -2328,7 +2332,7 @@ func schema_pkg_apis_core_v1alpha1_DockerImageList(ref common.ReferenceCallback)
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerImage", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DockerImage", v1.ListMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -2556,13 +2560,13 @@ func schema_pkg_apis_core_v1alpha1_DockerImageStageStatus(ref common.ReferenceCa
 					"startedAt": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The timestamp when we started working on the stage.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+							Ref:         ref(v1.MicroTime{}.OpenAPIModelName()),
 						},
 					},
 					"finishedAt": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The timetsamp when we completed the work on the stage.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+							Ref:         ref(v1.MicroTime{}.OpenAPIModelName()),
 						},
 					},
 					"error": {
@@ -2577,7 +2581,7 @@ func schema_pkg_apis_core_v1alpha1_DockerImageStageStatus(ref common.ReferenceCa
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+			v1.MicroTime{}.OpenAPIModelName()},
 	}
 }
 
@@ -2598,14 +2602,14 @@ func schema_pkg_apis_core_v1alpha1_DockerImageStateBuilding(ref common.Reference
 					"startedAt": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Time when the build started.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+							Ref:         ref(v1.MicroTime{}.OpenAPIModelName()),
 						},
 					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+			v1.MicroTime{}.OpenAPIModelName()},
 	}
 }
 
@@ -2633,20 +2637,20 @@ func schema_pkg_apis_core_v1alpha1_DockerImageStateCompleted(ref common.Referenc
 					"startedAt": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Time when we started building an image.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+							Ref:         ref(v1.MicroTime{}.OpenAPIModelName()),
 						},
 					},
 					"finishedAt": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Time when we finished building an image",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+							Ref:         ref(v1.MicroTime{}.OpenAPIModelName()),
 						},
 					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+			v1.MicroTime{}.OpenAPIModelName()},
 	}
 }
 
@@ -2810,7 +2814,7 @@ func schema_pkg_apis_core_v1alpha1_Extension(ref common.ReferenceCallback) commo
 					"metadata": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+							Ref:     ref(v1.ObjectMeta{}.OpenAPIModelName()),
 						},
 					},
 					"spec": {
@@ -2829,7 +2833,7 @@ func schema_pkg_apis_core_v1alpha1_Extension(ref common.ReferenceCallback) commo
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ExtensionSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ExtensionStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ExtensionSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ExtensionStatus", v1.ObjectMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -2857,7 +2861,7 @@ func schema_pkg_apis_core_v1alpha1_ExtensionList(ref common.ReferenceCallback) c
 					"metadata": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+							Ref:     ref(v1.ListMeta{}.OpenAPIModelName()),
 						},
 					},
 					"items": {
@@ -2878,7 +2882,7 @@ func schema_pkg_apis_core_v1alpha1_ExtensionList(ref common.ReferenceCallback) c
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Extension", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Extension", v1.ListMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -2906,7 +2910,7 @@ func schema_pkg_apis_core_v1alpha1_ExtensionRepo(ref common.ReferenceCallback) c
 					"metadata": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+							Ref:     ref(v1.ObjectMeta{}.OpenAPIModelName()),
 						},
 					},
 					"spec": {
@@ -2925,7 +2929,7 @@ func schema_pkg_apis_core_v1alpha1_ExtensionRepo(ref common.ReferenceCallback) c
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ExtensionRepoSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ExtensionRepoStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ExtensionRepoSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ExtensionRepoStatus", v1.ObjectMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -2953,7 +2957,7 @@ func schema_pkg_apis_core_v1alpha1_ExtensionRepoList(ref common.ReferenceCallbac
 					"metadata": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+							Ref:     ref(v1.ListMeta{}.OpenAPIModelName()),
 						},
 					},
 					"items": {
@@ -2974,7 +2978,7 @@ func schema_pkg_apis_core_v1alpha1_ExtensionRepoList(ref common.ReferenceCallbac
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ExtensionRepo", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ExtensionRepo", v1.ListMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -3038,7 +3042,7 @@ func schema_pkg_apis_core_v1alpha1_ExtensionRepoStatus(ref common.ReferenceCallb
 					"lastFetchedAt": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The last time the repo was fetched and checked for validity.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+							Ref:         ref(v1.Time{}.OpenAPIModelName()),
 						},
 					},
 					"path": {
@@ -3066,7 +3070,7 @@ func schema_pkg_apis_core_v1alpha1_ExtensionRepoStatus(ref common.ReferenceCallb
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+			v1.Time{}.OpenAPIModelName()},
 	}
 }
 
@@ -3151,7 +3155,7 @@ func schema_pkg_apis_core_v1alpha1_FileEvent(ref common.ReferenceCallback) commo
 					"time": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Time is an approximate timestamp for a batch of file changes.\n\nThis will NOT exactly match any inode attributes (e.g. ctime, mtime) at the filesystem level and is purely informational or for use as an opaque watermark.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+							Ref:         ref(v1.MicroTime{}.OpenAPIModelName()),
 						},
 					},
 					"seenFiles": {
@@ -3174,7 +3178,7 @@ func schema_pkg_apis_core_v1alpha1_FileEvent(ref common.ReferenceCallback) commo
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+			v1.MicroTime{}.OpenAPIModelName()},
 	}
 }
 
@@ -3202,7 +3206,7 @@ func schema_pkg_apis_core_v1alpha1_FileWatch(ref common.ReferenceCallback) commo
 					"metadata": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+							Ref:     ref(v1.ObjectMeta{}.OpenAPIModelName()),
 						},
 					},
 					"spec": {
@@ -3221,7 +3225,7 @@ func schema_pkg_apis_core_v1alpha1_FileWatch(ref common.ReferenceCallback) commo
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileWatchSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileWatchStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileWatchSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileWatchStatus", v1.ObjectMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -3249,7 +3253,7 @@ func schema_pkg_apis_core_v1alpha1_FileWatchList(ref common.ReferenceCallback) c
 					"metadata": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+							Ref:     ref(v1.ListMeta{}.OpenAPIModelName()),
 						},
 					},
 					"items": {
@@ -3270,7 +3274,7 @@ func schema_pkg_apis_core_v1alpha1_FileWatchList(ref common.ReferenceCallback) c
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileWatch", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileWatch", v1.ListMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -3335,13 +3339,13 @@ func schema_pkg_apis_core_v1alpha1_FileWatchStatus(ref common.ReferenceCallback)
 					"monitorStartTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "MonitorStartTime is the timestamp of when filesystem monitor was started. It is zero if the monitor has not been started yet.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+							Ref:         ref(v1.MicroTime{}.OpenAPIModelName()),
 						},
 					},
 					"lastEventTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "LastEventTime is the timestamp of the most recent file event. It is zero if no events have been seen yet.\n\nIf the specifics of which files changed are not important, this field can be used as a watermark without needing to inspect FileEvents.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+							Ref:         ref(v1.MicroTime{}.OpenAPIModelName()),
 						},
 					},
 					"fileEvents": {
@@ -3375,7 +3379,7 @@ func schema_pkg_apis_core_v1alpha1_FileWatchStatus(ref common.ReferenceCallback)
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableStatus", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileEvent", "k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableStatus", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.FileEvent", v1.MicroTime{}.OpenAPIModelName()},
 	}
 }
 
@@ -3470,7 +3474,7 @@ func schema_pkg_apis_core_v1alpha1_ForwardStatus(ref common.ReferenceCallback) c
 					"startedAt": {
 						SchemaProps: spec.SchemaProps{
 							Description: "StartedAt is the time at which the forward was initiated.\n\nIf the forwarder is not running yet, this will be zero/empty.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+							Ref:         ref(v1.MicroTime{}.OpenAPIModelName()),
 						},
 					},
 					"error": {
@@ -3485,7 +3489,7 @@ func schema_pkg_apis_core_v1alpha1_ForwardStatus(ref common.ReferenceCallback) c
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+			v1.MicroTime{}.OpenAPIModelName()},
 	}
 }
 
@@ -3672,7 +3676,7 @@ func schema_pkg_apis_core_v1alpha1_ImageMap(ref common.ReferenceCallback) common
 					"metadata": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+							Ref:     ref(v1.ObjectMeta{}.OpenAPIModelName()),
 						},
 					},
 					"spec": {
@@ -3691,7 +3695,7 @@ func schema_pkg_apis_core_v1alpha1_ImageMap(ref common.ReferenceCallback) common
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMapSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMapStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMapSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMapStatus", v1.ObjectMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -3719,7 +3723,7 @@ func schema_pkg_apis_core_v1alpha1_ImageMapList(ref common.ReferenceCallback) co
 					"metadata": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+							Ref:     ref(v1.ListMeta{}.OpenAPIModelName()),
 						},
 					},
 					"items": {
@@ -3740,7 +3744,7 @@ func schema_pkg_apis_core_v1alpha1_ImageMapList(ref common.ReferenceCallback) co
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMap", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ImageMap", v1.ListMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -3883,14 +3887,14 @@ func schema_pkg_apis_core_v1alpha1_ImageMapStatus(ref common.ReferenceCallback) 
 					"buildStartTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Timestamp indicating when the image started building.\n\nIntended to be used to determine which file changes were picked up by the image build. We can assume that any file changes before this timestamp were definitely included in the image, and any file changes after this timestamp may not be included in the image.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+							Ref:         ref(v1.MicroTime{}.OpenAPIModelName()),
 						},
 					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+			v1.MicroTime{}.OpenAPIModelName()},
 	}
 }
 
@@ -3918,7 +3922,7 @@ func schema_pkg_apis_core_v1alpha1_KubernetesApply(ref common.ReferenceCallback)
 					"metadata": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+							Ref:     ref(v1.ObjectMeta{}.OpenAPIModelName()),
 						},
 					},
 					"spec": {
@@ -3937,7 +3941,7 @@ func schema_pkg_apis_core_v1alpha1_KubernetesApply(ref common.ReferenceCallback)
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesApplySpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesApplyStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesApplySpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesApplyStatus", v1.ObjectMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -4016,7 +4020,7 @@ func schema_pkg_apis_core_v1alpha1_KubernetesApplyList(ref common.ReferenceCallb
 					"metadata": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+							Ref:     ref(v1.ListMeta{}.OpenAPIModelName()),
 						},
 					},
 					"items": {
@@ -4037,7 +4041,7 @@ func schema_pkg_apis_core_v1alpha1_KubernetesApplyList(ref common.ReferenceCallb
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesApply", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesApply", v1.ListMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -4087,7 +4091,7 @@ func schema_pkg_apis_core_v1alpha1_KubernetesApplySpec(ref common.ReferenceCallb
 					"timeout": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The timeout on the apply operation.\n\nWe've had problems with both: 1) CRD apiservers that take an arbitrarily long time to apply, and 2) Infinite loops in the apimachinery So we offer the ability to set a timeout on Kubernetes apply operations.\n\nThe default timeout is 30s.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
+							Ref:         ref(v1.Duration{}.OpenAPIModelName()),
 						},
 					},
 					"kubernetesDiscoveryTemplateSpec": {
@@ -4151,7 +4155,7 @@ func schema_pkg_apis_core_v1alpha1_KubernetesApplySpec(ref common.ReferenceCallb
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableSource", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesApplyCmd", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoveryTemplateSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesImageLocator", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStreamTemplateSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PortForwardTemplateSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.RestartOnSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableSource", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesApplyCmd", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoveryTemplateSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesImageLocator", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStreamTemplateSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PortForwardTemplateSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.RestartOnSpec", v1.Duration{}.OpenAPIModelName()},
 	}
 }
 
@@ -4179,13 +4183,13 @@ func schema_pkg_apis_core_v1alpha1_KubernetesApplyStatus(ref common.ReferenceCal
 					"lastApplyTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Timestamp of we last finished applying this YAML to the cluster.\n\nWhen populated, must be equal or after the LastApplyStartTime field.\n\nis more consistent with how we name this in other API objects.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+							Ref:         ref(v1.MicroTime{}.OpenAPIModelName()),
 						},
 					},
 					"lastApplyStartTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Timestamp of when we last started applying this YAML to the cluster.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+							Ref:         ref(v1.MicroTime{}.OpenAPIModelName()),
 						},
 					},
 					"appliedInputHash": {
@@ -4209,7 +4213,7 @@ func schema_pkg_apis_core_v1alpha1_KubernetesApplyStatus(ref common.ReferenceCal
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.Condition"),
+										Ref:     ref(v1.Condition{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -4219,7 +4223,7 @@ func schema_pkg_apis_core_v1alpha1_KubernetesApplyStatus(ref common.ReferenceCal
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.Condition", "k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableStatus", v1.Condition{}.OpenAPIModelName(), v1.MicroTime{}.OpenAPIModelName()},
 	}
 }
 
@@ -4325,7 +4329,7 @@ func schema_pkg_apis_core_v1alpha1_KubernetesDiscovery(ref common.ReferenceCallb
 					"metadata": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+							Ref:     ref(v1.ObjectMeta{}.OpenAPIModelName()),
 						},
 					},
 					"spec": {
@@ -4344,7 +4348,7 @@ func schema_pkg_apis_core_v1alpha1_KubernetesDiscovery(ref common.ReferenceCallb
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoverySpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoveryStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoverySpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoveryStatus", v1.ObjectMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -4372,7 +4376,7 @@ func schema_pkg_apis_core_v1alpha1_KubernetesDiscoveryList(ref common.ReferenceC
 					"metadata": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+							Ref:     ref(v1.ListMeta{}.OpenAPIModelName()),
 						},
 					},
 					"items": {
@@ -4393,7 +4397,7 @@ func schema_pkg_apis_core_v1alpha1_KubernetesDiscoveryList(ref common.ReferenceC
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscovery", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscovery", v1.ListMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -4426,7 +4430,7 @@ func schema_pkg_apis_core_v1alpha1_KubernetesDiscoverySpec(ref common.ReferenceC
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.LabelSelector"),
+										Ref:     ref(v1.LabelSelector{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -4457,7 +4461,7 @@ func schema_pkg_apis_core_v1alpha1_KubernetesDiscoverySpec(ref common.ReferenceC
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesWatchRef", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStreamTemplateSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PortForwardTemplateSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.LabelSelector"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesWatchRef", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStreamTemplateSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PortForwardTemplateSpec", v1.LabelSelector{}.OpenAPIModelName()},
 	}
 }
 
@@ -4470,7 +4474,7 @@ func schema_pkg_apis_core_v1alpha1_KubernetesDiscoveryStateRunning(ref common.Re
 					"startTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "StartTime is when Kubernetes resource discovery began.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+							Ref:         ref(v1.MicroTime{}.OpenAPIModelName()),
 						},
 					},
 				},
@@ -4478,7 +4482,7 @@ func schema_pkg_apis_core_v1alpha1_KubernetesDiscoveryStateRunning(ref common.Re
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+			v1.MicroTime{}.OpenAPIModelName()},
 	}
 }
 
@@ -4513,7 +4517,7 @@ func schema_pkg_apis_core_v1alpha1_KubernetesDiscoveryStatus(ref common.Referenc
 					"monitorStartTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "MonitorStartTime is the timestamp of when Kubernetes resource discovery was started.\n\nIt is zero if discovery has not been started yet.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+							Ref:         ref(v1.MicroTime{}.OpenAPIModelName()),
 						},
 					},
 					"pods": {
@@ -4547,7 +4551,7 @@ func schema_pkg_apis_core_v1alpha1_KubernetesDiscoveryStatus(ref common.Referenc
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoveryStateRunning", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoveryStateWaiting", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Pod", "k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoveryStateRunning", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.KubernetesDiscoveryStateWaiting", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Pod", v1.MicroTime{}.OpenAPIModelName()},
 	}
 }
 
@@ -4565,7 +4569,7 @@ func schema_pkg_apis_core_v1alpha1_KubernetesDiscoveryTemplateSpec(ref common.Re
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.LabelSelector"),
+										Ref:     ref(v1.LabelSelector{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -4575,7 +4579,7 @@ func schema_pkg_apis_core_v1alpha1_KubernetesDiscoveryTemplateSpec(ref common.Re
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.LabelSelector"},
+			v1.LabelSelector{}.OpenAPIModelName()},
 	}
 }
 
@@ -4705,7 +4709,7 @@ func schema_pkg_apis_core_v1alpha1_LiveUpdate(ref common.ReferenceCallback) comm
 					"metadata": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+							Ref:     ref(v1.ObjectMeta{}.OpenAPIModelName()),
 						},
 					},
 					"spec": {
@@ -4724,7 +4728,7 @@ func schema_pkg_apis_core_v1alpha1_LiveUpdate(ref common.ReferenceCallback) comm
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateStatus", v1.ObjectMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -4795,7 +4799,7 @@ func schema_pkg_apis_core_v1alpha1_LiveUpdateContainerStatus(ref common.Referenc
 					"lastFileTimeSynced": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The timestamp of the most recent file update successfully synced to the container.\n\nMust match the timestamp in a FileEvent, not the time the sync was performed.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+							Ref:         ref(v1.MicroTime{}.OpenAPIModelName()),
 						},
 					},
 					"lastExecError": {
@@ -4816,7 +4820,7 @@ func schema_pkg_apis_core_v1alpha1_LiveUpdateContainerStatus(ref common.Referenc
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateContainerStateWaiting", "k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateContainerStateWaiting", v1.MicroTime{}.OpenAPIModelName()},
 	}
 }
 
@@ -4967,7 +4971,7 @@ func schema_pkg_apis_core_v1alpha1_LiveUpdateList(ref common.ReferenceCallback) 
 					"metadata": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+							Ref:     ref(v1.ListMeta{}.OpenAPIModelName()),
 						},
 					},
 					"items": {
@@ -4988,7 +4992,7 @@ func schema_pkg_apis_core_v1alpha1_LiveUpdateList(ref common.ReferenceCallback) 
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdate", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdate", v1.ListMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -5165,14 +5169,14 @@ func schema_pkg_apis_core_v1alpha1_LiveUpdateStateFailed(ref common.ReferenceCal
 					"lastTransitionTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "When the live-updater transitioned into a Failed state.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+							Ref:         ref(v1.MicroTime{}.OpenAPIModelName()),
 						},
 					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+			v1.MicroTime{}.OpenAPIModelName()},
 	}
 }
 
@@ -5316,7 +5320,7 @@ func schema_pkg_apis_core_v1alpha1_Pod(ref common.ReferenceCallback) common.Open
 					"createdAt": {
 						SchemaProps: spec.SchemaProps{
 							Description: "CreatedAt is when the Pod was created.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+							Ref:         ref(v1.Time{}.OpenAPIModelName()),
 						},
 					},
 					"phase": {
@@ -5425,7 +5429,7 @@ func schema_pkg_apis_core_v1alpha1_Pod(ref common.ReferenceCallback) common.Open
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Container", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodCondition", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodOwner", "k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Container", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodCondition", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodOwner", v1.Time{}.OpenAPIModelName()},
 	}
 }
 
@@ -5455,7 +5459,7 @@ func schema_pkg_apis_core_v1alpha1_PodCondition(ref common.ReferenceCallback) co
 					"lastTransitionTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "LastTransitionTime is the last time the status changed.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+							Ref:         ref(v1.Time{}.OpenAPIModelName()),
 						},
 					},
 					"reason": {
@@ -5477,7 +5481,7 @@ func schema_pkg_apis_core_v1alpha1_PodCondition(ref common.ReferenceCallback) co
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+			v1.Time{}.OpenAPIModelName()},
 	}
 }
 
@@ -5505,7 +5509,7 @@ func schema_pkg_apis_core_v1alpha1_PodLogStream(ref common.ReferenceCallback) co
 					"metadata": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+							Ref:     ref(v1.ObjectMeta{}.OpenAPIModelName()),
 						},
 					},
 					"spec": {
@@ -5524,7 +5528,7 @@ func schema_pkg_apis_core_v1alpha1_PodLogStream(ref common.ReferenceCallback) co
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStreamSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStreamStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStreamSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStreamStatus", v1.ObjectMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -5552,7 +5556,7 @@ func schema_pkg_apis_core_v1alpha1_PodLogStreamList(ref common.ReferenceCallback
 					"metadata": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+							Ref:     ref(v1.ListMeta{}.OpenAPIModelName()),
 						},
 					},
 					"items": {
@@ -5573,7 +5577,7 @@ func schema_pkg_apis_core_v1alpha1_PodLogStreamList(ref common.ReferenceCallback
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStream", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PodLogStream", v1.ListMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -5601,7 +5605,7 @@ func schema_pkg_apis_core_v1alpha1_PodLogStreamSpec(ref common.ReferenceCallback
 					"sinceTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "An RFC3339 timestamp from which to show logs. If this value precedes the time a pod was started, only logs since the pod start will be returned. If this value is in the future, no logs will be returned.\n\nTranslates directly to the underlying PodLogOptions.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+							Ref:         ref(v1.Time{}.OpenAPIModelName()),
 						},
 					},
 					"onlyContainers": {
@@ -5646,7 +5650,7 @@ func schema_pkg_apis_core_v1alpha1_PodLogStreamSpec(ref common.ReferenceCallback
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+			v1.Time{}.OpenAPIModelName()},
 	}
 }
 
@@ -5696,7 +5700,7 @@ func schema_pkg_apis_core_v1alpha1_PodLogStreamTemplateSpec(ref common.Reference
 					"sinceTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "An RFC3339 timestamp from which to show logs. If this value precedes the time a pod was started, only logs since the pod start will be returned. If this value is in the future, no logs will be returned.\n\nTranslates directly to the underlying PodLogOptions.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+							Ref:         ref(v1.Time{}.OpenAPIModelName()),
 						},
 					},
 					"onlyContainers": {
@@ -5733,7 +5737,7 @@ func schema_pkg_apis_core_v1alpha1_PodLogStreamTemplateSpec(ref common.Reference
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+			v1.Time{}.OpenAPIModelName()},
 	}
 }
 
@@ -5771,7 +5775,7 @@ func schema_pkg_apis_core_v1alpha1_PodOwner(ref common.ReferenceCallback) common
 					"creationTimestamp": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The creation timestamp of the owner.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+							Ref:         ref(v1.Time{}.OpenAPIModelName()),
 						},
 					},
 				},
@@ -5779,7 +5783,7 @@ func schema_pkg_apis_core_v1alpha1_PodOwner(ref common.ReferenceCallback) common
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+			v1.Time{}.OpenAPIModelName()},
 	}
 }
 
@@ -5807,7 +5811,7 @@ func schema_pkg_apis_core_v1alpha1_PortForward(ref common.ReferenceCallback) com
 					"metadata": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+							Ref:     ref(v1.ObjectMeta{}.OpenAPIModelName()),
 						},
 					},
 					"spec": {
@@ -5826,7 +5830,7 @@ func schema_pkg_apis_core_v1alpha1_PortForward(ref common.ReferenceCallback) com
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PortForwardSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PortForwardStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PortForwardSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PortForwardStatus", v1.ObjectMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -5854,7 +5858,7 @@ func schema_pkg_apis_core_v1alpha1_PortForwardList(ref common.ReferenceCallback)
 					"metadata": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+							Ref:     ref(v1.ListMeta{}.OpenAPIModelName()),
 						},
 					},
 					"items": {
@@ -5875,7 +5879,7 @@ func schema_pkg_apis_core_v1alpha1_PortForwardList(ref common.ReferenceCallback)
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PortForward", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.PortForward", v1.ListMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -6174,7 +6178,7 @@ func schema_pkg_apis_core_v1alpha1_Session(ref common.ReferenceCallback) common.
 					"metadata": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+							Ref:     ref(v1.ObjectMeta{}.OpenAPIModelName()),
 						},
 					},
 					"spec": {
@@ -6193,7 +6197,7 @@ func schema_pkg_apis_core_v1alpha1_Session(ref common.ReferenceCallback) common.
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.SessionSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.SessionStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.SessionSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.SessionStatus", v1.ObjectMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -6206,26 +6210,26 @@ func schema_pkg_apis_core_v1alpha1_SessionCISpec(ref common.ReferenceCallback) c
 					"k8sGracePeriod": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Grace period given for Kubernetes resources to recover after they start failing.\n\nIf omitted, and in exitCondition=ci, the session will exit as soon as we see a pod failure.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
+							Ref:         ref(v1.Duration{}.OpenAPIModelName()),
 						},
 					},
 					"timeout": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Timeout for the whole CI pipeline. Defaults to 30m.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
+							Ref:         ref(v1.Duration{}.OpenAPIModelName()),
 						},
 					},
 					"readinessTimeout": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Timeout for a resource to become ready before the CI pipeline fails. Measured from the time the resource is started. Defaults to 5m.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
+							Ref:         ref(v1.Duration{}.OpenAPIModelName()),
 						},
 					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
+			v1.Duration{}.OpenAPIModelName()},
 	}
 }
 
@@ -6253,7 +6257,7 @@ func schema_pkg_apis_core_v1alpha1_SessionList(ref common.ReferenceCallback) com
 					"metadata": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+							Ref:     ref(v1.ListMeta{}.OpenAPIModelName()),
 						},
 					},
 					"items": {
@@ -6274,7 +6278,7 @@ func schema_pkg_apis_core_v1alpha1_SessionList(ref common.ReferenceCallback) com
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Session", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Session", v1.ListMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -6334,7 +6338,7 @@ func schema_pkg_apis_core_v1alpha1_SessionStatus(ref common.ReferenceCallback) c
 					"startTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "StartTime is when the Tilt engine was first started.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+							Ref:         ref(v1.MicroTime{}.OpenAPIModelName()),
 						},
 					},
 					"targets": {
@@ -6371,7 +6375,7 @@ func schema_pkg_apis_core_v1alpha1_SessionStatus(ref common.ReferenceCallback) c
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Target", "k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Target", v1.MicroTime{}.OpenAPIModelName()},
 	}
 }
 
@@ -6385,7 +6389,7 @@ func schema_pkg_apis_core_v1alpha1_StartOnSpec(ref common.ReferenceCallback) com
 					"startAfter": {
 						SchemaProps: spec.SchemaProps{
 							Description: "StartAfter indicates that events before this time should be ignored.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+							Ref:         ref(v1.Time{}.OpenAPIModelName()),
 						},
 					},
 					"uiButtons": {
@@ -6408,7 +6412,7 @@ func schema_pkg_apis_core_v1alpha1_StartOnSpec(ref common.ReferenceCallback) com
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+			v1.Time{}.OpenAPIModelName()},
 	}
 }
 
@@ -6593,7 +6597,7 @@ func schema_pkg_apis_core_v1alpha1_TargetStateActive(ref common.ReferenceCallbac
 					"startTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "StartTime is when execution began.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+							Ref:         ref(v1.MicroTime{}.OpenAPIModelName()),
 						},
 					},
 					"ready": {
@@ -6607,7 +6611,7 @@ func schema_pkg_apis_core_v1alpha1_TargetStateActive(ref common.ReferenceCallbac
 					"lastReadyTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "LastReadyTime is when the target last passed readiness checks.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+							Ref:         ref(v1.MicroTime{}.OpenAPIModelName()),
 						},
 					},
 				},
@@ -6615,7 +6619,7 @@ func schema_pkg_apis_core_v1alpha1_TargetStateActive(ref common.ReferenceCallbac
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+			v1.MicroTime{}.OpenAPIModelName()},
 	}
 }
 
@@ -6640,13 +6644,13 @@ func schema_pkg_apis_core_v1alpha1_TargetStateTerminated(ref common.ReferenceCal
 					"startTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "StartTime is when the target began executing.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+							Ref:         ref(v1.MicroTime{}.OpenAPIModelName()),
 						},
 					},
 					"finishTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "FinishTime is when the target stopped executing.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+							Ref:         ref(v1.MicroTime{}.OpenAPIModelName()),
 						},
 					},
 					"error": {
@@ -6668,7 +6672,7 @@ func schema_pkg_apis_core_v1alpha1_TargetStateTerminated(ref common.ReferenceCal
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+			v1.MicroTime{}.OpenAPIModelName()},
 	}
 }
 
@@ -6759,7 +6763,7 @@ func schema_pkg_apis_core_v1alpha1_Tiltfile(ref common.ReferenceCallback) common
 					"metadata": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+							Ref:     ref(v1.ObjectMeta{}.OpenAPIModelName()),
 						},
 					},
 					"spec": {
@@ -6778,7 +6782,7 @@ func schema_pkg_apis_core_v1alpha1_Tiltfile(ref common.ReferenceCallback) common
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltfileSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltfileStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltfileSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltfileStatus", v1.ObjectMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -6806,7 +6810,7 @@ func schema_pkg_apis_core_v1alpha1_TiltfileList(ref common.ReferenceCallback) co
 					"metadata": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+							Ref:     ref(v1.ListMeta{}.OpenAPIModelName()),
 						},
 					},
 					"items": {
@@ -6827,7 +6831,7 @@ func schema_pkg_apis_core_v1alpha1_TiltfileList(ref common.ReferenceCallback) co
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Tiltfile", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.Tiltfile", v1.ListMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -6923,14 +6927,14 @@ func schema_pkg_apis_core_v1alpha1_TiltfileStateRunning(ref common.ReferenceCall
 					"startedAt": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Time at which previous execution of the command started.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+							Ref:         ref(v1.MicroTime{}.OpenAPIModelName()),
 						},
 					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+			v1.MicroTime{}.OpenAPIModelName()},
 	}
 }
 
@@ -6966,13 +6970,13 @@ func schema_pkg_apis_core_v1alpha1_TiltfileStateTerminated(ref common.ReferenceC
 					"startedAt": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Time at which previous execution of the command started.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+							Ref:         ref(v1.MicroTime{}.OpenAPIModelName()),
 						},
 					},
 					"finishedAt": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Time at which the command last terminated.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+							Ref:         ref(v1.MicroTime{}.OpenAPIModelName()),
 						},
 					},
 					"warningCount": {
@@ -6986,7 +6990,7 @@ func schema_pkg_apis_core_v1alpha1_TiltfileStateTerminated(ref common.ReferenceC
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+			v1.MicroTime{}.OpenAPIModelName()},
 	}
 }
 
@@ -7067,7 +7071,7 @@ func schema_pkg_apis_core_v1alpha1_ToggleButton(ref common.ReferenceCallback) co
 					"metadata": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+							Ref:     ref(v1.ObjectMeta{}.OpenAPIModelName()),
 						},
 					},
 					"spec": {
@@ -7086,7 +7090,7 @@ func schema_pkg_apis_core_v1alpha1_ToggleButton(ref common.ReferenceCallback) co
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ToggleButtonSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ToggleButtonStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ToggleButtonSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ToggleButtonStatus", v1.ObjectMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -7114,7 +7118,7 @@ func schema_pkg_apis_core_v1alpha1_ToggleButtonList(ref common.ReferenceCallback
 					"metadata": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+							Ref:     ref(v1.ListMeta{}.OpenAPIModelName()),
 						},
 					},
 					"items": {
@@ -7135,7 +7139,7 @@ func schema_pkg_apis_core_v1alpha1_ToggleButtonList(ref common.ReferenceCallback
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ToggleButton", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.ToggleButton", v1.ListMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -7319,7 +7323,7 @@ func schema_pkg_apis_core_v1alpha1_UIBuildRunning(ref common.ReferenceCallback) 
 					"startTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The time when the build started.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+							Ref:         ref(v1.MicroTime{}.OpenAPIModelName()),
 						},
 					},
 					"spanID": {
@@ -7333,7 +7337,7 @@ func schema_pkg_apis_core_v1alpha1_UIBuildRunning(ref common.ReferenceCallback) 
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+			v1.MicroTime{}.OpenAPIModelName()},
 	}
 }
 
@@ -7369,13 +7373,13 @@ func schema_pkg_apis_core_v1alpha1_UIBuildTerminated(ref common.ReferenceCallbac
 					"startTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The time when the build started.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+							Ref:         ref(v1.MicroTime{}.OpenAPIModelName()),
 						},
 					},
 					"finishTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The time when the build finished.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+							Ref:         ref(v1.MicroTime{}.OpenAPIModelName()),
 						},
 					},
 					"spanID": {
@@ -7396,7 +7400,7 @@ func schema_pkg_apis_core_v1alpha1_UIBuildTerminated(ref common.ReferenceCallbac
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+			v1.MicroTime{}.OpenAPIModelName()},
 	}
 }
 
@@ -7424,7 +7428,7 @@ func schema_pkg_apis_core_v1alpha1_UIButton(ref common.ReferenceCallback) common
 					"metadata": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+							Ref:     ref(v1.ObjectMeta{}.OpenAPIModelName()),
 						},
 					},
 					"spec": {
@@ -7443,7 +7447,7 @@ func schema_pkg_apis_core_v1alpha1_UIButton(ref common.ReferenceCallback) common
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIButtonSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIButtonStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIButtonSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIButtonStatus", v1.ObjectMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -7471,7 +7475,7 @@ func schema_pkg_apis_core_v1alpha1_UIButtonList(ref common.ReferenceCallback) co
 					"metadata": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+							Ref:     ref(v1.ListMeta{}.OpenAPIModelName()),
 						},
 					},
 					"items": {
@@ -7492,7 +7496,7 @@ func schema_pkg_apis_core_v1alpha1_UIButtonList(ref common.ReferenceCallback) co
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIButton", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIButton", v1.ListMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -7579,7 +7583,7 @@ func schema_pkg_apis_core_v1alpha1_UIButtonStatus(ref common.ReferenceCallback) 
 					"lastClickedAt": {
 						SchemaProps: spec.SchemaProps{
 							Description: "LastClickedAt is the timestamp of the last time the button was clicked.\n\nIf the button has never clicked before, this will be the zero-value/null.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+							Ref:         ref(v1.MicroTime{}.OpenAPIModelName()),
 						},
 					},
 					"inputs": {
@@ -7600,7 +7604,7 @@ func schema_pkg_apis_core_v1alpha1_UIButtonStatus(ref common.ReferenceCallback) 
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIInputStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIInputStatus", v1.MicroTime{}.OpenAPIModelName()},
 	}
 }
 
@@ -7898,7 +7902,7 @@ func schema_pkg_apis_core_v1alpha1_UIResource(ref common.ReferenceCallback) comm
 					"metadata": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+							Ref:     ref(v1.ObjectMeta{}.OpenAPIModelName()),
 						},
 					},
 					"spec": {
@@ -7917,7 +7921,7 @@ func schema_pkg_apis_core_v1alpha1_UIResource(ref common.ReferenceCallback) comm
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceStatus", v1.ObjectMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -7966,7 +7970,7 @@ func schema_pkg_apis_core_v1alpha1_UIResourceCondition(ref common.ReferenceCallb
 					"lastTransitionTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Last time the condition transitioned from one status to another.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+							Ref:         ref(v1.MicroTime{}.OpenAPIModelName()),
 						},
 					},
 					"reason": {
@@ -7988,7 +7992,7 @@ func schema_pkg_apis_core_v1alpha1_UIResourceCondition(ref common.ReferenceCallb
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+			v1.MicroTime{}.OpenAPIModelName()},
 	}
 }
 
@@ -8009,13 +8013,13 @@ func schema_pkg_apis_core_v1alpha1_UIResourceKubernetes(ref common.ReferenceCall
 					"podCreationTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The creation time of the active pod.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+							Ref:         ref(v1.Time{}.OpenAPIModelName()),
 						},
 					},
 					"podUpdateStartTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The last update time of the active pod",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+							Ref:         ref(v1.Time{}.OpenAPIModelName()),
 						},
 					},
 					"podStatus": {
@@ -8072,7 +8076,7 @@ func schema_pkg_apis_core_v1alpha1_UIResourceKubernetes(ref common.ReferenceCall
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+			v1.Time{}.OpenAPIModelName()},
 	}
 }
 
@@ -8127,7 +8131,7 @@ func schema_pkg_apis_core_v1alpha1_UIResourceList(ref common.ReferenceCallback) 
 					"metadata": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+							Ref:     ref(v1.ListMeta{}.OpenAPIModelName()),
 						},
 					},
 					"items": {
@@ -8148,7 +8152,7 @@ func schema_pkg_apis_core_v1alpha1_UIResourceList(ref common.ReferenceCallback) 
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResource", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResource", v1.ListMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -8282,7 +8286,7 @@ func schema_pkg_apis_core_v1alpha1_UIResourceStatus(ref common.ReferenceCallback
 					"lastDeployTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The last time this resource was deployed.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+							Ref:         ref(v1.MicroTime{}.OpenAPIModelName()),
 						},
 					},
 					"triggerMode": {
@@ -8315,7 +8319,7 @@ func schema_pkg_apis_core_v1alpha1_UIResourceStatus(ref common.ReferenceCallback
 					"pendingBuildSince": {
 						SchemaProps: spec.SchemaProps{
 							Description: "When the build was put in the pending queue.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"),
+							Ref:         ref(v1.MicroTime{}.OpenAPIModelName()),
 						},
 					},
 					"hasPendingChanges": {
@@ -8430,7 +8434,7 @@ func schema_pkg_apis_core_v1alpha1_UIResourceStatus(ref common.ReferenceCallback
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableResourceStatus", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBuildRunning", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBuildTerminated", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceCompose", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceCondition", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceKubernetes", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceLink", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceLocal", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceStateWaiting", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceTargetSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.MicroTime"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.DisableResourceStatus", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBuildRunning", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIBuildTerminated", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceCompose", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceCondition", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceKubernetes", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceLink", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceLocal", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceStateWaiting", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIResourceTargetSpec", v1.MicroTime{}.OpenAPIModelName()},
 	}
 }
 
@@ -8492,7 +8496,7 @@ func schema_pkg_apis_core_v1alpha1_UISession(ref common.ReferenceCallback) commo
 					"metadata": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+							Ref:     ref(v1.ObjectMeta{}.OpenAPIModelName()),
 						},
 					},
 					"spec": {
@@ -8511,7 +8515,7 @@ func schema_pkg_apis_core_v1alpha1_UISession(ref common.ReferenceCallback) commo
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UISessionSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UISessionStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UISessionSpec", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UISessionStatus", v1.ObjectMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -8539,7 +8543,7 @@ func schema_pkg_apis_core_v1alpha1_UISessionList(ref common.ReferenceCallback) c
 					"metadata": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+							Ref:     ref(v1.ListMeta{}.OpenAPIModelName()),
 						},
 					},
 					"items": {
@@ -8560,7 +8564,7 @@ func schema_pkg_apis_core_v1alpha1_UISessionList(ref common.ReferenceCallback) c
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UISession", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UISession", v1.ListMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -8662,7 +8666,7 @@ func schema_pkg_apis_core_v1alpha1_UISessionStatus(ref common.ReferenceCallback)
 					"tiltStartTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The time that this instance of tilt started. Clients can use this to determine if the API server has restarted and all the objects need to be refreshed.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+							Ref:         ref(v1.Time{}.OpenAPIModelName()),
 						},
 					},
 					"tiltfileKey": {
@@ -8676,7 +8680,7 @@ func schema_pkg_apis_core_v1alpha1_UISessionStatus(ref common.ReferenceCallback)
 			},
 		},
 		Dependencies: []string{
-			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltBuild", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIFeatureFlag", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.VersionSettings", "k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+			"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.TiltBuild", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.UIFeatureFlag", "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.VersionSettings", v1.Time{}.OpenAPIModelName()},
 	}
 }
 
@@ -8748,6 +8752,54 @@ func schema_pkg_apis_core_v1alpha1_VersionSettings(ref common.ReferenceCallback)
 	}
 }
 
+func schema_apimachinery_pkg_api_resource_Quantity(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.EmbedOpenAPIDefinitionIntoV2Extension(common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Quantity is a fixed-point representation of a number. It provides convenient marshaling/unmarshaling in JSON and YAML, in addition to String() and AsInt64() accessors.\n\nThe serialization format is:\n\n``` <quantity>        ::= <signedNumber><suffix>\n\n\t(Note that <suffix> may be empty, from the \"\" case in <decimalSI>.)\n\n<digit>           ::= 0 | 1 | ... | 9 <digits>          ::= <digit> | <digit><digits> <number>          ::= <digits> | <digits>.<digits> | <digits>. | .<digits> <sign>            ::= \"+\" | \"-\" <signedNumber>    ::= <number> | <sign><number> <suffix>          ::= <binarySI> | <decimalExponent> | <decimalSI> <binarySI>        ::= Ki | Mi | Gi | Ti | Pi | Ei\n\n\t(International System of units; See: http://physics.nist.gov/cuu/Units/binary.html)\n\n<decimalSI>       ::= m | \"\" | k | M | G | T | P | E\n\n\t(Note that 1024 = 1Ki but 1000 = 1k; I didn't choose the capitalization.)\n\n<decimalExponent> ::= \"e\" <signedNumber> | \"E\" <signedNumber> ```\n\nNo matter which of the three exponent forms is used, no quantity may represent a number greater than 2^63-1 in magnitude, nor may it have more than 3 decimal places. Numbers larger or more precise will be capped or rounded up. (E.g.: 0.1m will rounded up to 1m.) This may be extended in the future if we require larger or smaller quantities.\n\nWhen a Quantity is parsed from a string, it will remember the type of suffix it had, and will use the same type again when it is serialized.\n\nBefore serializing, Quantity will be put in \"canonical form\". This means that Exponent/suffix will be adjusted up or down (with a corresponding increase or decrease in Mantissa) such that:\n\n- No precision is lost - No fractional digits will be emitted - The exponent (or suffix) is as large as possible.\n\nThe sign will be omitted unless the number is negative.\n\nExamples:\n\n- 1.5 will be serialized as \"1500m\" - 1.5Gi will be serialized as \"1536Mi\"\n\nNote that the quantity will NEVER be internally represented by a floating point number. That is the whole point of this exercise.\n\nNon-canonical values will still parse as long as they are well formed, but will be re-emitted in their canonical form. (So always use canonical form, or don't diff.)\n\nThis format is intended to make it difficult to use these numbers without writing some sort of special handling code in the hopes that that will cause implementors to also use a fixed point implementation.",
+				OneOf:       common.GenerateOpenAPIV3OneOfSchema(resource.Quantity{}.OpenAPIV3OneOfTypes()),
+				Format:      resource.Quantity{}.OpenAPISchemaFormat(),
+			},
+		},
+	}, common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Quantity is a fixed-point representation of a number. It provides convenient marshaling/unmarshaling in JSON and YAML, in addition to String() and AsInt64() accessors.\n\nThe serialization format is:\n\n``` <quantity>        ::= <signedNumber><suffix>\n\n\t(Note that <suffix> may be empty, from the \"\" case in <decimalSI>.)\n\n<digit>           ::= 0 | 1 | ... | 9 <digits>          ::= <digit> | <digit><digits> <number>          ::= <digits> | <digits>.<digits> | <digits>. | .<digits> <sign>            ::= \"+\" | \"-\" <signedNumber>    ::= <number> | <sign><number> <suffix>          ::= <binarySI> | <decimalExponent> | <decimalSI> <binarySI>        ::= Ki | Mi | Gi | Ti | Pi | Ei\n\n\t(International System of units; See: http://physics.nist.gov/cuu/Units/binary.html)\n\n<decimalSI>       ::= m | \"\" | k | M | G | T | P | E\n\n\t(Note that 1024 = 1Ki but 1000 = 1k; I didn't choose the capitalization.)\n\n<decimalExponent> ::= \"e\" <signedNumber> | \"E\" <signedNumber> ```\n\nNo matter which of the three exponent forms is used, no quantity may represent a number greater than 2^63-1 in magnitude, nor may it have more than 3 decimal places. Numbers larger or more precise will be capped or rounded up. (E.g.: 0.1m will rounded up to 1m.) This may be extended in the future if we require larger or smaller quantities.\n\nWhen a Quantity is parsed from a string, it will remember the type of suffix it had, and will use the same type again when it is serialized.\n\nBefore serializing, Quantity will be put in \"canonical form\". This means that Exponent/suffix will be adjusted up or down (with a corresponding increase or decrease in Mantissa) such that:\n\n- No precision is lost - No fractional digits will be emitted - The exponent (or suffix) is as large as possible.\n\nThe sign will be omitted unless the number is negative.\n\nExamples:\n\n- 1.5 will be serialized as \"1500m\" - 1.5Gi will be serialized as \"1536Mi\"\n\nNote that the quantity will NEVER be internally represented by a floating point number. That is the whole point of this exercise.\n\nNon-canonical values will still parse as long as they are well formed, but will be re-emitted in their canonical form. (So always use canonical form, or don't diff.)\n\nThis format is intended to make it difficult to use these numbers without writing some sort of special handling code in the hopes that that will cause implementors to also use a fixed point implementation.",
+				Type:        resource.Quantity{}.OpenAPISchemaType(),
+				Format:      resource.Quantity{}.OpenAPISchemaFormat(),
+			},
+		},
+	})
+}
+
+func schema_apimachinery_pkg_api_resource_int64Amount(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "int64Amount represents a fixed precision numerator and arbitrary scale exponent. It is faster than operations on inf.Dec for values that can be represented as int64.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"value": {
+						SchemaProps: spec.SchemaProps{
+							Default: 0,
+							Type:    []string{"integer"},
+							Format:  "int64",
+						},
+					},
+					"scale": {
+						SchemaProps: spec.SchemaProps{
+							Default: 0,
+							Type:    []string{"integer"},
+							Format:  "int32",
+						},
+					},
+				},
+				Required: []string{"value", "scale"},
+			},
+		},
+	}
+}
+
 func schema_pkg_apis_meta_v1_APIGroup(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -8790,7 +8842,7 @@ func schema_pkg_apis_meta_v1_APIGroup(ref common.ReferenceCallback) common.OpenA
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.GroupVersionForDiscovery"),
+										Ref:     ref(v1.GroupVersionForDiscovery{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -8800,7 +8852,7 @@ func schema_pkg_apis_meta_v1_APIGroup(ref common.ReferenceCallback) common.OpenA
 						SchemaProps: spec.SchemaProps{
 							Description: "preferredVersion is the version preferred by the API server, which probably is the storage version.",
 							Default:     map[string]interface{}{},
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.GroupVersionForDiscovery"),
+							Ref:         ref(v1.GroupVersionForDiscovery{}.OpenAPIModelName()),
 						},
 					},
 					"serverAddressByClientCIDRs": {
@@ -8816,7 +8868,7 @@ func schema_pkg_apis_meta_v1_APIGroup(ref common.ReferenceCallback) common.OpenA
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ServerAddressByClientCIDR"),
+										Ref:     ref(v1.ServerAddressByClientCIDR{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -8827,7 +8879,7 @@ func schema_pkg_apis_meta_v1_APIGroup(ref common.ReferenceCallback) common.OpenA
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.GroupVersionForDiscovery", "k8s.io/apimachinery/pkg/apis/meta/v1.ServerAddressByClientCIDR"},
+			v1.GroupVersionForDiscovery{}.OpenAPIModelName(), v1.ServerAddressByClientCIDR{}.OpenAPIModelName()},
 	}
 }
 
@@ -8865,7 +8917,7 @@ func schema_pkg_apis_meta_v1_APIGroupList(ref common.ReferenceCallback) common.O
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.APIGroup"),
+										Ref:     ref(v1.APIGroup{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -8876,7 +8928,7 @@ func schema_pkg_apis_meta_v1_APIGroupList(ref common.ReferenceCallback) common.O
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.APIGroup"},
+			v1.APIGroup{}.OpenAPIModelName()},
 	}
 }
 
@@ -9044,7 +9096,7 @@ func schema_pkg_apis_meta_v1_APIResourceList(ref common.ReferenceCallback) commo
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.APIResource"),
+										Ref:     ref(v1.APIResource{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -9055,7 +9107,7 @@ func schema_pkg_apis_meta_v1_APIResourceList(ref common.ReferenceCallback) commo
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.APIResource"},
+			v1.APIResource{}.OpenAPIModelName()},
 	}
 }
 
@@ -9113,7 +9165,7 @@ func schema_pkg_apis_meta_v1_APIVersions(ref common.ReferenceCallback) common.Op
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ServerAddressByClientCIDR"),
+										Ref:     ref(v1.ServerAddressByClientCIDR{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -9124,7 +9176,7 @@ func schema_pkg_apis_meta_v1_APIVersions(ref common.ReferenceCallback) common.Op
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.ServerAddressByClientCIDR"},
+			v1.ServerAddressByClientCIDR{}.OpenAPIModelName()},
 	}
 }
 
@@ -9225,7 +9277,7 @@ func schema_pkg_apis_meta_v1_Condition(ref common.ReferenceCallback) common.Open
 					"lastTransitionTime": {
 						SchemaProps: spec.SchemaProps{
 							Description: "lastTransitionTime is the last time the condition transitioned from one status to another. This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+							Ref:         ref(v1.Time{}.OpenAPIModelName()),
 						},
 					},
 					"reason": {
@@ -9249,7 +9301,7 @@ func schema_pkg_apis_meta_v1_Condition(ref common.ReferenceCallback) common.Open
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+			v1.Time{}.OpenAPIModelName()},
 	}
 }
 
@@ -9345,7 +9397,7 @@ func schema_pkg_apis_meta_v1_DeleteOptions(ref common.ReferenceCallback) common.
 					"preconditions": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Must be fulfilled before a deletion is carried out. If not possible, a 409 Conflict status will be returned.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Preconditions"),
+							Ref:         ref(v1.Preconditions{}.OpenAPIModelName()),
 						},
 					},
 					"orphanDependents": {
@@ -9393,7 +9445,7 @@ func schema_pkg_apis_meta_v1_DeleteOptions(ref common.ReferenceCallback) common.
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.Preconditions"},
+			v1.Preconditions{}.OpenAPIModelName()},
 	}
 }
 
@@ -9705,15 +9757,12 @@ func schema_pkg_apis_meta_v1_InternalEvent(ref common.ReferenceCallback) common.
 					"Object": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Object is:\n * If Type is Added or Modified: the new state of the object.\n * If Type is Deleted: the state of the object immediately before deletion.\n * If Type is Bookmark: the object (instance of a type being watched) where\n   only ResourceVersion field is set. On successful restart of watch from a\n   bookmark resourceVersion, client is guaranteed to not get repeat event\n   nor miss any events.\n * If Type is Error: *api.Status is recommended; other types may make sense\n   depending on context.",
-							Ref:         ref("k8s.io/apimachinery/pkg/runtime.Object"),
 						},
 					},
 				},
 				Required: []string{"Type", "Object"},
 			},
 		},
-		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/runtime.Object"},
 	}
 }
 
@@ -9753,7 +9802,7 @@ func schema_pkg_apis_meta_v1_LabelSelector(ref common.ReferenceCallback) common.
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.LabelSelectorRequirement"),
+										Ref:     ref(v1.LabelSelectorRequirement{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -9768,7 +9817,7 @@ func schema_pkg_apis_meta_v1_LabelSelector(ref common.ReferenceCallback) common.
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.LabelSelectorRequirement"},
+			v1.LabelSelectorRequirement{}.OpenAPIModelName()},
 	}
 }
 
@@ -9847,7 +9896,7 @@ func schema_pkg_apis_meta_v1_List(ref common.ReferenceCallback) common.OpenAPIDe
 						SchemaProps: spec.SchemaProps{
 							Description: "Standard list metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
 							Default:     map[string]interface{}{},
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+							Ref:         ref(v1.ListMeta{}.OpenAPIModelName()),
 						},
 					},
 					"items": {
@@ -9857,7 +9906,7 @@ func schema_pkg_apis_meta_v1_List(ref common.ReferenceCallback) common.OpenAPIDe
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Ref: ref("k8s.io/apimachinery/pkg/runtime.RawExtension"),
+										Ref: ref(runtime.RawExtension{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -9868,7 +9917,7 @@ func schema_pkg_apis_meta_v1_List(ref common.ReferenceCallback) common.OpenAPIDe
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta", "k8s.io/apimachinery/pkg/runtime.RawExtension"},
+			v1.ListMeta{}.OpenAPIModelName(), runtime.RawExtension{}.OpenAPIModelName()},
 	}
 }
 
@@ -10041,7 +10090,7 @@ func schema_pkg_apis_meta_v1_ManagedFieldsEntry(ref common.ReferenceCallback) co
 					"time": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Time is the timestamp of when the ManagedFields entry was added. The timestamp will also be updated if a field is added, the manager changes any of the owned fields value or removes a field. The timestamp does not update when a field is removed from the entry because another manager took it over.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+							Ref:         ref(v1.Time{}.OpenAPIModelName()),
 						},
 					},
 					"fieldsType": {
@@ -10054,7 +10103,7 @@ func schema_pkg_apis_meta_v1_ManagedFieldsEntry(ref common.ReferenceCallback) co
 					"fieldsV1": {
 						SchemaProps: spec.SchemaProps{
 							Description: "FieldsV1 holds the first JSON version format as described in the \"FieldsV1\" type.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.FieldsV1"),
+							Ref:         ref(v1.FieldsV1{}.OpenAPIModelName()),
 						},
 					},
 					"subresource": {
@@ -10068,7 +10117,7 @@ func schema_pkg_apis_meta_v1_ManagedFieldsEntry(ref common.ReferenceCallback) co
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.FieldsV1", "k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+			v1.FieldsV1{}.OpenAPIModelName(), v1.Time{}.OpenAPIModelName()},
 	}
 }
 
@@ -10143,13 +10192,13 @@ func schema_pkg_apis_meta_v1_ObjectMeta(ref common.ReferenceCallback) common.Ope
 					"creationTimestamp": {
 						SchemaProps: spec.SchemaProps{
 							Description: "CreationTimestamp is a timestamp representing the server time when this object was created. It is not guaranteed to be set in happens-before order across separate operations. Clients may not set this value. It is represented in RFC3339 form and is in UTC.\n\nPopulated by the system. Read-only. Null for lists. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+							Ref:         ref(v1.Time{}.OpenAPIModelName()),
 						},
 					},
 					"deletionTimestamp": {
 						SchemaProps: spec.SchemaProps{
 							Description: "DeletionTimestamp is RFC 3339 date and time at which this resource will be deleted. This field is set by the server when a graceful deletion is requested by the user, and is not directly settable by a client. The resource is expected to be deleted (no longer visible from resource lists, and not reachable by name) after the time in this field, once the finalizers list is empty. As long as the finalizers list contains items, deletion is blocked. Once the deletionTimestamp is set, this value may not be unset or be set further into the future, although it may be shortened or the resource may be deleted prior to this time. For example, a user may request that a pod is deleted in 30 seconds. The Kubelet will react by sending a graceful termination signal to the containers in the pod. After that 30 seconds, the Kubelet will send a hard termination signal (SIGKILL) to the container and after cleanup, remove the pod from the API. In the presence of network partitions, this object may still exist after this timestamp, until an administrator or automated process can determine the resource is fully terminated. If not set, graceful deletion of the object has not been requested.\n\nPopulated by the system when a graceful deletion is requested. Read-only. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+							Ref:         ref(v1.Time{}.OpenAPIModelName()),
 						},
 					},
 					"deletionGracePeriodSeconds": {
@@ -10209,7 +10258,7 @@ func schema_pkg_apis_meta_v1_ObjectMeta(ref common.ReferenceCallback) common.Ope
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.OwnerReference"),
+										Ref:     ref(v1.OwnerReference{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -10249,7 +10298,7 @@ func schema_pkg_apis_meta_v1_ObjectMeta(ref common.ReferenceCallback) common.Ope
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.ManagedFieldsEntry"),
+										Ref:     ref(v1.ManagedFieldsEntry{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -10259,7 +10308,7 @@ func schema_pkg_apis_meta_v1_ObjectMeta(ref common.ReferenceCallback) common.Ope
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.ManagedFieldsEntry", "k8s.io/apimachinery/pkg/apis/meta/v1.OwnerReference", "k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+			v1.ManagedFieldsEntry{}.OpenAPIModelName(), v1.OwnerReference{}.OpenAPIModelName(), v1.Time{}.OpenAPIModelName()},
 	}
 }
 
@@ -10353,14 +10402,14 @@ func schema_pkg_apis_meta_v1_PartialObjectMetadata(ref common.ReferenceCallback)
 						SchemaProps: spec.SchemaProps{
 							Description: "Standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata",
 							Default:     map[string]interface{}{},
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"),
+							Ref:         ref(v1.ObjectMeta{}.OpenAPIModelName()),
 						},
 					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+			v1.ObjectMeta{}.OpenAPIModelName()},
 	}
 }
 
@@ -10389,7 +10438,7 @@ func schema_pkg_apis_meta_v1_PartialObjectMetadataList(ref common.ReferenceCallb
 						SchemaProps: spec.SchemaProps{
 							Description: "Standard list metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
 							Default:     map[string]interface{}{},
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+							Ref:         ref(v1.ListMeta{}.OpenAPIModelName()),
 						},
 					},
 					"items": {
@@ -10400,7 +10449,7 @@ func schema_pkg_apis_meta_v1_PartialObjectMetadataList(ref common.ReferenceCallb
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.PartialObjectMetadata"),
+										Ref:     ref(v1.PartialObjectMetadata{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -10411,7 +10460,7 @@ func schema_pkg_apis_meta_v1_PartialObjectMetadataList(ref common.ReferenceCallb
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta", "k8s.io/apimachinery/pkg/apis/meta/v1.PartialObjectMetadata"},
+			v1.ListMeta{}.OpenAPIModelName(), v1.PartialObjectMetadata{}.OpenAPIModelName()},
 	}
 }
 
@@ -10610,7 +10659,7 @@ func schema_pkg_apis_meta_v1_Status(ref common.ReferenceCallback) common.OpenAPI
 						SchemaProps: spec.SchemaProps{
 							Description: "Standard list metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
 							Default:     map[string]interface{}{},
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+							Ref:         ref(v1.ListMeta{}.OpenAPIModelName()),
 						},
 					},
 					"status": {
@@ -10635,14 +10684,9 @@ func schema_pkg_apis_meta_v1_Status(ref common.ReferenceCallback) common.OpenAPI
 						},
 					},
 					"details": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
 						SchemaProps: spec.SchemaProps{
 							Description: "Extended data associated with the reason.  Each reason may define its own extended details. This field is optional and the data returned is not guaranteed to conform to any schema except that defined by the reason type.",
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.StatusDetails"),
+							Ref:         ref(v1.StatusDetails{}.OpenAPIModelName()),
 						},
 					},
 					"code": {
@@ -10656,7 +10700,7 @@ func schema_pkg_apis_meta_v1_Status(ref common.ReferenceCallback) common.OpenAPI
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta", "k8s.io/apimachinery/pkg/apis/meta/v1.StatusDetails"},
+			v1.ListMeta{}.OpenAPIModelName(), v1.StatusDetails{}.OpenAPIModelName()},
 	}
 }
 
@@ -10742,7 +10786,7 @@ func schema_pkg_apis_meta_v1_StatusDetails(ref common.ReferenceCallback) common.
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.StatusCause"),
+										Ref:     ref(v1.StatusCause{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -10759,7 +10803,7 @@ func schema_pkg_apis_meta_v1_StatusDetails(ref common.ReferenceCallback) common.
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.StatusCause"},
+			v1.StatusCause{}.OpenAPIModelName()},
 	}
 }
 
@@ -10788,7 +10832,7 @@ func schema_pkg_apis_meta_v1_Table(ref common.ReferenceCallback) common.OpenAPID
 						SchemaProps: spec.SchemaProps{
 							Description: "Standard list metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
 							Default:     map[string]interface{}{},
-							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"),
+							Ref:         ref(v1.ListMeta{}.OpenAPIModelName()),
 						},
 					},
 					"columnDefinitions": {
@@ -10804,7 +10848,7 @@ func schema_pkg_apis_meta_v1_Table(ref common.ReferenceCallback) common.OpenAPID
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.TableColumnDefinition"),
+										Ref:     ref(v1.TableColumnDefinition{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -10823,7 +10867,7 @@ func schema_pkg_apis_meta_v1_Table(ref common.ReferenceCallback) common.OpenAPID
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.TableRow"),
+										Ref:     ref(v1.TableRow{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -10834,7 +10878,7 @@ func schema_pkg_apis_meta_v1_Table(ref common.ReferenceCallback) common.OpenAPID
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta", "k8s.io/apimachinery/pkg/apis/meta/v1.TableColumnDefinition", "k8s.io/apimachinery/pkg/apis/meta/v1.TableRow"},
+			v1.ListMeta{}.OpenAPIModelName(), v1.TableColumnDefinition{}.OpenAPIModelName(), v1.TableRow{}.OpenAPIModelName()},
 	}
 }
 
@@ -10965,7 +11009,7 @@ func schema_pkg_apis_meta_v1_TableRow(ref common.ReferenceCallback) common.OpenA
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("k8s.io/apimachinery/pkg/apis/meta/v1.TableRowCondition"),
+										Ref:     ref(v1.TableRowCondition{}.OpenAPIModelName()),
 									},
 								},
 							},
@@ -10974,7 +11018,7 @@ func schema_pkg_apis_meta_v1_TableRow(ref common.ReferenceCallback) common.OpenA
 					"object": {
 						SchemaProps: spec.SchemaProps{
 							Description: "This field contains the requested additional information about each object based on the includeObject policy when requesting the Table. If \"None\", this field is empty, if \"Object\" this will be the default serialization of the object for the current API version, and if \"Metadata\" (the default) will contain the object metadata. Check the returned kind and apiVersion of the object before parsing. The media type of the object will always match the enclosing list - if this as a JSON table, these will be JSON encoded objects.",
-							Ref:         ref("k8s.io/apimachinery/pkg/runtime.RawExtension"),
+							Ref:         ref(runtime.RawExtension{}.OpenAPIModelName()),
 						},
 					},
 				},
@@ -10982,7 +11026,7 @@ func schema_pkg_apis_meta_v1_TableRow(ref common.ReferenceCallback) common.OpenA
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/apis/meta/v1.TableRowCondition", "k8s.io/apimachinery/pkg/runtime.RawExtension"},
+			v1.TableRowCondition{}.OpenAPIModelName(), runtime.RawExtension{}.OpenAPIModelName()},
 	}
 }
 
@@ -11177,7 +11221,7 @@ func schema_pkg_apis_meta_v1_WatchEvent(ref common.ReferenceCallback) common.Ope
 					"object": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Object is:\n * If Type is Added or Modified: the new state of the object.\n * If Type is Deleted: the state of the object immediately before deletion.\n * If Type is Error: *Status is recommended; other types may make sense\n   depending on context.",
-							Ref:         ref("k8s.io/apimachinery/pkg/runtime.RawExtension"),
+							Ref:         ref(runtime.RawExtension{}.OpenAPIModelName()),
 						},
 					},
 				},
@@ -11185,7 +11229,7 @@ func schema_pkg_apis_meta_v1_WatchEvent(ref common.ReferenceCallback) common.Ope
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/apimachinery/pkg/runtime.RawExtension"},
+			runtime.RawExtension{}.OpenAPIModelName()},
 	}
 }
 

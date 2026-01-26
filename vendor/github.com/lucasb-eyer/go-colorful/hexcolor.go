@@ -2,12 +2,14 @@ package colorful
 
 import (
 	"database/sql/driver"
+	"encoding/json"
 	"fmt"
 	"reflect"
 )
 
 // A HexColor is a Color stored as a hex string "#rrggbb". It implements the
-// database/sql.Scanner and database/sql/driver.Value interfaces.
+// database/sql.Scanner, database/sql/driver.Value,
+// encoding/json.Unmarshaler and encoding/json.Marshaler interfaces.
 type HexColor Color
 
 type errUnsupportedType struct {
@@ -34,4 +36,32 @@ func (hc *HexColor) Value() (driver.Value, error) {
 
 func (e errUnsupportedType) Error() string {
 	return fmt.Sprintf("unsupported type: got %v, want a %s", e.got, e.want)
+}
+
+func (hc *HexColor) UnmarshalJSON(data []byte) error {
+	var hexCode string
+	if err := json.Unmarshal(data, &hexCode); err != nil {
+		return err
+	}
+
+	var col, err = Hex(hexCode)
+	if err != nil {
+		return err
+	}
+	*hc = HexColor(col)
+	return nil
+}
+
+func (hc HexColor) MarshalJSON() ([]byte, error) {
+	return json.Marshal(Color(hc).Hex())
+}
+
+// Decode - deserialize function for https://github.com/kelseyhightower/envconfig
+func (hc *HexColor) Decode(hexCode string) error {
+	var col, err = Hex(hexCode)
+	if err != nil {
+		return err
+	}
+	*hc = HexColor(col)
+	return nil
 }

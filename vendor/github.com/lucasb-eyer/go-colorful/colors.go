@@ -48,6 +48,11 @@ func (col Color) RGB255() (r, g, b uint8) {
 	return
 }
 
+// Used to simplify HSLuv testing.
+func (col Color) values() (float64, float64, float64) {
+	return col.R, col.G, col.B
+}
+
 // This is the tolerance used when comparing colors using AlmostEqualRgb.
 const Delta = 1.0 / 255.0
 
@@ -64,6 +69,7 @@ func (c Color) IsValid() bool {
 		0.0 <= c.B && c.B <= 1.0
 }
 
+// clamp01 clamps from 0 to 1.
 func clamp01(v float64) float64 {
 	return math.Max(0.0, math.Min(v, 1.0))
 }
@@ -86,6 +92,15 @@ func cub(v float64) float64 {
 // This is not a good measure! Rather do it in Lab space.
 func (c1 Color) DistanceRgb(c2 Color) float64 {
 	return math.Sqrt(sq(c1.R-c2.R) + sq(c1.G-c2.G) + sq(c1.B-c2.B))
+}
+
+// DistanceLinearRGB computes the distance between two colors in linear RGB
+// space. This is not useful for measuring how humans perceive color, but
+// might be useful for other things, like dithering.
+func (c1 Color) DistanceLinearRGB(c2 Color) float64 {
+	r1, g1, b1 := c1.LinearRgb()
+	r2, g2, b2 := c2.LinearRgb()
+	return math.Sqrt(sq(r1-r2) + sq(g1-g2) + sq(b1-b2))
 }
 
 // Check for equality between colors within the tolerance Delta (1/255).
@@ -245,7 +260,7 @@ func Hsl(h, s, l float64) Color {
 	}
 
 	t2 = 2*l - t1
-	h = h / 360
+	h /= 360
 	tr = h + 1.0/3.0
 	tg = h
 	tb = h - 1.0/3.0
@@ -422,16 +437,16 @@ func FastLinearRgb(r, g, b float64) Color {
 
 // XyzToLinearRgb converts from CIE XYZ-space to Linear RGB space.
 func XyzToLinearRgb(x, y, z float64) (r, g, b float64) {
-	r = 3.2404542*x - 1.5371385*y - 0.4985314*z
-	g = -0.9692660*x + 1.8760108*y + 0.0415560*z
-	b = 0.0556434*x - 0.2040259*y + 1.0572252*z
+	r = 3.2409699419045214*x - 1.5373831775700935*y - 0.49861076029300328*z
+	g = -0.96924363628087983*x + 1.8759675015077207*y + 0.041555057407175613*z
+	b = 0.055630079696993609*x - 0.20397695888897657*y + 1.0569715142428786*z
 	return
 }
 
 func LinearRgbToXyz(r, g, b float64) (x, y, z float64) {
-	x = 0.4124564*r + 0.3575761*g + 0.1804375*b
-	y = 0.2126729*r + 0.7151522*g + 0.0721750*b
-	z = 0.0193339*r + 0.1191920*g + 0.9503041*b
+	x = 0.41239079926595948*r + 0.35758433938387796*g + 0.18048078840183429*b
+	y = 0.21263900587151036*r + 0.71516867876775593*g + 0.072192315360733715*b
+	z = 0.019330818715591851*r + 0.11919477979462599*g + 0.95053215224966058*b
 	return
 }
 
@@ -569,7 +584,7 @@ func (col Color) LabWhiteRef(wref [3]float64) (l, a, b float64) {
 
 // Generates a color by using data given in CIE L*a*b* space using D65 as reference white.
 // WARNING: many combinations of `l`, `a`, and `b` values do not have corresponding
-//          valid RGB values, check the FAQ in the README if you're unsure.
+// valid RGB values, check the FAQ in the README if you're unsure.
 func Lab(l, a, b float64) Color {
 	return Xyz(LabToXyz(l, a, b))
 }
@@ -589,7 +604,7 @@ func (c1 Color) DistanceLab(c2 Color) float64 {
 	return math.Sqrt(sq(l1-l2) + sq(a1-a2) + sq(b1-b2))
 }
 
-// That's actually the same, but I don't want to break code.
+// DistanceCIE76 is the same as DistanceLab.
 func (c1 Color) DistanceCIE76(c2 Color) float64 {
 	return c1.DistanceLab(c2)
 }
@@ -739,7 +754,7 @@ func XyzToLuv(x, y, z float64) (l, a, b float64) {
 
 func XyzToLuvWhiteRef(x, y, z float64, wref [3]float64) (l, u, v float64) {
 	if y/wref[1] <= 6.0/29.0*6.0/29.0*6.0/29.0 {
-		l = y / wref[1] * 29.0 / 3.0 * 29.0 / 3.0 * 29.0 / 3.0
+		l = y / wref[1] * (29.0 / 3.0 * 29.0 / 3.0 * 29.0 / 3.0) / 100.0
 	} else {
 		l = 1.16*math.Cbrt(y/wref[1]) - 0.16
 	}
@@ -803,8 +818,8 @@ func (col Color) LuvWhiteRef(wref [3]float64) (l, u, v float64) {
 
 // Generates a color by using data given in CIE L*u*v* space using D65 as reference white.
 // L* is in [0..1] and both u* and v* are in about [-1..1]
-// WARNING: many combinations of `l`, `a`, and `b` values do not have corresponding
-//          valid RGB values, check the FAQ in the README if you're unsure.
+// WARNING: many combinations of `l`, `u`, and `v` values do not have corresponding
+// valid RGB values, check the FAQ in the README if you're unsure.
 func Luv(l, u, v float64) Color {
 	return Xyz(LuvToXyz(l, u, v))
 }
@@ -870,8 +885,8 @@ func (col Color) HclWhiteRef(wref [3]float64) (h, c, l float64) {
 
 // Generates a color by using data given in HCL space using D65 as reference white.
 // H values are in [0..360], C and L values are in [0..1]
-// WARNING: many combinations of `l`, `a`, and `b` values do not have corresponding
-//          valid RGB values, check the FAQ in the README if you're unsure.
+// WARNING: many combinations of `h`, `c`, and `l` values do not have corresponding
+// valid RGB values, check the FAQ in the README if you're unsure.
 func Hcl(h, c, l float64) Color {
 	return HclWhiteRef(h, c, l, D65)
 }
@@ -899,5 +914,66 @@ func (col1 Color) BlendHcl(col2 Color, t float64) Color {
 	h2, c2, l2 := col2.Hcl()
 
 	// We know that h are both in [0..360]
-	return Hcl(interp_angle(h1, h2, t), c1+t*(c2-c1), l1+t*(l2-l1))
+	return Hcl(interp_angle(h1, h2, t), c1+t*(c2-c1), l1+t*(l2-l1)).Clamped()
+}
+
+// LuvLch
+
+// Converts the given color to LuvLCh space using D65 as reference white.
+// h values are in [0..360], C and L values are in [0..1] although C can overshoot 1.0
+func (col Color) LuvLCh() (l, c, h float64) {
+	return col.LuvLChWhiteRef(D65)
+}
+
+func LuvToLuvLCh(L, u, v float64) (l, c, h float64) {
+	// Oops, floating point workaround necessary if u ~= v and both are very small (i.e. almost zero).
+	if math.Abs(v-u) > 1e-4 && math.Abs(u) > 1e-4 {
+		h = math.Mod(57.29577951308232087721*math.Atan2(v, u)+360.0, 360.0) // Rad2Deg
+	} else {
+		h = 0.0
+	}
+	l = L
+	c = math.Sqrt(sq(u) + sq(v))
+	return
+}
+
+// Converts the given color to LuvLCh space, taking into account
+// a given reference white. (i.e. the monitor's white)
+// h values are in [0..360], c and l values are in [0..1]
+func (col Color) LuvLChWhiteRef(wref [3]float64) (l, c, h float64) {
+	return LuvToLuvLCh(col.LuvWhiteRef(wref))
+}
+
+// Generates a color by using data given in LuvLCh space using D65 as reference white.
+// h values are in [0..360], C and L values are in [0..1]
+// WARNING: many combinations of `l`, `c`, and `h` values do not have corresponding
+// valid RGB values, check the FAQ in the README if you're unsure.
+func LuvLCh(l, c, h float64) Color {
+	return LuvLChWhiteRef(l, c, h, D65)
+}
+
+func LuvLChToLuv(l, c, h float64) (L, u, v float64) {
+	H := 0.01745329251994329576 * h // Deg2Rad
+	u = c * math.Cos(H)
+	v = c * math.Sin(H)
+	L = l
+	return
+}
+
+// Generates a color by using data given in LuvLCh space, taking
+// into account a given reference white. (i.e. the monitor's white)
+// h values are in [0..360], C and L values are in [0..1]
+func LuvLChWhiteRef(l, c, h float64, wref [3]float64) Color {
+	L, u, v := LuvLChToLuv(l, c, h)
+	return LuvWhiteRef(L, u, v, wref)
+}
+
+// BlendLuvLCh blends two colors in the cylindrical CIELUV color space.
+// t == 0 results in c1, t == 1 results in c2
+func (col1 Color) BlendLuvLCh(col2 Color, t float64) Color {
+	l1, c1, h1 := col1.LuvLCh()
+	l2, c2, h2 := col2.LuvLCh()
+
+	// We know that h are both in [0..360]
+	return LuvLCh(l1+t*(l2-l1), c1+t*(c2-c1), interp_angle(h1, h2, t))
 }

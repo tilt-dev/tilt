@@ -31,7 +31,7 @@ option go_package = "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1";
 //
 // +k8s:openapi-gen=true
 message Cluster {
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
 
   optional ClusterSpec spec = 2;
 
@@ -56,7 +56,7 @@ message ClusterConnectionStatus {
 // ClusterList
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 message ClusterList {
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
 
   repeated Cluster items = 2;
 }
@@ -107,7 +107,7 @@ message ClusterStatus {
   // and refresh their client/connection accordingly.
   //
   // +optional
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime connectedAt = 3;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime connectedAt = 3;
 
   // Registry describes a local registry that developer tools can
   // connect to. A local registry allows clients to load images into the local
@@ -135,7 +135,7 @@ message ClusterStatus {
 // +k8s:openapi-gen=true
 // +tilt:starlark-gen=true
 message Cmd {
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
 
   optional CmdSpec spec = 2;
 
@@ -145,7 +145,7 @@ message Cmd {
 // CmdImage describes an image to build with an arbitrary shell command.
 // +k8s:openapi-gen=true
 message CmdImage {
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
 
   optional CmdImageSpec spec = 2;
 
@@ -155,7 +155,7 @@ message CmdImage {
 // CmdImageList
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 message CmdImageList {
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
 
   repeated CmdImage items = 2;
 }
@@ -241,7 +241,7 @@ message CmdImageStateBuilding {
   optional string reason = 1;
 
   // Time when the build started.
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startedAt = 2;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startedAt = 2;
 }
 
 // CmdImageStateCompleted expresses when the image build is finished and
@@ -256,10 +256,10 @@ message CmdImageStateCompleted {
   optional string error = 2;
 
   // Time when we started building an image.
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startedAt = 3;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startedAt = 3;
 
   // Time when we finished building an image
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime finishedAt = 4;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime finishedAt = 4;
 }
 
 // CmdImageStateWaiting expresses what we're waiting on to build an image.
@@ -298,7 +298,7 @@ message CmdImageStatus {
 // CmdList
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 message CmdList {
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
 
   repeated Cmd items = 2;
 }
@@ -363,7 +363,7 @@ message CmdStateRunning {
   optional int32 pid = 1;
 
   // Time at which the command was last started.
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startedAt = 2;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startedAt = 2;
 }
 
 // CmdStateTerminated is a terminated state of a local command.
@@ -375,10 +375,10 @@ message CmdStateTerminated {
   optional int32 exitCode = 2;
 
   // Time at which previous execution of the command started
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startedAt = 3;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startedAt = 3;
 
   // Time at which the command last terminated
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime finishedAt = 4;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime finishedAt = 4;
 
   // (brief) reason the process is terminated
   // +optional
@@ -429,7 +429,7 @@ message CmdStatus {
 // +k8s:openapi-gen=true
 // +tilt:starlark-gen=true
 message ConfigMap {
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
 
   // Data contains the configuration data.
   // Each key must consist of alphanumeric characters, '-', '_' or '.'.
@@ -449,7 +449,7 @@ message ConfigMapDisableSource {
 // ConfigMapList
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 message ConfigMapList {
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
 
   repeated ConfigMap items = 2;
 }
@@ -548,16 +548,16 @@ message ContainerState {
 // ContainerStateRunning is a running state of a container.
 message ContainerStateRunning {
   // StartedAt is the time the container began running.
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.Time startedAt = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.Time startedAt = 1;
 }
 
 // ContainerStateTerminated is a terminated state of a container.
 message ContainerStateTerminated {
   // StartedAt is the time the container began running.
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.Time startedAt = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.Time startedAt = 1;
 
   // FinishedAt is the time the container stopped running.
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.Time finishedAt = 2;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.Time finishedAt = 2;
 
   // Reason is a (brief) reason the container stopped running.
   optional string reason = 3;
@@ -604,7 +604,7 @@ message DisableStatus {
   optional bool disabled = 1;
 
   // The last time this status was updated.
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.Time lastUpdateTime = 2;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.Time lastUpdateTime = 2;
 
   // The reason this status was updated.
   optional string reason = 3;
@@ -624,7 +624,7 @@ message DockerClusterConnection {
 // DockerComposeLogStream
 // +k8s:openapi-gen=true
 message DockerComposeLogStream {
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
 
   optional DockerComposeLogStreamSpec spec = 2;
 
@@ -634,7 +634,7 @@ message DockerComposeLogStream {
 // DockerComposeLogStreamList
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 message DockerComposeLogStreamList {
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
 
   repeated DockerComposeLogStream items = 2;
 }
@@ -653,7 +653,7 @@ message DockerComposeLogStreamSpec {
 // DockerComposeLogStreamStatus defines the observed state of DockerComposeLogStream
 message DockerComposeLogStreamStatus {
   // When we last started the log streamer.
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startedAt = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startedAt = 1;
 
   // Contains an error message when the log streamer is in an error state.
   optional string error = 2;
@@ -707,7 +707,7 @@ message DockerComposeProject {
 //
 // +k8s:openapi-gen=true
 message DockerComposeService {
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
 
   optional DockerComposeServiceSpec spec = 2;
 
@@ -717,7 +717,7 @@ message DockerComposeService {
 // DockerComposeServiceList
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 message DockerComposeServiceList {
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
 
   repeated DockerComposeService items = 2;
 }
@@ -772,14 +772,14 @@ message DockerComposeServiceStatus {
   // Timestamp of when we last started bringing up this service in Docker Compose.
   //
   // +optional
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime lastApplyStartTime = 6;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime lastApplyStartTime = 6;
 
   // Timestamp of when we last finished bringing up this service in Docker Compose.
   //
   // When populated, must be equal or after the LastApplyStartTime field.
   //
   // +optional
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime lastApplyFinishTime = 7;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime lastApplyFinishTime = 7;
 }
 
 // State of a standalone container in Docker.
@@ -806,11 +806,11 @@ message DockerContainerState {
 
   // When the container process started.
   // +optional
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startedAt = 5;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startedAt = 5;
 
   // When the container process finished.
   // +optional
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime finishedAt = 6;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime finishedAt = 6;
 
   // Status is one of Starting, Healthy or Unhealthy
   optional string healthStatus = 7;
@@ -819,7 +819,7 @@ message DockerContainerState {
 // DockerImage describes an image to build with Docker.
 // +k8s:openapi-gen=true
 message DockerImage {
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
 
   optional DockerImageSpec spec = 2;
 
@@ -829,7 +829,7 @@ message DockerImage {
 // DockerImageList
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 message DockerImageList {
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
 
   repeated DockerImage items = 2;
 }
@@ -984,11 +984,11 @@ message DockerImageStageStatus {
 
   // The timestamp when we started working on the stage.
   // +optional
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startedAt = 6;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startedAt = 6;
 
   // The timetsamp when we completed the work on the stage.
   // +optional
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime finishedAt = 7;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime finishedAt = 7;
 
   // Error message if the stage failed. If empty, the stage succeeded.
   // +optional
@@ -1002,7 +1002,7 @@ message DockerImageStateBuilding {
   optional string reason = 1;
 
   // Time when the build started.
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startedAt = 2;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startedAt = 2;
 }
 
 // DockerImageStateCompleted expresses when the image build is finished and
@@ -1017,10 +1017,10 @@ message DockerImageStateCompleted {
   optional string error = 2;
 
   // Time when we started building an image.
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startedAt = 3;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startedAt = 3;
 
   // Time when we finished building an image
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime finishedAt = 4;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime finishedAt = 4;
 }
 
 // DockerImageStateWaiting expresses what we're waiting on to build an image.
@@ -1087,7 +1087,7 @@ message ExecAction {
 // +k8s:openapi-gen=true
 // +tilt:starlark-gen=true
 message Extension {
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
 
   optional ExtensionSpec spec = 2;
 
@@ -1097,7 +1097,7 @@ message Extension {
 // ExtensionList
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 message ExtensionList {
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
 
   repeated Extension items = 2;
 }
@@ -1106,7 +1106,7 @@ message ExtensionList {
 // +k8s:openapi-gen=true
 // +tilt:starlark-gen=true
 message ExtensionRepo {
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
 
   optional ExtensionRepoSpec spec = 2;
 
@@ -1116,7 +1116,7 @@ message ExtensionRepo {
 // ExtensionRepoList
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 message ExtensionRepoList {
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
 
   repeated ExtensionRepo items = 2;
 }
@@ -1159,7 +1159,7 @@ message ExtensionRepoStatus {
   optional string error = 1;
 
   // The last time the repo was fetched and checked for validity.
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.Time lastFetchedAt = 2;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.Time lastFetchedAt = 2;
 
   // The path to the repo on local disk.
   optional string path = 3;
@@ -1213,7 +1213,7 @@ message FileEvent {
   //
   // This will NOT exactly match any inode attributes (e.g. ctime, mtime) at the filesystem level and is purely
   // informational or for use as an opaque watermark.
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime time = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime time = 1;
 
   // SeenFiles is a list of paths which changed (create, modify, or delete).
   repeated string seenFiles = 2;
@@ -1223,7 +1223,7 @@ message FileEvent {
 // +k8s:openapi-gen=true
 // +tilt:starlark-gen=true
 message FileWatch {
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
 
   optional FileWatchSpec spec = 2;
 
@@ -1233,7 +1233,7 @@ message FileWatch {
 // FileWatchList
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 message FileWatchList {
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
 
   repeated FileWatch items = 2;
 }
@@ -1258,13 +1258,13 @@ message FileWatchSpec {
 message FileWatchStatus {
   // MonitorStartTime is the timestamp of when filesystem monitor was started. It is zero if the monitor has not
   // been started yet.
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime monitorStartTime = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime monitorStartTime = 1;
 
   // LastEventTime is the timestamp of the most recent file event. It is zero if no events have been seen yet.
   //
   // If the specifics of which files changed are not important, this field can be used as a watermark without
   // needing to inspect FileEvents.
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime lastEventTime = 2;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime lastEventTime = 2;
 
   // FileEvents summarizes batches of file changes (create, modify, or delete) that have been seen in ascending
   // chronological order. Only the most recent 20 events are included.
@@ -1325,7 +1325,7 @@ message ForwardStatus {
   // StartedAt is the time at which the forward was initiated.
   //
   // If the forwarder is not running yet, this will be zero/empty.
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startedAt = 4;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startedAt = 4;
 
   // Error is a human-readable description if a problem was encountered
   // while initializing the forward.
@@ -1420,7 +1420,7 @@ message IgnoreDef {
 //
 // +k8s:openapi-gen=true
 message ImageMap {
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
 
   optional ImageMapSpec spec = 2;
 
@@ -1430,7 +1430,7 @@ message ImageMap {
 // ImageMapList
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 message ImageMapList {
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
 
   repeated ImageMap items = 2;
 }
@@ -1526,7 +1526,7 @@ message ImageMapStatus {
   // image build. We can assume that any file changes before this timestamp were
   // definitely included in the image, and any file changes after this timestamp
   // may not be included in the image.
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime buildStartTime = 2;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime buildStartTime = 2;
 }
 
 // KubernetesApply specifies a blob of YAML to apply, and a set of ImageMaps
@@ -1551,7 +1551,7 @@ message ImageMapStatus {
 // +k8s:openapi-gen=true
 // +tilt:starlark-gen=true
 message KubernetesApply {
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
 
   optional KubernetesApplySpec spec = 2;
 
@@ -1582,7 +1582,7 @@ message KubernetesApplyCmd {
 // KubernetesApplyList
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 message KubernetesApplyList {
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
 
   repeated KubernetesApply items = 2;
 }
@@ -1621,7 +1621,7 @@ message KubernetesApplySpec {
   // The default timeout is 30s.
   //
   // +optional
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.Duration timeout = 4;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.Duration timeout = 4;
 
   // KubernetesDiscoveryTemplateSpec describes how we discover pods
   // for resources created by this Apply.
@@ -1719,12 +1719,12 @@ message KubernetesApplyStatus {
   // is more consistent with how we name this in other API objects.
   //
   // +optional
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime lastApplyTime = 3;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime lastApplyTime = 3;
 
   // Timestamp of when we last started applying this YAML to the cluster.
   //
   // +optional
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime lastApplyStartTime = 6;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime lastApplyStartTime = 6;
 
   // A base64-encoded hash of all the inputs to the apply.
   //
@@ -1744,7 +1744,7 @@ message KubernetesApplyStatus {
   // Conditions based on the result of the apply.
   //
   // +optional
-  repeated k8s.io.apimachinery.pkg.apis.meta.v1.Condition conditions = 7;
+  repeated .k8s.io.apimachinery.pkg.apis.meta.v1.Condition conditions = 7;
 }
 
 message KubernetesClusterConnection {
@@ -1792,7 +1792,7 @@ message KubernetesClusterConnectionStatus {
 // +k8s:openapi-gen=true
 // +tilt:starlark-gen=true
 message KubernetesDiscovery {
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
 
   optional KubernetesDiscoverySpec spec = 2;
 
@@ -1802,7 +1802,7 @@ message KubernetesDiscovery {
 // KubernetesDiscoveryList
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 message KubernetesDiscoveryList {
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
 
   repeated KubernetesDiscovery items = 2;
 }
@@ -1820,7 +1820,7 @@ message KubernetesDiscoverySpec {
   //
   // This should only be necessary in the event that a CRD creates Pods but does not set an owner reference
   // to itself.
-  repeated k8s.io.apimachinery.pkg.apis.meta.v1.LabelSelector extraSelectors = 2;
+  repeated .k8s.io.apimachinery.pkg.apis.meta.v1.LabelSelector extraSelectors = 2;
 
   // PortForwardTemplateSpec describes the data model for port forwards
   // that KubernetesDiscovery should set up.
@@ -1854,7 +1854,7 @@ message KubernetesDiscoverySpec {
 
 message KubernetesDiscoveryStateRunning {
   // StartTime is when Kubernetes resource discovery began.
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startTime = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startTime = 1;
 }
 
 message KubernetesDiscoveryStateWaiting {
@@ -1867,7 +1867,7 @@ message KubernetesDiscoveryStatus {
   // MonitorStartTime is the timestamp of when Kubernetes resource discovery was started.
   //
   // It is zero if discovery has not been started yet.
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime monitorStartTime = 2;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime monitorStartTime = 2;
 
   // Pods that have been discovered based on the criteria in the spec.
   repeated Pod pods = 1;
@@ -1889,7 +1889,7 @@ message KubernetesDiscoveryTemplateSpec {
   //
   // This should only be necessary in the event that a CRD creates Pods but does
   // not set an owner reference to itself.
-  repeated k8s.io.apimachinery.pkg.apis.meta.v1.LabelSelector extraSelectors = 1;
+  repeated .k8s.io.apimachinery.pkg.apis.meta.v1.LabelSelector extraSelectors = 1;
 }
 
 // Finds image references in Kubernetes YAML.
@@ -1944,7 +1944,7 @@ message KubernetesWatchRef {
 // LiveUpdate
 // +k8s:openapi-gen=true
 message LiveUpdate {
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
 
   optional LiveUpdateSpec spec = 2;
 
@@ -1983,7 +1983,7 @@ message LiveUpdateContainerStatus {
   // Must match the timestamp in a FileEvent, not the time the sync was performed.
   //
   // +optional
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime lastFileTimeSynced = 5;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime lastFileTimeSynced = 5;
 
   // Contains any error messages from the most recent sequence of Execs.
   //
@@ -2074,7 +2074,7 @@ message LiveUpdateKubernetesSelector {
 // LiveUpdateList
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 message LiveUpdateList {
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
 
   repeated LiveUpdate items = 2;
 }
@@ -2182,7 +2182,7 @@ message LiveUpdateStateFailed {
 
   // When the live-updater transitioned into a Failed state.
   // +optional
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime lastTransitionTime = 3;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime lastTransitionTime = 3;
 }
 
 // LiveUpdateStatus defines the observed state of LiveUpdate
@@ -2248,7 +2248,7 @@ message Pod {
   optional string namespace = 2;
 
   // CreatedAt is when the Pod was created.
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.Time createdAt = 3;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.Time createdAt = 3;
 
   // Phase is where the Pod is at in its current lifecycle.
   //
@@ -2307,7 +2307,7 @@ message PodCondition {
   optional string status = 2;
 
   // LastTransitionTime is the last time the status changed.
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.Time lastTransitionTime = 3;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.Time lastTransitionTime = 3;
 
   // Reason is a unique, one-word, CamelCase value for the cause of the last status change.
   optional string reason = 4;
@@ -2322,7 +2322,7 @@ message PodCondition {
 //
 // +k8s:openapi-gen=true
 message PodLogStream {
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
 
   optional PodLogStreamSpec spec = 2;
 
@@ -2332,7 +2332,7 @@ message PodLogStream {
 // PodLogStreamList
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 message PodLogStreamList {
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
 
   repeated PodLogStream items = 2;
 }
@@ -2360,7 +2360,7 @@ message PodLogStreamSpec {
   // Translates directly to the underlying PodLogOptions.
   //
   // +optional
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.Time sinceTime = 3;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.Time sinceTime = 3;
 
   // The names of containers to include in the stream.
   //
@@ -2409,7 +2409,7 @@ message PodLogStreamTemplateSpec {
   // Translates directly to the underlying PodLogOptions.
   //
   // +optional
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.Time sinceTime = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.Time sinceTime = 1;
 
   // The names of containers to include in the stream.
   //
@@ -2446,13 +2446,13 @@ message PodOwner {
 
   // The creation timestamp of the owner.
   // +optional
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.Time creationTimestamp = 2;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.Time creationTimestamp = 2;
 }
 
 // PortForward
 // +k8s:openapi-gen=true
 message PortForward {
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
 
   optional PortForwardSpec spec = 2;
 
@@ -2462,7 +2462,7 @@ message PortForward {
 // PortForwardList
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 message PortForwardList {
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
 
   repeated PortForward items = 2;
 }
@@ -2620,7 +2620,7 @@ message RestartOnSpec {
 // Session provides introspective data about the status of the Tilt process.
 // +k8s:openapi-gen=true
 message Session {
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
 
   optional SessionSpec spec = 2;
 
@@ -2633,21 +2633,21 @@ message SessionCISpec {
   //
   // If omitted, and in exitCondition=ci, the session will exit as soon
   // as we see a pod failure.
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.Duration k8sGracePeriod = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.Duration k8sGracePeriod = 1;
 
   // Timeout for the whole CI pipeline. Defaults to 30m.
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.Duration timeout = 2;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.Duration timeout = 2;
 
   // Timeout for a resource to become ready before the CI pipeline fails.
   // Measured from the time the resource is started.
   // Defaults to 5m.
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.Duration readinessTimeout = 3;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.Duration readinessTimeout = 3;
 }
 
 // SessionList is a list of Session objects.
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 message SessionList {
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
 
   repeated Session items = 2;
 }
@@ -2670,7 +2670,7 @@ message SessionStatus {
   optional int64 pid = 1;
 
   // StartTime is when the Tilt engine was first started.
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startTime = 2;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startTime = 2;
 
   // Targets are normalized representations of the servers/jobs managed by this Session.
   //
@@ -2693,7 +2693,7 @@ message StartOnSpec {
   // StartAfter indicates that events before this time should be ignored.
   //
   // +optional
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.Time startAfter = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.Time startAfter = 1;
 
   // UIButtons that can trigger a start/restart.
   repeated string uiButtons = 2;
@@ -2772,7 +2772,7 @@ message TargetState {
 // TargetStateActive is a target that is currently running but has not yet finished.
 message TargetStateActive {
   // StartTime is when execution began.
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startTime = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startTime = 1;
 
   // Ready indicates that the target has passed readiness checks.
   //
@@ -2780,7 +2780,7 @@ message TargetStateActive {
   optional bool ready = 2;
 
   // LastReadyTime is when the target last passed readiness checks.
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime lastReadyTime = 3;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime lastReadyTime = 3;
 }
 
 // TargetStateDisabled is a target that has been disabled.
@@ -2791,10 +2791,10 @@ message TargetStateDisabled {
 // encountered an error.
 message TargetStateTerminated {
   // StartTime is when the target began executing.
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startTime = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startTime = 1;
 
   // FinishTime is when the target stopped executing.
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime finishTime = 2;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime finishTime = 2;
 
   // Error is a non-empty string if the target encountered a failure during execution that caused it to stop.
   //
@@ -2843,7 +2843,7 @@ message TiltBuild {
 //
 // +k8s:openapi-gen=true
 message Tiltfile {
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
 
   optional TiltfileSpec spec = 2;
 
@@ -2853,7 +2853,7 @@ message Tiltfile {
 // TiltfileList
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 message TiltfileList {
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
 
   repeated Tiltfile items = 2;
 }
@@ -2894,7 +2894,7 @@ message TiltfileStateRunning {
   repeated string reasons = 1;
 
   // Time at which previous execution of the command started.
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startedAt = 2;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startedAt = 2;
 }
 
 // TiltfileStateTerminated is a terminated state of a tiltfile execution.
@@ -2909,10 +2909,10 @@ message TiltfileStateTerminated {
   optional string error = 2;
 
   // Time at which previous execution of the command started.
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startedAt = 3;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startedAt = 3;
 
   // Time at which the command last terminated.
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime finishedAt = 4;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime finishedAt = 4;
 
   // Number of warnings generated by this Tiltfile.
   // (brief) reason the process is terminated
@@ -2945,7 +2945,7 @@ message TiltfileStatus {
 // ToggleButton
 // +k8s:openapi-gen=true
 message ToggleButton {
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
 
   optional ToggleButtonSpec spec = 2;
 
@@ -2955,7 +2955,7 @@ message ToggleButton {
 // ToggleButtonList
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 message ToggleButtonList {
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
 
   repeated ToggleButton items = 2;
 }
@@ -3043,7 +3043,7 @@ message UIBoolInputStatus {
 message UIBuildRunning {
   // The time when the build started.
   // +optional
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startTime = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startTime = 1;
 
   // The log span where the build logs are stored in the logstore.
   // +optional
@@ -3063,11 +3063,11 @@ message UIBuildTerminated {
 
   // The time when the build started.
   // +optional
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startTime = 3;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime startTime = 3;
 
   // The time when the build finished.
   // +optional
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime finishTime = 4;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime finishTime = 4;
 
   // The log span where the build logs are stored in the logstore.
   // +optional
@@ -3084,7 +3084,7 @@ message UIBuildTerminated {
 // +k8s:openapi-gen=true
 // +tilt:starlark-gen=true
 message UIButton {
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
 
   optional UIButtonSpec spec = 2;
 
@@ -3094,7 +3094,7 @@ message UIButton {
 // UIButtonList
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 message UIButtonList {
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
 
   repeated UIButton items = 2;
 }
@@ -3149,7 +3149,7 @@ message UIButtonStatus {
   // LastClickedAt is the timestamp of the last time the button was clicked.
   //
   // If the button has never clicked before, this will be the zero-value/null.
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime lastClickedAt = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime lastClickedAt = 1;
 
   // Status of any inputs on this button.
   // +optional
@@ -3269,7 +3269,7 @@ message UIInputStatus {
 //
 // +k8s:openapi-gen=true
 message UIResource {
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
 
   optional UIResourceSpec spec = 2;
 
@@ -3291,7 +3291,7 @@ message UIResourceCondition {
 
   // Last time the condition transitioned from one status to another.
   // +optional
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime lastTransitionTime = 3;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime lastTransitionTime = 3;
 
   // The reason for the condition's last transition.
   // +optional
@@ -3313,11 +3313,11 @@ message UIResourceKubernetes {
 
   // The creation time of the active pod.
   // +optional
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.Time podCreationTime = 2;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.Time podCreationTime = 2;
 
   // The last update time of the active pod
   // +optional
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.Time podUpdateStartTime = 3;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.Time podUpdateStartTime = 3;
 
   // The status of the active pod.
   // +optional
@@ -3360,7 +3360,7 @@ message UIResourceLink {
 // UIResourceList
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 message UIResourceList {
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
 
   repeated UIResource items = 2;
 }
@@ -3417,7 +3417,7 @@ message UIResourceStateWaitingOnRef {
 message UIResourceStatus {
   // The last time this resource was deployed.
   // +optional
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime lastDeployTime = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime lastDeployTime = 1;
 
   // Bit mask representing whether this resource is run when:
   // 1) When a file changes
@@ -3435,7 +3435,7 @@ message UIResourceStatus {
 
   // When the build was put in the pending queue.
   // +optional
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime pendingBuildSince = 5;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.MicroTime pendingBuildSince = 5;
 
   // True if the build was put in the pending queue due to file changes.
   // +optional
@@ -3530,7 +3530,7 @@ message UIResourceTargetSpec {
 //
 // +k8s:openapi-gen=true
 message UISession {
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
 
   optional UISessionSpec spec = 2;
 
@@ -3540,7 +3540,7 @@ message UISession {
 // UISessionList
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 message UISessionList {
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
 
   repeated UISession items = 2;
 }
@@ -3621,7 +3621,7 @@ message UISessionStatus {
   // Clients can use this to determine if the API server has restarted
   // and all the objects need to be refreshed.
   // +optional
-  optional k8s.io.apimachinery.pkg.apis.meta.v1.Time tiltStartTime = 10;
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.Time tiltStartTime = 10;
 
   // An identifier for the Tiltfile that is running.
   // Clients can use this to store data associated with a particular

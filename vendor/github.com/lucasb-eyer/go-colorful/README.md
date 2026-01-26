@@ -1,9 +1,9 @@
 go-colorful
 ===========
-A library for playing with colors in go (golang).
 
-[![Build Status](https://travis-ci.org/lucasb-eyer/go-colorful.svg?branch=master)](https://travis-ci.org/lucasb-eyer/go-colorful)
-[![Coverage Status](https://coveralls.io/repos/github/lucasb-eyer/go-colorful/badge.svg?branch=master)](https://coveralls.io/github/lucasb-eyer/go-colorful?branch=master)
+[![go reportcard](https://goreportcard.com/badge/github.com/lucasb-eyer/go-colorful)](https://goreportcard.com/report/github.com/lucasb-eyer/go-colorful)
+
+A library for playing with colors in Go. Supports Go 1.13 onwards.
 
 Why?
 ====
@@ -30,6 +30,9 @@ Go-Colorful stores colors in RGB and provides methods from converting these to v
 - **CIE-L\*a\*b\*:** A *perceptually uniform* color space, i.e. distances are meaningful. L\* in [0..1] and a\*, b\* almost in [-1..1].
 - **CIE-L\*u\*v\*:** Very similar to CIE-L\*a\*b\*, there is [no consensus](http://en.wikipedia.org/wiki/CIELUV#Historical_background) on which one is "better".
 - **CIE-L\*C\*h° (HCL):** This is generally the [most useful](http://vis4.net/blog/posts/avoid-equidistant-hsv-colors/) one; CIE-L\*a\*b\* space in polar coordinates, i.e. a *better* HSV. H° is in [0..360], C\* almost in [-1..1] and L\* as in CIE-L\*a\*b\*.
+- **CIE LCh(uv):** Called `LuvLCh` in code, this is a cylindrical transformation of the CIE-L\*u\*v\* color space. Like HCL above: H° is in [0..360], C\* almost in [-1..1] and L\* as in CIE-L\*u\*v\*.
+- **HSLuv:** The better alternative to HSL, see [here](https://www.hsluv.org/) and [here](https://www.kuon.ch/post/2020-03-08-hsluv/). Hue in [0..360], Saturation and Luminance in [0..1].
+- **HPLuv:** A variant of HSLuv. The color space is smoother, but only pastel colors can be included. Because the valid colors are limited, it's easy to get invalid Saturation values way above 1.0, indicating the color can't be represented in HPLuv beccause it's not pastel.
 
 For the colorspaces where it makes sense (XYZ, Lab, Luv, HCl), the
 [D65](http://en.wikipedia.org/wiki/Illuminant_D65) is used as reference white
@@ -248,14 +251,14 @@ func main() {
     //c2, _ := colorful.Hex("#1E3140")
 
     for i := 0 ; i < blocks ; i++ {
-        draw.Draw(img, image.Rect(i*blockw,  0,(i+1)*blockw, 40), &image.Uniform{c1.BlendHsv(c2, float64(i)/float64(blocks-1))}, image.ZP, draw.Src)
-        draw.Draw(img, image.Rect(i*blockw, 40,(i+1)*blockw, 80), &image.Uniform{c1.BlendLuv(c2, float64(i)/float64(blocks-1))}, image.ZP, draw.Src)
-        draw.Draw(img, image.Rect(i*blockw, 80,(i+1)*blockw,120), &image.Uniform{c1.BlendRgb(c2, float64(i)/float64(blocks-1))}, image.ZP, draw.Src)
-        draw.Draw(img, image.Rect(i*blockw,120,(i+1)*blockw,160), &image.Uniform{c1.BlendLab(c2, float64(i)/float64(blocks-1))}, image.ZP, draw.Src)
-        draw.Draw(img, image.Rect(i*blockw,160,(i+1)*blockw,200), &image.Uniform{c1.BlendHcl(c2, float64(i)/float64(blocks-1))}, image.ZP, draw.Src)
+        draw.Draw(img, image.Rect(i*blockw,  0,(i+1)*blockw, 40), &image.Uniform{c1.BlendHsv(c2, float64(i)/float64(blocks-1))}, image.Point{}, draw.Src)
+        draw.Draw(img, image.Rect(i*blockw, 40,(i+1)*blockw, 80), &image.Uniform{c1.BlendLuv(c2, float64(i)/float64(blocks-1))}, image.Point{}, draw.Src)
+        draw.Draw(img, image.Rect(i*blockw, 80,(i+1)*blockw,120), &image.Uniform{c1.BlendRgb(c2, float64(i)/float64(blocks-1))}, image.Point{}, draw.Src)
+        draw.Draw(img, image.Rect(i*blockw,120,(i+1)*blockw,160), &image.Uniform{c1.BlendLab(c2, float64(i)/float64(blocks-1))}, image.Point{}, draw.Src)
+        draw.Draw(img, image.Rect(i*blockw,160,(i+1)*blockw,200), &image.Uniform{c1.BlendHcl(c2, float64(i)/float64(blocks-1))}, image.Point{}, draw.Src)
 
         // This can be used to "fix" invalid colors in the gradient.
-        //draw.Draw(img, image.Rect(i*blockw,160,(i+1)*blockw,200), &image.Uniform{c1.BlendHcl(c2, float64(i)/float64(blocks-1)).Clamped()}, image.ZP, draw.Src)
+        //draw.Draw(img, image.Rect(i*blockw,160,(i+1)*blockw,200), &image.Uniform{c1.BlendHcl(c2, float64(i)/float64(blocks-1)).Clamped()}, image.Point{}, draw.Src)
     }
 
     toimg, err := os.Create("colorblend.png")
@@ -468,25 +471,12 @@ section above.
 Who?
 ====
 
-This library has been developed by Lucas Beyer with contributions from
+This library was developed by Lucas Beyer with contributions from
 Bastien Dejean (@baskerville), Phil Kulak (@pkulak) and Christian Muehlhaeuser (@muesli).
 
-Release Notes
-=============
+It is now maintained by makeworld (@makeworld-the-better-one).
 
-### Version 1.0
-- API Breaking change in `MakeColor`: instead of `panic`ing when alpha is zero, it now returns a secondary, boolean return value indicating success. See [the color.Color interface](https://github.com/lucasb-eyer/go-colorful#the-colorcolor-interface) section and [this FAQ entry](https://github.com/lucasb-eyer/go-colorful#q-why-would-makecolor-ever-fail) for details.
 
-### Version 0.9
-- Initial version number after having ignored versioning for a long time :)
+## License
 
-License: MIT
-============
-Copyright (c) 2013 Lucas Beyer
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
+This repo is under the MIT license, see [LICENSE](LICENSE) for details.

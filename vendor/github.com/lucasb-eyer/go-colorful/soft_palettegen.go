@@ -61,7 +61,7 @@ func SoftPaletteEx(colorsCount int, settings SoftPaletteSettings) ([]Color, erro
 
 	// That would cause some infinite loops down there...
 	if len(samples) < colorsCount {
-		return nil, fmt.Errorf("palettegen: more colors requested (%v) than samples available (%v). Your requested color count may be wrong, you might want to use many samples or your constraint function makes the valid color space too small.", colorsCount, len(samples))
+		return nil, fmt.Errorf("palettegen: more colors requested (%v) than samples available (%v). Your requested color count may be wrong, you might want to use many samples or your constraint function makes the valid color space too small", colorsCount, len(samples))
 	} else if len(samples) == colorsCount {
 		return labs2cols(samples), nil // Oops?
 	}
