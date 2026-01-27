@@ -1,5 +1,5 @@
 # Uses Node 22
-FROM cimg/go:1.24-node
+FROM cimg/go:1.25-node
 
 USER root
 
