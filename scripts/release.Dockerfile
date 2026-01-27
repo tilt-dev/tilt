@@ -7,13 +7,13 @@
 # osxcross contains the MacOSX cross toolchain for xx
 FROM crazymax/osxcross:11.3-debian AS osxcross
 
-FROM golang:1.24-bullseye AS musl-cross
+FROM golang:1.25-trixie AS musl-cross
 WORKDIR /musl
 # https://more.musl.cc/GCC-MAJOR-VERSION/HOST-ARCH-linux-musl/CROSS-ARCH-linux-musl-cross.tgz
 RUN curl -sf https://more.musl.cc/11/x86_64-linux-musl/aarch64-linux-musl-cross.tgz | tar zxf -
 RUN curl -sf https://more.musl.cc/11/x86_64-linux-musl/x86_64-linux-musl-cross.tgz | tar zxf -
 
-FROM golang:1.24-bullseye
+FROM golang:1.25-trixie
 
 RUN apt-get update && \
     apt-get install -y -q --no-install-recommends \
@@ -23,7 +23,6 @@ RUN apt-get update && \
     gnupg \
     lsb-release \
     gnupg-agent \
-    software-properties-common \
     clang \
     lld \
     libc6-dev \
@@ -50,7 +49,7 @@ RUN set -exu \
     $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
   tee /etc/apt/sources.list.d/docker.list > /dev/null \
     && apt update \
-  && apt install -y docker-ce-cli=5:25.0.3-1~debian.11~bullseye docker-buildx-plugin
+  && apt install -y docker-ce docker-buildx-plugin
 
 ENV GORELEASER_VERSION=v2.4.4
 RUN set -exu \
@@ -61,16 +60,20 @@ RUN set -exu \
   && mv /tmp/goreleaser /usr/bin/ \
   && goreleaser --version
 
-RUN mkdir -p /etc/apt/keyrings && \
-    curl -sL https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add - && \
-    echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list && \
-    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg && \
-    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_22.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list && \
-    apt update && \
-    apt install -y -q --no-install-recommends \
-      nodejs \
-      yarn \
-    && rm -rf /var/lib/apt/lists/*
+RUN install -m 0755 -d /etc/apt/keyrings \
+  # Install NodeSource key as before
+  && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
+  # Add NodeSource repo with signed-by
+  && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_22.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list > /dev/null \
+  && apt update \
+  && apt install -y -q --no-install-recommends \
+    nodejs \
+  && rm -rf /var/lib/apt/lists/* \
+  # Enable corepack, fetch and install latest stable yarn for all users
+  && corepack enable \
+  && corepack prepare yarn@stable --activate \
+  # Confirm yarn install
+  && yarn --version
 
 RUN git clone https://github.com/Homebrew/brew /home/linuxbrew/.linuxbrew
 COPY --from=osxcross /osxcross /osxcross

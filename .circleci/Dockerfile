@@ -1,5 +1,5 @@
 # Uses Node 22
-FROM cimg/go:1.24-node
+FROM cimg/go:1.25-node
 
 # --- DEPENDENCIES ---
 USER root
@@ -30,4 +30,4 @@ RUN go install github.com/google/wire/cmd/wire@latest \
     && go install golang.org/x/tools/cmd/goimports@latest \
     && go clean -cache -modcache
 
-RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.1.6
+RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.8.0
