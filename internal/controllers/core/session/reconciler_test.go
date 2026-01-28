@@ -884,6 +884,43 @@ func TestExitControlCI_ReadinessTimeout(t *testing.T) {
 	// "Readiness timeout after 30s: target fe:update not ready"
 	f.requireDoneWithError("Readiness timeout after 30s: target fe:runtime not ready")
 }
+func TestExitControlCI_ReadinessTimeoutJob(t *testing.T) {
+	f := newFixture(t, store.EngineModeCI)
+
+	// Set the session CI spec with a ReadinessTimeout of 30 seconds.
+	var session v1alpha1.Session
+	f.MustGet(types.NamespacedName{Name: "Tiltfile"}, &session)
+	session.Spec.CI = &v1alpha1.SessionCISpec{
+		ReadinessTimeout: &metav1.Duration{Duration: 30 * time.Second},
+	}
+	f.Update(&session)
+
+	// Upsert a manifest with K8sPodReadiness set to Succeeded for job completeness.
+	m := manifestbuilder.New(f, "fe").
+		WithK8sPodReadiness(model.PodReadinessSucceeded).
+		WithK8sYAML(testyaml.JobYAML).
+		Build()
+	f.upsertManifest(m)
+
+	// Simulate a build and a runtime state with a pod that is not ready.
+	f.Store.WithState(func(state *store.EngineState) {
+		mt := state.ManifestTargets["fe"]
+		mt.State.AddCompletedBuild(model.BuildRecord{
+			StartTime:  f.clock.Now(),
+			FinishTime: f.clock.Now(),
+		})
+		// Set runtime state with a pod that is not ready.
+		mt.State.LastSuccessfulDeployTime = f.clock.Now()
+		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, f.pod(k8s.PodID("pod-test"), false))
+	})
+
+	// Advance the clock by 35 seconds to exceed the 30-second readiness timeout.
+	// Ensure that the readiness timeout is not triggered for jobs.
+	f.MustReconcile(sessionKey)
+	f.clock.Advance(35 * time.Second)
+	f.MustReconcile(sessionKey)
+	f.requireNotDone()
+}
 
 func TestExitControlCI_LocalReadinessTimeout(t *testing.T) {
 	f := newFixture(t, store.EngineModeCI)

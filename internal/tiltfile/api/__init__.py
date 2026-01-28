@@ -1291,7 +1291,7 @@ def ci_settings(
   Args:
     k8s_grace_period: Grace period given for Kubernetes resources to recover after they start failing. A duration string.
     timeout: Timeout for the whole CI pipeline. A duration string. Defaults to '30m'.
-    readiness_timeout: Timeout for a resource to become ready before the CI pipeline fails. Measured from the time the resource is started. Defaults to '5m'.
+    readiness_timeout: Timeout for an active resource to become ready before the CI pipeline fails. Measured from the time the resource is started. Defaults to '5m'. Does not affect Kubernetes jobs.
   """
 
 def watch_settings(ignore: Union[str, List[str]]) -> None:
