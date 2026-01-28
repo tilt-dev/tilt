@@ -6217,7 +6217,7 @@ func schema_pkg_apis_core_v1alpha1_SessionCISpec(ref common.ReferenceCallback) c
 					},
 					"readinessTimeout": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Timeout for a resource to become ready before the CI pipeline fails. Measured from the time the resource is started. Defaults to 5m.",
+							Description: "Timeout for an active resource to become ready before the CI pipeline fails. Measured from the time the resource is started. Defaults to 5m. Does not affect Kubernetes jobs.",
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
 						},
 					},
