@@ -162,6 +162,20 @@ func (r *Reconciler) enforceReadinessTimeout(spec v1alpha1.SessionSpec, status *
 		if target.State.Active == nil || target.State.Active.Ready {
 			continue
 		}
+		if target.Type == v1alpha1.TargetTypeJob {
+			// Readiness is not currently enforced for jobs.
+			//
+			// Two problems:
+			// 1) Tilt resource readiness means "can the next dependency start"
+			// 2) Kubernetes readiness means "is the pod ready to serve traffic"
+			// 3) Tilt does not formally track Job status, and doesn't
+			//    look at job retry policies.
+			//
+			// I think the right thing to do here is to track Job status
+			// and watch that in tilt ci. Readiness timeout would only apply
+			// to kubernetes readiness. But that's a bigger change.
+			continue
+		}
 		var refTime time.Time
 		if !target.State.Active.LastReadyTime.IsZero() {
 			refTime = target.State.Active.LastReadyTime.Time

@@ -76,9 +76,10 @@ type SessionCISpec struct {
 	// Timeout for the whole CI pipeline. Defaults to 30m.
 	Timeout *metav1.Duration `json:"timeout,omitempty" protobuf:"bytes,2,opt,name=timeout"`
 
-	// Timeout for a resource to become ready before the CI pipeline fails.
+	// Timeout for an active resource to become ready before the CI pipeline fails.
 	// Measured from the time the resource is started.
 	// Defaults to 5m.
+	// Does not affect Kubernetes jobs.
 	ReadinessTimeout *metav1.Duration `json:"readinessTimeout,omitempty" protobuf:"bytes,3,opt,name=readinessTimeout"`
 }
 
