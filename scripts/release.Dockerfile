@@ -5,7 +5,7 @@
 # 2) Be able to do releases from a CI job
 
 # osxcross contains the MacOSX cross toolchain for xx
-FROM crazymax/osxcross:11.3-debian AS osxcross
+FROM crazymax/osxcross:12.3-debian AS osxcross
 
 FROM golang:1.25-trixie AS musl-cross
 WORKDIR /musl
@@ -30,6 +30,8 @@ RUN apt-get update && \
     zlib1g-dev \
     g++-aarch64-linux-gnu \
     gcc-aarch64-linux-gnu \
+    binutils-aarch64-linux-gnu \
+    binutils-gold-aarch64-linux-gnu \
     g++-arm-linux-gnueabi \
     gcc-arm-linux-gnueabi \
     g++-mingw-w64 \
