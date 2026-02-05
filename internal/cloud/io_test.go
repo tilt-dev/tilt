@@ -7,7 +7,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/types/known/timestamppb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/tilt-dev/tilt/internal/hud/webview"
@@ -35,7 +34,7 @@ func TestWriteSnapshotTo(t *testing.T) {
 		View: &proto_webview.View{
 			UiSession: webview.ToUISession(*state),
 		},
-		CreatedAt: timestamppb.New(now),
+		CreatedAt: metav1.NewMicroTime(now),
 	}
 
 	resources, err := webview.ToUIResourceList(*state, make(map[string][]v1alpha1.DisableSource))
@@ -50,22 +49,24 @@ func TestWriteSnapshotTo(t *testing.T) {
 		}
 	}
 
-	startTime := timestamppb.New(now)
-	snapshot.View.TiltStartTime = startTime
+	snapshot.View.TiltStartTime = metav1.NewMicroTime(now)
 
 	err = WriteSnapshotTo(ctx, snapshot, buf)
 	assert.NoError(t, err)
 	assert.Equal(t, `{
   "view": {
-    "tiltStartTime": "2019-02-26T17:36:13Z",
+    "tiltStartTime": "2019-02-26T17:36:13.000000Z",
     "uiSession": {
       "metadata": {
         "name": "Tiltfile"
       },
+      "spec": {},
       "status": {
+        "runningTiltBuild": {},
         "versionSettings": {
           "checkUpdates": true
         },
+        "tiltStartTime": null,
         "tiltfileKey": "Tiltfile"
       }
     },
@@ -74,19 +75,30 @@ func TestWriteSnapshotTo(t *testing.T) {
         "metadata": {
           "name": "(Tiltfile)"
         },
+        "spec": {},
         "status": {
+          "lastDeployTime": null,
+          "pendingBuildSince": null,
           "runtimeStatus": "not_applicable",
           "updateStatus": "pending",
           "order": 1,
+          "disableStatus": {
+            "enabledCount": 0,
+            "disabledCount": 0,
+            "state": "Enabled",
+            "sources": null
+          },
           "conditions": [
             {
               "type": "UpToDate",
               "status": "False",
+              "lastTransitionTime": null,
               "reason": "UpdatePending"
             },
             {
               "type": "Ready",
               "status": "False",
+              "lastTransitionTime": null,
               "reason": "UpdatePending"
             }
           ]
@@ -94,7 +106,7 @@ func TestWriteSnapshotTo(t *testing.T) {
       }
     ]
   },
-  "createdAt": "2019-02-26T17:36:13Z"
+  "createdAt": "2019-02-26T17:36:13.000000Z"
 }
 `, buf.String())
 }

@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -10,12 +11,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/mattn/go-tty"
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
-	"google.golang.org/protobuf/types/known/timestamppb"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
 	engineanalytics "github.com/tilt-dev/tilt/internal/engine/analytics"
@@ -202,11 +202,10 @@ func createSnapshot(cmd *cobra.Command, args []string) {
 
 	snapshot := proto_webview.Snapshot{
 		View:      &proto_webview.View{},
-		CreatedAt: timestamppb.Now(),
+		CreatedAt: metav1.NewMicroTime(time.Now()),
 	}
 
-	jsEncoder := &runtime.JSONPb{}
-	err := jsEncoder.NewDecoder(body).Decode(&snapshot.View)
+	err := json.NewDecoder(body).Decode(&snapshot.View)
 	if err != nil {
 		cmdFail(fmt.Errorf("error reading snapshot from tilt: %v", err))
 	}
@@ -219,7 +218,7 @@ func createSnapshot(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	err = jsEncoder.NewEncoder(out).Encode(&snapshot)
+	err = json.NewEncoder(out).Encode(&snapshot)
 	if err != nil {
 		cmdFail(fmt.Errorf("error serializing snapshot: %v", err))
 	}

@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"google.golang.org/protobuf/types/known/timestamppb"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -85,8 +84,7 @@ func CompleteView(ctx context.Context, client ctrlclient.Client, st store.RStore
 
 	// We grandfather in TiltStartTime from the old protocol,
 	// because it tells the UI to reload.
-	start := timestamppb.New(s.TiltStartTime)
-	ret.TiltStartTime = start
+	ret.TiltStartTime = metav1.NewMicroTime(s.TiltStartTime)
 	ret.IsComplete = true
 
 	sortUIResources(ret.UiResources, s.ManifestDefinitionOrder)
@@ -109,8 +107,7 @@ func LogUpdate(st store.RStore, checkpoint logstore.Checkpoint) (*proto_webview.
 
 	// We grandfather in TiltStartTime from the old protocol,
 	// because it tells the UI to reload.
-	start := timestamppb.New(s.TiltStartTime)
-	ret.TiltStartTime = start
+	ret.TiltStartTime = metav1.NewMicroTime(s.TiltStartTime)
 
 	return ret, nil
 }
@@ -393,6 +390,9 @@ func TiltfileResource(name model.ManifestName, ms *store.ManifestState, logStore
 			BuildHistory:  history,
 			RuntimeStatus: v1alpha1.RuntimeStatusNotApplicable,
 			UpdateStatus:  ms.UpdateStatus(model.TriggerModeAuto),
+			DisableStatus: v1alpha1.DisableResourceStatus{
+				State: v1alpha1.DisableStateEnabled,
+			},
 		},
 	}
 	start := metav1.NewMicroTime(ctfb.StartTime)

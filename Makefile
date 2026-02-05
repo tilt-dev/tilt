@@ -168,7 +168,10 @@ update-codegen-starlark:
 	goimports -w -l $(GOIMPORTS_LOCAL_ARG) internal/
 
 update-codegen-ts:
-	./scripts/codegen-webview.sh
+	go install github.com/gzuidhof/tygo@latest
+	tygo generate
+	cd web && yarn install
+	cd web && yarn prettier
 
 release-build:
 	toast -f build.toast.yml
