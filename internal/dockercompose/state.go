@@ -47,6 +47,15 @@ func (s State) RuntimeStatus() v1alpha1.RuntimeStatus {
 	if s.ContainerState.Running ||
 		s.ContainerState.Status == ContainerStatusRunning ||
 		s.ContainerState.Status == ContainerStatusExited {
+		// If a health check is configured, wait for it to pass before reporting OK.
+		// HealthStatus will be "starting", "healthy", or "unhealthy" when configured.
+		// An empty HealthStatus means no health check is configured.
+		if s.ContainerState.HealthStatus != "" && s.ContainerState.HealthStatus != "healthy" {
+			if s.ContainerState.HealthStatus == "unhealthy" {
+				return v1alpha1.RuntimeStatusError
+			}
+			return v1alpha1.RuntimeStatusPending
+		}
 		return v1alpha1.RuntimeStatusOK
 	}
 	if s.ContainerState.Status == "" {
@@ -65,6 +74,9 @@ func (s State) RuntimeStatusError() error {
 	}
 	if s.ContainerState.ExitCode != 0 {
 		return fmt.Errorf("Container %s exited with %d", s.ContainerID, s.ContainerState.ExitCode)
+	}
+	if s.ContainerState.HealthStatus == "unhealthy" {
+		return fmt.Errorf("Container %s health check failed (unhealthy)", s.ContainerID)
 	}
 	return fmt.Errorf("Container %s error status: %s", s.ContainerID, s.ContainerState.Status)
 }
