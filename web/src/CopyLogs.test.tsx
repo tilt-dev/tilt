@@ -68,10 +68,7 @@ describe("CopyLogs", () => {
 
     userEvent.click(screen.getByRole("button"))
 
-    const expectedText = logLinesToString(
-      logStore.manifestLog("vigoda"),
-      true
-    )
+    const expectedText = logLinesToString(logStore.manifestLog("vigoda"), true)
     expect(writeTextMock).toHaveBeenCalledWith(expectedText)
   })
 

@@ -29,9 +29,7 @@ export interface CopyLogsProps {
 
 export const copyLogs = (logStore: LogStore, resourceName: string) => {
   const all = resourceName === ResourceName.all
-  const lines = all
-    ? logStore.allLog()
-    : logStore.manifestLog(resourceName)
+  const lines = all ? logStore.allLog() : logStore.manifestLog(resourceName)
   const text = logLinesToString(lines, !all)
   navigator.clipboard.writeText(text)
 }
