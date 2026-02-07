@@ -2,6 +2,7 @@ import React, { useEffect } from "react"
 import { useStorageState } from "react-storage-hooks"
 import styled from "styled-components"
 import ClearLogs from "./ClearLogs"
+import CopyLogs from "./CopyLogs"
 import { InstrumentedButton } from "./instrumentedComponents"
 import {
   AnimDuration,
@@ -115,6 +116,7 @@ const LogActions: React.FC<LogActionsProps> = ({
 }) => {
   return (
     <LogActionsGroup>
+      {isSnapshot || <CopyLogs resourceName={resourceName} />}
       <LogsFontSize />
       {isSnapshot || <ClearLogs resourceName={resourceName} />}
     </LogActionsGroup>
