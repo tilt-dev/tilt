@@ -7,17 +7,15 @@ import (
 	"log"
 	"net/http"
 	_ "net/http/pprof"
-
-	"google.golang.org/protobuf/types/known/timestamppb"
+	"time"
 
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 
-	"github.com/golang/protobuf/jsonpb" //nolint:staticcheck // SA1019
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	_ "github.com/gorilla/websocket"
-	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	jsoniter "github.com/json-iterator/go"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	tiltanalytics "github.com/tilt-dev/tilt/internal/analytics"
@@ -128,10 +126,8 @@ func (s *HeadsUpServer) ViewJSON(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	jsEncoder := &runtime.JSONPb{}
-
 	w.Header().Set("Content-Type", "application/json")
-	err = jsEncoder.NewEncoder(w).Encode(view)
+	err = json.NewEncoder(w).Encode(view)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error rendering view payload: %v", err), http.StatusInternalServerError)
 	}
@@ -158,12 +154,11 @@ func (s *HeadsUpServer) SnapshotJSON(w http.ResponseWriter, req *http.Request) {
 
 	snapshot := &proto_webview.Snapshot{
 		View:      view,
-		CreatedAt: timestamppb.Now(),
+		CreatedAt: metav1.NewMicroTime(time.Now()),
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	var m jsonpb.Marshaler
-	err = m.Marshal(w, snapshot)
+	err = json.NewEncoder(w).Encode(snapshot)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error rendering view payload: %v", err), http.StatusInternalServerError)
 	}

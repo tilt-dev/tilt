@@ -2,13 +2,13 @@ package cloud
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"os"
+	"time"
 
-	"google.golang.org/protobuf/types/known/timestamppb"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 
 	"github.com/tilt-dev/tilt/internal/hud/webview"
 	"github.com/tilt-dev/tilt/internal/store"
@@ -46,7 +46,7 @@ func (s *Snapshotter) WriteSnapshot(ctx context.Context, path string) {
 
 	snapshot := &proto_webview.Snapshot{
 		View:      view,
-		CreatedAt: timestamppb.Now(),
+		CreatedAt: metav1.NewMicroTime(time.Now()),
 	}
 
 	err = WriteSnapshotTo(ctx, snapshot, f)
@@ -57,9 +57,7 @@ func (s *Snapshotter) WriteSnapshot(ctx context.Context, path string) {
 }
 
 func WriteSnapshotTo(ctx context.Context, snapshot *proto_webview.Snapshot, w io.Writer) error {
-	jsEncoder := &runtime.JSONPb{
-		OrigName: false,
-		Indent:   "  ",
-	}
-	return jsEncoder.NewEncoder(w).Encode(snapshot)
+	encoder := json.NewEncoder(w)
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(snapshot)
 }

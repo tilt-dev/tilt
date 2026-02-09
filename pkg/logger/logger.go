@@ -58,11 +58,17 @@ type Level struct {
 	// about relative priority.
 	id int32
 
+	name string
+
 	severity int32
 }
 
 func (l Level) ToProtoID() int32 {
 	return l.id
+}
+
+func (l Level) Name() string {
+	return l.name
 }
 
 // If l is the logger level, determine if we should display
@@ -76,12 +82,12 @@ func (l Level) AsSevereAs(log Level) bool {
 }
 
 var (
-	NoneLvl    = Level{id: 0, severity: 0}
-	DebugLvl   = Level{id: 3, severity: 100}
-	VerboseLvl = Level{id: 2, severity: 200}
-	InfoLvl    = Level{id: 1, severity: 300}
-	WarnLvl    = Level{id: 4, severity: 400}
-	ErrorLvl   = Level{id: 5, severity: 500}
+	NoneLvl    = Level{id: 0, name: "NONE", severity: 0}
+	DebugLvl   = Level{id: 3, name: "DEBUG", severity: 100}
+	VerboseLvl = Level{id: 2, name: "VERBOSE", severity: 200}
+	InfoLvl    = Level{id: 1, name: "INFO", severity: 300}
+	WarnLvl    = Level{id: 4, name: "WARN", severity: 400}
+	ErrorLvl   = Level{id: 5, name: "ERROR", severity: 500}
 )
 
 type contextKey struct{}

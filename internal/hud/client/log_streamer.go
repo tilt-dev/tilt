@@ -2,9 +2,9 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 
-	"github.com/golang/protobuf/jsonpb" //nolint:staticcheck // SA1019
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
 
@@ -56,10 +56,9 @@ type WebsocketConn interface {
 }
 
 type WebsocketReader struct {
-	conn         WebsocketConn
-	unmarshaller jsonpb.Unmarshaler
-	persistent   bool // whether to keep listening on websocket, or close after first message
-	handler      ViewHandler
+	conn       WebsocketConn
+	persistent bool // whether to keep listening on websocket, or close after first message
+	handler    ViewHandler
 }
 
 func newWebsocketReaderForLogs(conn WebsocketConn, persistent bool, filter LogFilter, printer LogPrinter) *WebsocketReader {
@@ -69,10 +68,9 @@ func newWebsocketReaderForLogs(conn WebsocketConn, persistent bool, filter LogFi
 
 func newWebsocketReader(conn WebsocketConn, persistent bool, handler ViewHandler) *WebsocketReader {
 	return &WebsocketReader{
-		conn:         conn,
-		unmarshaller: jsonpb.Unmarshaler{},
-		persistent:   persistent,
-		handler:      handler,
+		conn:       conn,
+		persistent: persistent,
+		handler:    handler,
 	}
 }
 
@@ -186,7 +184,7 @@ func (wsr *WebsocketReader) Listen(ctx context.Context) error {
 
 func (wsr *WebsocketReader) handleTextMessage(_ context.Context, reader io.Reader) error {
 	v := &proto_webview.View{}
-	err := wsr.unmarshaller.Unmarshal(reader, v)
+	err := json.NewDecoder(reader).Decode(v)
 	if err != nil {
 		return errors.Wrap(err, "parsing")
 	}

@@ -1,0 +1,6 @@
+packages:
+  - path: "github.com/tilt-dev/tilt/pkg/webview"
+    output_path: "web/src/view2.d.ts"
+    type_mappings:
+      metav1.MicroTime: "string"
+      metav1.Time: "string"

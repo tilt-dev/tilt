@@ -267,7 +267,7 @@ func (f *logStreamerFixture) segments(messages []string, manifestNames []string)
 		segs[i] = &proto_webview.LogSegment{
 			SpanId: spanID(manifestNames[i]),
 			Text:   msg + "\n",
-			Level:  0, // TODO
+			Level:  proto_webview.LogLevel_NONE,
 		}
 	}
 

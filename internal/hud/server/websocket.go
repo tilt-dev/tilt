@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -9,13 +10,10 @@ import (
 	"sync"
 	"time"
 
-	"google.golang.org/protobuf/types/known/timestamppb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/workqueue"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 
 	"github.com/tilt-dev/tilt/internal/hud/server/gorilla"
 	"github.com/tilt-dev/tilt/internal/hud/webview"
@@ -71,7 +69,7 @@ type WebsocketSubscriber struct {
 	dirtyUISession   *v1alpha1.UISession
 	dirtyClusters    map[string]*v1alpha1.Cluster
 
-	tiltStartTime    *timestamppb.Timestamp
+	tiltStartTime    metav1.MicroTime
 	clientCheckpoint logstore.Checkpoint
 }
 
@@ -323,11 +321,10 @@ func (ws *WebsocketSubscriber) sendView(ctx context.Context, view *proto_webview
 
 	// A little hack that initializes tiltStartTime for this websocket
 	// on the first send.
-	if ws.tiltStartTime == nil {
+	if ws.tiltStartTime.IsZero() {
 		ws.tiltStartTime = view.TiltStartTime
 	}
 
-	jsEncoder := &runtime.JSONPb{}
 	w, err := ws.conn.NextWriter(websocket.TextMessage)
 	if err != nil {
 		logger.Get(ctx).Verbosef("getting writer: %v", err)
@@ -340,7 +337,7 @@ func (ws *WebsocketSubscriber) sendView(ctx context.Context, view *proto_webview
 		}
 	}()
 
-	err = jsEncoder.NewEncoder(w).Encode(view)
+	err = json.NewEncoder(w).Encode(view)
 	if err != nil {
 		logger.Get(ctx).Verbosef("sending webview data: %v", err)
 	}
