@@ -31,7 +31,7 @@ func NewExplodingClient(err error) Client {
 	}
 }
 
-func (ec *explodingClient) Upsert(ctx context.Context, entities []K8sEntity, timeout time.Duration) ([]K8sEntity, error) {
+func (ec *explodingClient) Upsert(ctx context.Context, entities []K8sEntity, timeout time.Duration, ssa SSAOptions) ([]K8sEntity, error) {
 	return nil, errors.Wrap(ec.err, "could not set up kubernetes client")
 }
 

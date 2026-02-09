@@ -15,9 +15,16 @@ import (
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 )
 
+// SSAOptions configures server-side apply behavior.
+type SSAOptions struct {
+	Enabled      bool
+	Force        bool
+	FieldManager string
+}
+
 // We've adapted Helm's kubernetes client for our needs
 type ResourceClient interface {
-	Apply(target kube.ResourceList) (*kube.Result, error)
+	Apply(target kube.ResourceList, ssa SSAOptions) (*kube.Result, error)
 	CreateOrReplace(target kube.ResourceList) (*kube.Result, error)
 	Delete(existing kube.ResourceList) (*kube.Result, []error)
 	Create(l kube.ResourceList) (*kube.Result, error)
@@ -31,7 +38,7 @@ type resourceClient struct {
 
 // Helm's update function doesn't really work for us,
 // so we use the kubectl apply code directly.
-func (c *resourceClient) Apply(target kube.ResourceList) (*kube.Result, error) {
+func (c *resourceClient) Apply(target kube.ResourceList, ssa SSAOptions) (*kube.Result, error) {
 	f := c.factory
 	iostreams := genericclioptions.IOStreams{
 		In:     strings.NewReader(""),
@@ -90,6 +97,12 @@ func (c *resourceClient) Apply(target kube.ResourceList) (*kube.Result, error) {
 
 		VisitedUids:       sets.New[types.UID](),
 		VisitedNamespaces: sets.New[string](),
+	}
+
+	if ssa.Enabled {
+		o.ServerSideApply = true
+		o.FieldManager = ssa.FieldManager
+		o.ForceConflicts = ssa.Force
 	}
 
 	o.SetObjects(target)

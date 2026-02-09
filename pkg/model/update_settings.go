@@ -14,6 +14,9 @@ type UpdateSettings struct {
 	maxParallelUpdates int           // max number of updates to run concurrently
 	k8sUpsertTimeout   time.Duration // timeout for k8s upsert operations
 
+	// "true", "false", or "auto".
+	k8sServerSideApply string
+
 	// A list of images to suppress the warning for.
 	SuppressUnusedImageWarnings []string
 }
@@ -32,6 +35,15 @@ func (us UpdateSettings) WithMaxParallelUpdates(n int) UpdateSettings {
 		n = 1
 	}
 	us.maxParallelUpdates = n
+	return us
+}
+
+func (us UpdateSettings) K8sServerSideApply() string {
+	return us.k8sServerSideApply
+}
+
+func (us UpdateSettings) WithK8sServerSideApply(v string) UpdateSettings {
+	us.k8sServerSideApply = v
 	return us
 }
 
@@ -56,5 +68,6 @@ func DefaultUpdateSettings() UpdateSettings {
 	return UpdateSettings{
 		maxParallelUpdates: DefaultMaxParallelUpdates,
 		k8sUpsertTimeout:   v1alpha1.KubernetesApplyTimeoutDefault,
+		k8sServerSideApply: "auto",
 	}
 }

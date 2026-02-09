@@ -103,7 +103,7 @@ type Client interface {
 	//
 	// Returns entities in the order that they were applied (which may be different
 	// than they were passed in) and with UUIDs from the Kube API
-	Upsert(ctx context.Context, entities []K8sEntity, timeout time.Duration) ([]K8sEntity, error)
+	Upsert(ctx context.Context, entities []K8sEntity, timeout time.Duration, ssa SSAOptions) ([]K8sEntity, error)
 
 	// Delete all given entities, optionally waiting for them to be fully deleted.
 	//
@@ -356,13 +356,13 @@ func (k *K8sClient) ToRawKubeConfigLoader() clientcmd.ClientConfig {
 	return k.clientLoader
 }
 
-func (k *K8sClient) Upsert(ctx context.Context, entities []K8sEntity, timeout time.Duration) ([]K8sEntity, error) {
+func (k *K8sClient) Upsert(ctx context.Context, entities []K8sEntity, timeout time.Duration, ssa SSAOptions) ([]K8sEntity, error) {
 	result := make([]K8sEntity, 0, len(entities))
 	for _, e := range entities {
 		innerCtx, cancel := context.WithTimeout(ctx, timeout)
 		defer cancel()
 
-		newEntity, err := k.escalatingUpdate(innerCtx, e)
+		newEntity, err := k.escalatingUpdate(innerCtx, e, ssa)
 		if err != nil {
 			if ctx.Err() == context.DeadlineExceeded {
 				return nil, timeoutError(timeout)
@@ -387,13 +387,13 @@ func (k *K8sClient) APIConfig() *api.Config {
 //
 // This is the "best" way to apply a change.
 // It will do a 3-way merge to update the spec in the least intrusive way.
-func (k *K8sClient) applyEntity(ctx context.Context, entity K8sEntity) ([]K8sEntity, error) {
+func (k *K8sClient) applyEntity(ctx context.Context, entity K8sEntity, ssa SSAOptions) ([]K8sEntity, error) {
 	resources, err := k.prepareUpdateList(ctx, entity)
 	if err != nil {
 		return nil, errors.Wrap(err, "kubernetes apply")
 	}
 
-	result, err := k.resourceClient.Apply(resources)
+	result, err := k.resourceClient.Apply(resources, ssa)
 	if err != nil {
 		return nil, err
 	}
@@ -431,7 +431,7 @@ func (k *K8sClient) applyEntity(ctx context.Context, entity K8sEntity) ([]K8sEnt
 			return nil, errors.Wrap(err, "kubernetes apply retry")
 		}
 
-		result, err = k.resourceClient.Apply(resources)
+		result, err = k.resourceClient.Apply(resources, ssa)
 		if err != nil {
 			return nil, errors.Wrap(err, "kubernetes apply retry")
 		}
@@ -569,9 +569,9 @@ func (k *K8sClient) deleteAndCreate(ctx context.Context, list kube.ResourceList)
 
 // Update a resource in-place, starting with the least intrusive
 // update strategy and escalating into the most intrusive strategy.
-func (k *K8sClient) escalatingUpdate(ctx context.Context, entity K8sEntity) ([]K8sEntity, error) {
+func (k *K8sClient) escalatingUpdate(ctx context.Context, entity K8sEntity, ssa SSAOptions) ([]K8sEntity, error) {
 	fallback := false
-	result, err := k.applyEntity(ctx, entity)
+	result, err := k.applyEntity(ctx, entity, ssa)
 	if err != nil {
 		msg, match := maybeTooLargeError(err)
 		if match {

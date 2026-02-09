@@ -4147,6 +4147,27 @@ func schema_pkg_apis_core_v1alpha1_KubernetesApplySpec(ref common.ReferenceCallb
 							Format:      "",
 						},
 					},
+					"serverSideApply": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ServerSideApply enables kubectl server-side apply for this resource.\n\nWhen true, kubectl will apply resources on the server instead of the client, which is faster and provides better conflict resolution, especially for large objects.\n\nIf not provided, defaults to false (client-side apply).",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"forceConflicts": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ForceConflicts enables server-side apply to force changes against conflicts.\n\nOnly applies when ServerSideApply is true. If there are conflicting fields, server-side apply will force the changes rather than returning an error.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"fieldManager": {
+						SchemaProps: spec.SchemaProps{
+							Description: "FieldManager specifies the name of the manager tracking field ownership for server-side apply.\n\nOnly applies when ServerSideApply is true. If not specified, defaults to \"tilt\".",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 			},
 		},

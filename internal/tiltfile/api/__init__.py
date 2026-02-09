@@ -1269,7 +1269,8 @@ def secret_settings(disable_scrub: bool = False) -> None:
 def update_settings(
     max_parallel_updates: int=3,
     k8s_upsert_timeout_secs: int=30,
-    suppress_unused_image_warnings: Union[str, List[str]]=None) -> None:
+    suppress_unused_image_warnings: Union[str, List[str]]=None,
+    k8s_server_side_apply: str="auto") -> None:
   """Configures Tilt's updates to your resources. (An update is any execution of or
   change to a resource. Examples of updates include: doing a docker build + deploy to
   Kubernetes; running a live update on an existing container; and executing
@@ -1280,6 +1281,8 @@ def update_settings(
     k8s_upsert_timeout_secs: timeout (in seconds) for Kubernetes upserts (i.e. ``create``/``apply`` calls). Minimum value is 1.
     suppress_unused_image_warnings: suppresses warnings about images that aren't deployed.
       Accepts a list of image names, or '*' to suppress warnings for all images.
+    k8s_server_side_apply: controls whether Kubernetes applies use server-side apply.
+      Accepts values ``true``, ``false`` and ``auto``. Default is ``auto``.
 """
 
 def ci_settings(

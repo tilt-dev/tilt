@@ -351,7 +351,11 @@ func (r *Reconciler) runYAMLDeploy(ctx context.Context, spec v1alpha1.Kubernetes
 		timeout = v1alpha1.KubernetesApplyTimeoutDefault
 	}
 
-	deployed, err := r.k8sClient.Upsert(ctx, newK8sEntities, timeout)
+	deployed, err := r.k8sClient.Upsert(ctx, newK8sEntities, timeout, k8s.SSAOptions{
+		Enabled:      spec.ServerSideApply,
+		Force:        spec.ForceConflicts,
+		FieldManager: spec.FieldManager,
+	})
 	if err != nil {
 		r.printAppliedReport(ctx, "Tried to apply objects to cluster:", newK8sEntities)
 		return nil, err
