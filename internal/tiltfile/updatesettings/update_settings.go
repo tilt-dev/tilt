@@ -31,10 +31,12 @@ func (e Plugin) OnStart(env *starkit.Environment) error {
 func (e *Plugin) updateSettings(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var maxParallelUpdates, k8sUpsertTimeoutSecs starlark.Value
 	var unusedImageWarnings value.StringOrStringList
+	var k8sServerSideApply string
 	if err := starkit.UnpackArgs(thread, fn.Name(), args, kwargs,
 		"max_parallel_updates?", &maxParallelUpdates,
 		"k8s_upsert_timeout_secs?", &k8sUpsertTimeoutSecs,
-		"suppress_unused_image_warnings?", &unusedImageWarnings); err != nil {
+		"suppress_unused_image_warnings?", &unusedImageWarnings,
+		"k8s_server_side_apply?", &k8sServerSideApply); err != nil {
 		return nil, err
 	}
 
@@ -56,6 +58,10 @@ func (e *Plugin) updateSettings(thread *starlark.Thread, fn *starlark.Builtin, a
 			k8sUpsertTimeoutSecs)
 	}
 
+	if k8sServerSideApply != "" && k8sServerSideApply != "true" && k8sServerSideApply != "false" && k8sServerSideApply != "auto" {
+		return nil, fmt.Errorf("update_settings: k8s_server_side_apply must be \"true\", \"false\", or \"auto\"; got %q", k8sServerSideApply)
+	}
+
 	err = starkit.SetState(thread, func(settings model.UpdateSettings) model.UpdateSettings {
 		if mpuPassed {
 			settings = settings.WithMaxParallelUpdates(mpu)
@@ -64,6 +70,9 @@ func (e *Plugin) updateSettings(thread *starlark.Thread, fn *starlark.Builtin, a
 			settings = settings.WithK8sUpsertTimeout(time.Duration(kuts) * time.Second)
 		}
 		settings.SuppressUnusedImageWarnings = append(settings.SuppressUnusedImageWarnings, unusedImageWarnings.Values...)
+		if k8sServerSideApply != "" {
+			settings = settings.WithK8sServerSideApply(k8sServerSideApply)
+		}
 		return settings
 	})
 

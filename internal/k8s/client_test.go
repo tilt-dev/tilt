@@ -311,7 +311,7 @@ type fakeResourceClient struct {
 	buildErrFn       func(e K8sEntity) error
 }
 
-func (c *fakeResourceClient) Apply(target kube.ResourceList) (*kube.Result, error) {
+func (c *fakeResourceClient) Apply(target kube.ResourceList, ssa SSAOptions) (*kube.Result, error) {
 	defer func() {
 		c.updateErr = nil
 	}()
@@ -430,5 +430,5 @@ func newClientTestFixture(t *testing.T) *clientTestFixture {
 }
 
 func (c clientTestFixture) k8sUpsert(ctx context.Context, entities []K8sEntity) ([]K8sEntity, error) {
-	return c.client.Upsert(ctx, entities, time.Minute)
+	return c.client.Upsert(ctx, entities, time.Minute, SSAOptions{})
 }

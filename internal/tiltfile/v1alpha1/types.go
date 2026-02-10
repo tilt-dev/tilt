@@ -366,6 +366,9 @@ func (p Plugin) kubernetesApply(t *starlark.Thread, fn *starlark.Builtin, args s
 		"restart_on?", &restartOn,
 		"delete_cmd?", &deleteCmd,
 		"cluster?", &obj.Spec.Cluster,
+		"server_side_apply?", &obj.Spec.ServerSideApply,
+		"force_conflicts?", &obj.Spec.ForceConflicts,
+		"field_manager?", &obj.Spec.FieldManager,
 	)
 	if err != nil {
 		return nil, err

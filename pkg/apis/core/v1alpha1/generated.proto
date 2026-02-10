@@ -1694,6 +1694,31 @@ message KubernetesApplySpec {
   //
   // +optional
   optional string cluster = 13;
+
+  // ServerSideApply enables kubectl server-side apply for this resource.
+  //
+  // When true, kubectl will apply resources on the server instead of the client,
+  // which is faster and provides better conflict resolution, especially for large objects.
+  //
+  // If not provided, defaults to false (client-side apply).
+  //
+  // +optional
+  optional bool serverSideApply = 14;
+
+  // ForceConflicts enables server-side apply to force changes against conflicts.
+  //
+  // Only applies when ServerSideApply is true. If there are conflicting fields,
+  // server-side apply will force the changes rather than returning an error.
+  //
+  // +optional
+  optional bool forceConflicts = 15;
+
+  // FieldManager specifies the name of the manager tracking field ownership for server-side apply.
+  //
+  // Only applies when ServerSideApply is true. If not specified, defaults to "tilt".
+  //
+  // +optional
+  optional string fieldManager = 16;
 }
 
 // KubernetesApplyStatus defines the observed state of KubernetesApply

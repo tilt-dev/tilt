@@ -396,7 +396,7 @@ func (c *FakeK8sClient) tearDown() {
 	}
 }
 
-func (c *FakeK8sClient) Upsert(_ context.Context, entities []K8sEntity, timeout time.Duration) ([]K8sEntity, error) {
+func (c *FakeK8sClient) Upsert(_ context.Context, entities []K8sEntity, timeout time.Duration, ssa SSAOptions) ([]K8sEntity, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 

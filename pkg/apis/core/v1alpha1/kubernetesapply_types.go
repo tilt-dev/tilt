@@ -181,6 +181,31 @@ type KubernetesApplySpec struct {
 	//
 	// +optional
 	Cluster string `json:"cluster" protobuf:"bytes,13,opt,name=cluster"`
+
+	// ServerSideApply enables kubectl server-side apply for this resource.
+	//
+	// When true, kubectl will apply resources on the server instead of the client,
+	// which is faster and provides better conflict resolution, especially for large objects.
+	//
+	// If not provided, defaults to false (client-side apply).
+	//
+	// +optional
+	ServerSideApply bool `json:"serverSideApply,omitempty" protobuf:"bytes,14,opt,name=serverSideApply"`
+
+	// ForceConflicts enables server-side apply to force changes against conflicts.
+	//
+	// Only applies when ServerSideApply is true. If there are conflicting fields,
+	// server-side apply will force the changes rather than returning an error.
+	//
+	// +optional
+	ForceConflicts bool `json:"forceConflicts,omitempty" protobuf:"bytes,15,opt,name=forceConflicts"`
+
+	// FieldManager specifies the name of the manager tracking field ownership for server-side apply.
+	//
+	// Only applies when ServerSideApply is true. If not specified, defaults to "tilt".
+	//
+	// +optional
+	FieldManager string `json:"fieldManager,omitempty" protobuf:"bytes,16,opt,name=fieldManager"`
 }
 
 var _ resource.Object = &KubernetesApply{}
