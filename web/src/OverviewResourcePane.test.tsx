@@ -33,7 +33,10 @@ function customRender(
 
   return render(<OverviewResourcePane view={view} isSocketConnected={true} />, {
     wrapper: ({ children }) => (
-      <MemoryRouter initialEntries={[routerEntry]}>
+      <MemoryRouter
+        initialEntries={[routerEntry]}
+        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+      >
         <LogStoreProvider value={logStore ?? new LogStore()}>
           <SnackbarProvider>
             <ResourceNavProvider validateResource={validateResource}>

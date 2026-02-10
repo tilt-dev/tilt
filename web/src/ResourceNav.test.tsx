@@ -55,7 +55,10 @@ function customRender(
     }
   return render(<TestResourceNavConsumer />, {
     wrapper: ({ children }) => (
-      <MemoryRouter initialEntries={wrapperOptions.initialEntries || ["/"]}>
+      <MemoryRouter
+        initialEntries={wrapperOptions.initialEntries || ["/"]}
+        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+      >
         <ResourceNavProvider validateResource={validateResource}>
           {children}
         </ResourceNavProvider>
@@ -143,7 +146,9 @@ describe("ResourceNavContext", () => {
 
     let validateResource = () => true
     let { rerender } = render(
-      <MemoryRouter>
+      <MemoryRouter
+        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+      >
         <ResourceNavProvider validateResource={validateResource}>
           <FakeEl />
         </ResourceNavProvider>
@@ -154,7 +159,9 @@ describe("ResourceNavContext", () => {
 
     // Make sure we don't re-render on a no-op update.
     rerender(
-      <MemoryRouter>
+      <MemoryRouter
+        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+      >
         <ResourceNavProvider validateResource={validateResource}>
           <FakeEl />
         </ResourceNavProvider>

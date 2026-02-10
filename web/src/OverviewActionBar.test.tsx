@@ -44,7 +44,10 @@ function customRender(
 ) {
   return render(component, {
     wrapper: ({ children }) => (
-      <MemoryRouter initialEntries={wrapperProps.initialEntries || ["/"]}>
+      <MemoryRouter
+        initialEntries={wrapperProps.initialEntries || ["/"]}
+        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+      >
         <SnackbarProvider>{children}</SnackbarProvider>
         <LocationCapture />
       </MemoryRouter>
@@ -202,7 +205,9 @@ describe("OverviewActionBar", () => {
 
       userEvent.type(screen.getByRole("textbox"), "docker")
 
-      jest.advanceTimersByTime(FILTER_INPUT_DEBOUNCE)
+      act(() => {
+        jest.advanceTimersByTime(FILTER_INPUT_DEBOUNCE)
+      })
 
       expect(getSearch()).toEqual("?term=docker")
     })
@@ -214,7 +219,9 @@ describe("OverviewActionBar", () => {
 
       userEvent.type(screen.getByRole("textbox"), "doc")
 
-      jest.advanceTimersByTime(FILTER_INPUT_DEBOUNCE / 2)
+      act(() => {
+        jest.advanceTimersByTime(FILTER_INPUT_DEBOUNCE / 2)
+      })
 
       // The debouncing time hasn't passed yet, so we don't expect to see any changes
       expect(getSearch()).toEqual("")
@@ -224,7 +231,9 @@ describe("OverviewActionBar", () => {
       // The debouncing time hasn't passed yet, so we don't expect to see any changes
       expect(getSearch()).toEqual("")
 
-      jest.advanceTimersByTime(FILTER_INPUT_DEBOUNCE)
+      act(() => {
+        jest.advanceTimersByTime(FILTER_INPUT_DEBOUNCE)
+      })
 
       // Since the debouncing time has passed, we expect to see the final
       // change reflected
@@ -240,7 +249,9 @@ describe("OverviewActionBar", () => {
 
       userEvent.type(screen.getByRole("textbox"), "help")
 
-      jest.advanceTimersByTime(FILTER_INPUT_DEBOUNCE)
+      act(() => {
+        jest.advanceTimersByTime(FILTER_INPUT_DEBOUNCE)
+      })
 
       expect(getSearch()).toEqual("?level=warn&source=build&term=help")
     })

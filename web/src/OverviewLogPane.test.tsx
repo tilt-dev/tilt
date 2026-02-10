@@ -29,7 +29,10 @@ import { appendLines } from "./testlogs"
 function customRender(component: JSX.Element, options?: RenderOptions) {
   return render(component, {
     wrapper: ({ children }) => (
-      <MemoryRouter initialEntries={["/"]}>
+      <MemoryRouter
+        initialEntries={["/"]}
+        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+      >
         <SyncRafProvider>{children}</SyncRafProvider>
       </MemoryRouter>
     ),
@@ -192,7 +195,10 @@ describe("OverviewLogPane", () => {
       class ManyLinesWrapper extends Component {
         render() {
           return (
-            <MemoryRouter initialEntries={["/"]}>
+            <MemoryRouter
+              initialEntries={["/"]}
+              future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+            >
               <RafProvider value={fakeRaf}>
                 <ManyLines count={initLineCount} />
               </RafProvider>

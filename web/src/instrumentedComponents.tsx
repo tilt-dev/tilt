@@ -16,7 +16,10 @@ import React, { useMemo } from "react"
 
 type InstrumentationProps = {}
 
-export function InstrumentedButton(props: ButtonProps & InstrumentationProps) {
+export const InstrumentedButton = React.forwardRef<
+  HTMLButtonElement,
+  ButtonProps & InstrumentationProps
+>(function InstrumentedButton(props, ref) {
   const { onClick, ...buttonProps } = props
   const instrumentedOnClick: typeof onClick = (e) => {
     if (onClick) {
@@ -27,13 +30,14 @@ export function InstrumentedButton(props: ButtonProps & InstrumentationProps) {
   // TODO(nick): variant="outline" doesn't seem like the right default.
   return (
     <Button
+      ref={ref}
       variant="outlined"
       disableRipple={true}
       onClick={instrumentedOnClick}
       {...buttonProps}
     />
   )
-}
+})
 
 // How long to debounce TextField edit events. i.e., only send one edit
 // event per this duration. These don't need to be submitted super

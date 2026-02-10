@@ -83,7 +83,9 @@ function renderContainer(x: ReactElement) {
     [Flag.Labels]: true,
   })
   const { container } = render(
-    <MemoryRouter>
+    <MemoryRouter
+      future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+    >
       <FeaturesTestProvider value={features}>
         <tiltfileKeyContext.Provider value="test">
           <ResourceGroupsContextProvider>

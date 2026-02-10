@@ -19,7 +19,9 @@ const resourceListOptionsAccessor = accessorsForTesting<ResourceListOptions>(
 function customRender(component: JSX.Element, options?: RenderOptions) {
   return render(component, {
     wrapper: ({ children }) => (
-      <MemoryRouter>
+      <MemoryRouter
+        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+      >
         <tiltfileKeyContext.Provider value="test">
           <ResourceListOptionsProvider>{children}</ResourceListOptionsProvider>
         </tiltfileKeyContext.Provider>

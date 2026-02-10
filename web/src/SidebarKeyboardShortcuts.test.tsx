@@ -37,7 +37,10 @@ describe("SidebarKeyboardShortcuts", () => {
       />,
       {
         wrapper: ({ children }) => (
-          <MemoryRouter initialEntries={["/init"]}>
+          <MemoryRouter
+            initialEntries={["/init"]}
+            future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+          >
             <ResourceNavContextProvider value={resourceNavValue}>
               {children}
             </ResourceNavContextProvider>

@@ -64,7 +64,10 @@ function customRender(
     />,
     {
       wrapper: ({ children }) => (
-        <MemoryRouter initialEntries={["/"]}>
+        <MemoryRouter
+          initialEntries={["/"]}
+          future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+        >
           <SnackbarProvider>{children}</SnackbarProvider>
         </MemoryRouter>
       ),
