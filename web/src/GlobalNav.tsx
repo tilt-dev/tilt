@@ -19,8 +19,7 @@ import {
 } from "./style-helpers"
 import { Cluster } from "./types"
 import UpdateDialog from "./UpdateDialog"
-
-type TiltBuild = Proto.corev1alpha1TiltBuild
+import type { TiltBuild } from "./core"
 
 export const GlobalNavRoot = styled.div`
   display: flex;

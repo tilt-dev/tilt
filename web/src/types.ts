@@ -1,3 +1,31 @@
+import type { Snapshot as WebviewSnapshot } from "./webview"
+import type {
+  ObjectMeta as CoreObjectMeta,
+  UISession as CoreUISession,
+  UIResource as CoreUIResource,
+  UIResourceStatus as CoreUIResourceStatus,
+  UIBuildTerminated,
+  UIResourceLink,
+  UIButton as CoreUIButton,
+  UIButtonStatus as CoreUIButtonStatus,
+  UIInputSpec as CoreUIInputSpec,
+  UIInputStatus as CoreUIInputStatus,
+  Cluster as CoreCluster,
+} from "./core"
+
+export type Snapshot = WebviewSnapshot
+export type ObjectMeta = CoreObjectMeta
+export type UISession = CoreUISession
+export type UIResource = CoreUIResource
+export type UIResourceStatus = CoreUIResourceStatus
+export type UIBuild = UIBuildTerminated
+export type UILink = UIResourceLink
+export type UIButton = CoreUIButton
+export type UIButtonStatus = CoreUIButtonStatus
+export type UIInputSpec = CoreUIInputSpec
+export type UIInputStatus = CoreUIInputStatus
+export type Cluster = CoreCluster
+
 export enum SocketState {
   Loading,
   Reconnecting,
@@ -92,8 +120,6 @@ export enum ShowErrorModal {
   Show,
 }
 
-export type Snapshot = Proto.webviewSnapshot
-
 export enum LogLevel {
   INFO = "INFO",
   WARN = "WARN",
@@ -147,14 +173,3 @@ export enum ResourceName {
   all = "(all)",
   starred = "(starred)",
 }
-
-export type UISession = Proto.v1alpha1UISession
-export type UIResource = Proto.v1alpha1UIResource
-export type UIResourceStatus = Proto.v1alpha1UIResourceStatus
-export type UIBuild = Proto.v1alpha1UIBuildTerminated
-export type UILink = Proto.v1alpha1UIResourceLink
-export type UIButton = Proto.v1alpha1UIButton
-export type UIButtonStatus = Proto.v1alpha1UIButtonStatus
-export type UIInputSpec = Proto.v1alpha1UIInputSpec
-export type UIInputStatus = Proto.v1alpha1UIInputStatus
-export type Cluster = Proto.v1alpha1Cluster

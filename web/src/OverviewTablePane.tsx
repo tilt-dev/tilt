@@ -9,9 +9,10 @@ import StarredResourceBar, {
   starredResourcePropsFromView,
 } from "./StarredResourceBar"
 import { Color, SizeUnit, Width, ZIndex } from "./style-helpers"
+import type { View } from "./webview"
 
 type OverviewTablePaneProps = {
-  view: Proto.webviewView
+  view: View
   isSocketConnected: boolean
 }
 

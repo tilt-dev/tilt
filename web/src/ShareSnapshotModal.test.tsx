@@ -7,8 +7,9 @@ import ReactDOM from "react-dom"
 import ReactModal from "react-modal"
 import ShareSnapshotModal from "./ShareSnapshotModal"
 import { nResourceView } from "./testdata"
+import type { Snapshot } from "./webview"
 
-const FAKE_SNAPSHOT: Proto.webviewSnapshot = { view: nResourceView(1) }
+const FAKE_SNAPSHOT: Snapshot = { view: nResourceView(1) }
 const fakeSendsnapshot = () => {}
 const fakeHandleCloseModal = () => {}
 const fakeGetSnapshot = () => FAKE_SNAPSHOT

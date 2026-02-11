@@ -39,7 +39,7 @@ import (
 //
 // +k8s:openapi-gen=true
 type PodLogStream struct {
-	metav1.TypeMeta   `json:",inline"`
+	metav1.TypeMeta   `json:",inline" tstype:"-"`
 	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
 	Spec   PodLogStreamSpec   `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
@@ -49,7 +49,7 @@ type PodLogStream struct {
 // PodLogStreamList
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type PodLogStreamList struct {
-	metav1.TypeMeta `json:",inline"`
+	metav1.TypeMeta `json:",inline" tstype:"-"`
 	metav1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
 	Items []PodLogStream `json:"items" protobuf:"bytes,2,rep,name=items"`

@@ -26,6 +26,5 @@ packages:
     type_mappings:
       metav1.MicroTime: "string"
       metav1.Time: "string"
-      metav1.TypeMeta: "null"
       metav1.ListMeta: "null"
       metav1.ObjectMeta: "ObjectMeta"

@@ -40,7 +40,7 @@ import (
 //
 // +k8s:openapi-gen=true
 type UIResource struct {
-	metav1.TypeMeta   `json:",inline"`
+	metav1.TypeMeta   `json:",inline" tstype:"-"`
 	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
 	Spec   UIResourceSpec   `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
@@ -50,7 +50,7 @@ type UIResource struct {
 // UIResourceList
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type UIResourceList struct {
-	metav1.TypeMeta `json:",inline"`
+	metav1.TypeMeta `json:",inline" tstype:"-"`
 	metav1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
 	Items []UIResource `json:"items" protobuf:"bytes,2,rep,name=items"`

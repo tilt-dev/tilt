@@ -4,6 +4,7 @@ import React from "react"
 import { linkToTiltDocs, TiltDocsPage } from "./constants"
 import FloatDialog from "./FloatDialog"
 import { Color } from "./style-helpers"
+import type { View } from "./webview"
 
 type props = {
   open: boolean
@@ -14,7 +15,7 @@ type props = {
   isNewInterface: boolean
 }
 
-export function showUpdate(view: Proto.webviewView): boolean {
+export function showUpdate(view: View): boolean {
   let session = view?.uiSession?.status
   let runningBuild = session?.runningTiltBuild
   let suggestedVersion = session?.suggestedTiltVersion

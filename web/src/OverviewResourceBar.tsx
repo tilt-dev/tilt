@@ -6,9 +6,10 @@ import { AllResourceStatusSummary } from "./ResourceStatusSummary"
 import { useSnapshotAction } from "./snapshot"
 import { SizeUnit } from "./style-helpers"
 import { showUpdate } from "./UpdateDialog"
+import type { View } from "./webview"
 
 type OverviewResourceBarProps = {
-  view: Proto.webviewView
+  view: View
 }
 
 const OverviewResourceBarRoot = styled.div`

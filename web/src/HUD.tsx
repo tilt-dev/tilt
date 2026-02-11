@@ -34,6 +34,8 @@ import {
   SocketState,
   UIResourceStatus,
 } from "./types"
+import type { Snapshot, View } from "./webview"
+import type { ObjectMeta } from "./types"
 
 export type HudProps = {
   interfaceVersion: InterfaceVersion
@@ -111,7 +113,7 @@ export default class HUD extends Component<HudProps, HudState> {
     return this.pathBuilder.path(relPath)
   }
 
-  snapshotFromState(state: HudState): Proto.webviewSnapshot {
+  snapshotFromState(state: HudState): Snapshot {
     let view: any = {}
     if (state.view) {
       Object.assign(view, state.view)
@@ -260,7 +262,7 @@ export default class HUD extends Component<HudProps, HudState> {
     )
   }
 
-  renderShareSnapshotModal(view: Proto.webviewView | null) {
+  renderShareSnapshotModal(view: View | null) {
     let handleClose = () => this.setState({ showSnapshotModal: false })
     return (
       <ShareSnapshotModal
@@ -272,7 +274,7 @@ export default class HUD extends Component<HudProps, HudState> {
     )
   }
 
-  renderFatalErrorModal(view: Proto.webviewView | null) {
+  renderFatalErrorModal(view: View | null) {
     let session = view?.uiSession?.status
     let error = session?.fatalError
     let handleClose = () =>
@@ -323,9 +325,10 @@ export function HUDFromContext(props: React.PropsWithChildren<{}>) {
   )
 }
 
-function compareObjectsOrder<
-  T extends { status?: any; metadata?: Proto.v1ObjectMeta }
->(a: T, b: T): number {
+function compareObjectsOrder<T extends { status?: any; metadata?: ObjectMeta }>(
+  a: T,
+  b: T
+): number {
   let aStatus = a.status as UIResourceStatus | null
   let bStatus = b.status as UIResourceStatus | null
   let aOrder = aStatus?.order || 0
@@ -340,7 +343,7 @@ function compareObjectsOrder<
 }
 
 // returns a copy of `prev` that has the adds/updates/deletes from `updates` applied
-function mergeObjectUpdates<T extends { metadata?: Proto.v1ObjectMeta }>(
+function mergeObjectUpdates<T extends { metadata?: ObjectMeta }>(
   updates: T[] | undefined,
   prev: T[] | undefined
 ): T[] {

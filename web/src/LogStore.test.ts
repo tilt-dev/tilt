@@ -1,24 +1,19 @@
 import { logLinesToString } from "./logs"
 import LogStore from "./LogStore"
+import type { LogSegment, LogSpan } from "./webview"
 
 describe("LogStore", () => {
   function now() {
     return new Date().toString()
   }
 
-  function newGlobalSegment(text: string): Proto.webviewLogSegment {
+  function newGlobalSegment(text: string): LogSegment {
     return { text: text, time: now() }
   }
-  function newGlobalLevelSegment(
-    level: string,
-    text: string
-  ): Proto.webviewLogSegment {
+  function newGlobalLevelSegment(level: string, text: string): LogSegment {
     return { level: level, text: text, time: now() }
   }
-  function newManifestSegment(
-    name: string,
-    text: string
-  ): Proto.webviewLogSegment {
+  function newManifestSegment(name: string, text: string): LogSegment {
     return { spanId: name, text: text, time: now() }
   }
 
@@ -464,11 +459,11 @@ describe("LogStore", () => {
     // log should be truncated
     expect(logList.segments?.length).toEqual(2)
     // order should be preserved
-    expect(logList.segments![0].text).toEqual("build 3\n")
-    expect(logList.segments![1].text).toEqual("global line 1\n")
+    expect(logList.segments![0]!.text).toEqual("build 3\n")
+    expect(logList.segments![1]!.text).toEqual("global line 1\n")
 
     // only spans referenced by segments in the truncated output should exist
-    const spans = logList.spans as { [key: string]: Proto.webviewLogSpan }
+    const spans = logList.spans as { [key: string]: LogSpan }
     expect(Object.keys(spans).length).toEqual(2)
     expect(spans["build:2"].manifestName).toEqual("be")
     expect(spans["_"].manifestName).toEqual("")

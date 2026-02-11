@@ -17,6 +17,7 @@ import {
   tenResourceView,
   twoResourceView,
 } from "./testdata"
+import type { View } from "./webview"
 
 export default {
   title: "New UI/OverviewResourcePane",
@@ -57,7 +58,7 @@ export default {
 
 function OverviewResourcePaneHarness(props: {
   name: string
-  view: Proto.webviewView
+  view: View
   sidebarClosed?: boolean
 }) {
   let { name, view } = props

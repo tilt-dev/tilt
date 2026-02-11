@@ -3,6 +3,7 @@ import React from "react"
 import { FeaturesProvider, Flag } from "./feature"
 import PathBuilder, { PathBuilderProvider } from "./PathBuilder"
 import { SnapshotActionProvider, useSnapshotAction } from "./snapshot"
+import type { UIFeatureFlag } from "./core"
 
 // Make sure that useSnapshotAction() doesn't break memoization.
 it("memoizes renders", () => {
@@ -15,7 +16,7 @@ it("memoizes renders", () => {
 
   let pathBuilder = PathBuilder.forTesting("localhost", "/")
   let openModal = () => {}
-  let tree = (flags: Proto.v1alpha1UIFeatureFlag[]) => {
+  let tree = (flags: UIFeatureFlag[]) => {
     return (
       <FeaturesProvider featureFlags={flags}>
         <PathBuilderProvider value={pathBuilder}>

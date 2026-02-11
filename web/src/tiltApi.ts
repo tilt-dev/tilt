@@ -1,4 +1,5 @@
 import { Moment } from "moment"
+import type { ObjectMeta } from "./types"
 
 // apiserver's date format time is _extremely_ strict to the point that it requires the full
 // six-decimal place microsecond precision, e.g. .000Z will be rejected, it must be .000000Z
@@ -7,7 +8,7 @@ export function apiTimeFormat(moment: Moment): string {
   return moment.format("YYYY-MM-DDTHH:mm:ss.SSSSSSZ")
 }
 
-export async function tiltApiPut<T extends { metadata?: Proto.v1ObjectMeta }>(
+export async function tiltApiPut<T extends { metadata?: ObjectMeta }>(
   kindPlural: string,
   subResource: string,
   obj: T

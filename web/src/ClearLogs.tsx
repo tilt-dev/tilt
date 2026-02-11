@@ -9,6 +9,7 @@ import {
   mixinResetButtonStyle,
 } from "./style-helpers"
 import { ResourceName } from "./types"
+import type { LogSpan } from "./webview"
 
 const ClearLogsButton = styled(InstrumentedButton)`
   ${mixinResetButtonStyle};
@@ -26,7 +27,7 @@ export interface ClearLogsProps {
 }
 
 export const clearLogs = (logStore: LogStore, resourceName: string) => {
-  let spans: { [key: string]: Proto.webviewLogSpan }
+  let spans: { [key: string]: LogSpan }
   const all = resourceName === ResourceName.all
   if (all) {
     spans = logStore.allSpans()

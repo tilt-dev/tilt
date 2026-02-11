@@ -8,9 +8,10 @@ import FloatDialog from "./FloatDialog"
 import { InstrumentedButton } from "./instrumentedComponents"
 import "./ShareSnapshotModal.scss"
 import { Color, Font, FontSize, SizeUnit } from "./style-helpers"
+import type { Snapshot } from "./webview"
 
 type ShareSnapshotModalProps = {
-  getSnapshot: () => Proto.webviewSnapshot
+  getSnapshot: () => Snapshot
   handleClose: () => void
   isOpen: boolean
   dialogAnchor: HTMLElement | null
@@ -31,7 +32,7 @@ export default function ShareSnapshotModal(props: ShareSnapshotModalProps) {
 
 type DownloadSnapshotModalProps = {
   handleClose: () => void
-  getSnapshot: () => Proto.webviewSnapshot
+  getSnapshot: () => Snapshot
   isOpen: boolean
   dialogAnchor: HTMLElement | null
 }
@@ -62,7 +63,7 @@ export function formatTimestampForFilename(date: moment.Moment) {
   return date.format("YYYY-MM-DD_HHmmss")
 }
 
-function downloadSnapshot(snapshot: Proto.webviewSnapshot) {
+function downloadSnapshot(snapshot: Snapshot) {
   const timestamp = snapshot.createdAt ? moment(snapshot.createdAt) : moment()
   const data = new Blob([JSON.stringify(snapshot)], {
     type: "application/json",
