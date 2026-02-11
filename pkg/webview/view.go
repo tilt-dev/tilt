@@ -6,77 +6,6 @@ import (
 	v1alpha1 "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
-// TargetType corresponds to implementations of the TargetSpec interface.
-type TargetType string
-
-const (
-	TargetType_TARGET_TYPE_UNSPECIFIED    TargetType = "unspecified"
-	TargetType_TARGET_TYPE_IMAGE          TargetType = "image"
-	TargetType_TARGET_TYPE_K8S            TargetType = "k8s"
-	TargetType_TARGET_TYPE_DOCKER_COMPOSE TargetType = "docker-compose"
-	TargetType_TARGET_TYPE_LOCAL          TargetType = "local"
-)
-
-type TargetSpec struct {
-	Id            string     `json:"id,omitempty"`
-	Type          TargetType `json:"type,omitempty"`
-	HasLiveUpdate bool       `json:"hasLiveUpdate,omitempty"`
-}
-
-type BuildRecord struct {
-	Error          string           `json:"error,omitempty"`
-	Warnings       []string         `json:"warnings,omitempty"`
-	StartTime      metav1.MicroTime `json:"startTime,omitempty"`
-	FinishTime     metav1.MicroTime `json:"finishTime,omitempty"`
-	IsCrashRebuild bool             `json:"isCrashRebuild,omitempty"`
-
-	// The span id for this build record's logs in the main logstore.
-	SpanId string `json:"spanId,omitempty"`
-}
-
-type K8SResourceInfo struct {
-	PodName            string `json:"podName,omitempty"`
-	PodCreationTime    string `json:"podCreationTime,omitempty"`
-	PodUpdateStartTime string `json:"podUpdateStartTime,omitempty"`
-	PodStatus          string `json:"podStatus,omitempty"`
-	PodStatusMessage   string `json:"podStatusMessage,omitempty"`
-	AllContainersReady bool   `json:"allContainersReady,omitempty"`
-	PodRestarts        int32  `json:"podRestarts,omitempty"`
-
-	// The span id for this pod's logs in the main logstore.
-	SpanId       string   `json:"spanId,omitempty"`
-	DisplayNames []string `json:"displayNames,omitempty"`
-}
-
-type LocalResourceInfo struct {
-	Pid    int64 `json:"pid,omitempty"`
-	IsTest bool  `json:"isTest,omitempty"`
-}
-
-type Link struct {
-	Url  string `json:"url,omitempty"`
-	Name string `json:"name,omitempty"`
-}
-
-type Resource struct {
-	Name              string             `json:"name,omitempty"`
-	LastDeployTime    metav1.MicroTime   `json:"lastDeployTime,omitempty"`
-	TriggerMode       int32              `json:"triggerMode,omitempty"`
-	BuildHistory      []*BuildRecord     `json:"buildHistory,omitempty"`
-	CurrentBuild      *BuildRecord       `json:"currentBuild,omitempty"`
-	PendingBuildSince metav1.MicroTime   `json:"pendingBuildSince,omitempty"`
-	HasPendingChanges bool               `json:"hasPendingChanges,omitempty"`
-	EndpointLinks     []*Link            `json:"endpointLinks,omitempty"`
-	PodID             string             `json:"podID,omitempty"`
-	K8SResourceInfo   *K8SResourceInfo   `json:"k8sResourceInfo,omitempty"`
-	LocalResourceInfo *LocalResourceInfo `json:"localResourceInfo,omitempty"`
-	RuntimeStatus     string             `json:"runtimeStatus,omitempty"`
-	UpdateStatus      string             `json:"updateStatus,omitempty"`
-	IsTiltfile        bool               `json:"isTiltfile,omitempty"`
-	Specs             []*TargetSpec      `json:"specs,omitempty"`
-	Queued            bool               `json:"queued,omitempty"`
-}
-
 type TiltBuild struct {
 	Version   string `json:"version,omitempty"`
 	CommitSHA string `json:"commitSHA,omitempty"`
@@ -101,7 +30,6 @@ type VersionSettings struct {
 // old snapshots.
 type View struct {
 	Log                  string           `json:"log,omitempty"`
-	Resources            []*Resource      `json:"resources,omitempty"`
 	FeatureFlags         map[string]bool  `json:"featureFlags,omitempty"`
 	NeedsAnalyticsNudge  bool             `json:"needsAnalyticsNudge,omitempty"`
 	RunningTiltBuild     *TiltBuild       `json:"runningTiltBuild,omitempty"`
@@ -122,10 +50,10 @@ type View struct {
 	TiltfileKey string `json:"tiltfileKey,omitempty"`
 
 	// New API-server based data models.
-	UiSession   *v1alpha1.UISession    `json:"uiSession,omitempty"`
-	UiResources []*v1alpha1.UIResource `json:"uiResources,omitempty"`
-	UiButtons   []*v1alpha1.UIButton   `json:"uiButtons,omitempty"`
-	Clusters    []*v1alpha1.Cluster    `json:"clusters,omitempty"`
+	UiSession   *v1alpha1.UISession   `json:"uiSession,omitempty"`
+	UiResources []v1alpha1.UIResource `json:"uiResources,omitempty"`
+	UiButtons   []v1alpha1.UIButton   `json:"uiButtons,omitempty"`
+	Clusters    []v1alpha1.Cluster    `json:"clusters,omitempty"`
 
 	// Indicates that this view is a complete representation of the app.
 	// If false, this view just contains deltas from a previous view.

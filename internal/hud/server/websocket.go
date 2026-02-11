@@ -281,7 +281,7 @@ func (ws *WebsocketSubscriber) toViewUpdate() *proto_webview.View {
 	}
 
 	for k, obj := range ws.dirtyUIResources {
-		view.UiResources = append(view.UiResources, obj)
+		view.UiResources = append(view.UiResources, *obj)
 		delete(ws.dirtyUIResources, k)
 		hasChanges = true
 	}
@@ -290,7 +290,7 @@ func (ws *WebsocketSubscriber) toViewUpdate() *proto_webview.View {
 	})
 
 	for k, obj := range ws.dirtyUIButtons {
-		view.UiButtons = append(view.UiButtons, obj)
+		view.UiButtons = append(view.UiButtons, *obj)
 		delete(ws.dirtyUIButtons, k)
 		hasChanges = true
 	}
@@ -299,7 +299,7 @@ func (ws *WebsocketSubscriber) toViewUpdate() *proto_webview.View {
 	})
 
 	for k, obj := range ws.dirtyClusters {
-		view.Clusters = append(view.Clusters, obj)
+		view.Clusters = append(view.Clusters, *obj)
 		delete(ws.dirtyClusters, k)
 		hasChanges = true
 	}
