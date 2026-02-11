@@ -36,7 +36,7 @@ import (
 // DockerComposeLogStream
 // +k8s:openapi-gen=true
 type DockerComposeLogStream struct {
-	metav1.TypeMeta   `json:",inline"`
+	metav1.TypeMeta   `json:",inline" tstype:"-"`
 	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
 	Spec   DockerComposeLogStreamSpec   `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
@@ -46,7 +46,7 @@ type DockerComposeLogStream struct {
 // DockerComposeLogStreamList
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type DockerComposeLogStreamList struct {
-	metav1.TypeMeta `json:",inline"`
+	metav1.TypeMeta `json:",inline" tstype:"-"`
 	metav1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
 	Items []DockerComposeLogStream `json:"items" protobuf:"bytes,2,rep,name=items"`

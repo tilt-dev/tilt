@@ -161,7 +161,7 @@ describe("PendingBuildDescription", () => {
   it("shows single image name", () => {
     let hold = new Hold({
       reason: "waiting-for-deploy",
-      on: [{ kind: "ImageMap", name: "gcr.io/foo" }],
+      on: [{ group: "", apiVersion: "", kind: "ImageMap", name: "gcr.io/foo" }],
     })
     expect(PendingBuildDescription(hold)).toBe(
       "Update: waiting on image: gcr.io/foo"
@@ -171,7 +171,7 @@ describe("PendingBuildDescription", () => {
   it("shows single resource name", () => {
     let hold = new Hold({
       reason: "waiting-for-deploy",
-      on: [{ kind: "UIResource", name: "bar" }],
+      on: [{ group: "", apiVersion: "", kind: "UIResource", name: "bar" }],
     })
     expect(PendingBuildDescription(hold)).toBe(
       "Update: waiting on resource: bar"
@@ -182,9 +182,9 @@ describe("PendingBuildDescription", () => {
     let hold = new Hold({
       reason: "waiting-for-deploy",
       on: [
-        { kind: "UIResource", name: "foo" },
-        { kind: "UIResource", name: "bar" },
-        { kind: "UIResource", name: "baz" },
+        { group: "", apiVersion: "", kind: "UIResource", name: "foo" },
+        { group: "", apiVersion: "", kind: "UIResource", name: "bar" },
+        { group: "", apiVersion: "", kind: "UIResource", name: "baz" },
       ],
     })
     expect(PendingBuildDescription(hold)).toBe(
@@ -195,7 +195,12 @@ describe("PendingBuildDescription", () => {
   it("shows multiple image names with overflow", () => {
     let hold = new Hold({
       reason: "waiting-for-deploy",
-      on: ["a", "b", "c", "d", "e"].map((x) => ({ kind: "ImageMap", name: x })),
+      on: ["a", "b", "c", "d", "e"].map((x) => ({
+        group: "",
+        apiVersion: "",
+        kind: "ImageMap",
+        name: x,
+      })),
     })
     expect(PendingBuildDescription(hold)).toBe(
       "Update: waiting on images: a, b, c, and 2 more"
@@ -205,7 +210,7 @@ describe("PendingBuildDescription", () => {
   it("shows cluster name", () => {
     let hold = new Hold({
       reason: "waiting-for-cluster",
-      on: [{ kind: "Cluster", name: "default" }],
+      on: [{ group: "", apiVersion: "", kind: "Cluster", name: "default" }],
     })
     expect(PendingBuildDescription(hold)).toBe(
       "Update: waiting on cluster: default"
@@ -216,8 +221,8 @@ describe("PendingBuildDescription", () => {
     let hold = new Hold({
       reason: "waiting-for-deploy",
       on: [
-        { kind: "UIResource", name: "foo" },
-        { kind: "ImageMap", name: "bar" },
+        { group: "", apiVersion: "", kind: "UIResource", name: "foo" },
+        { group: "", apiVersion: "", kind: "ImageMap", name: "bar" },
       ],
     })
     expect(PendingBuildDescription(hold)).toBe("Update: waiting on image: bar")
@@ -226,7 +231,9 @@ describe("PendingBuildDescription", () => {
   it("gracefully falls back for unknown types", () => {
     let hold = new Hold({
       reason: "waiting-for-deploy",
-      on: [{ kind: "ThisIsNotARealKind", name: "foo" }],
+      on: [
+        { group: "", apiVersion: "", kind: "ThisIsNotARealKind", name: "foo" },
+      ],
     })
     expect(PendingBuildDescription(hold)).toBe("Update: waiting on 1 object")
   })

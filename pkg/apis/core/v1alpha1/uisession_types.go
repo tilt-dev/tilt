@@ -42,7 +42,7 @@ import (
 //
 // +k8s:openapi-gen=true
 type UISession struct {
-	metav1.TypeMeta   `json:",inline"`
+	metav1.TypeMeta   `json:",inline" tstype:"-"`
 	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
 	Spec   UISessionSpec   `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
@@ -52,7 +52,7 @@ type UISession struct {
 // UISessionList
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type UISessionList struct {
-	metav1.TypeMeta `json:",inline"`
+	metav1.TypeMeta `json:",inline" tstype:"-"`
 	metav1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
 	Items []UISession `json:"items" protobuf:"bytes,2,rep,name=items"`

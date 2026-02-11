@@ -5,9 +5,10 @@ import {
   SnapshotHighlight,
   SocketState,
 } from "./types"
+import type { View } from "./webview"
 
 type HudState = {
-  view: Proto.webviewView
+  view: View
   snapshotHighlight: SnapshotHighlight | undefined
   snapshotDialogAnchor: HTMLElement | null
   snapshotStartTime: string | undefined

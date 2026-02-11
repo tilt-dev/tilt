@@ -1,6 +1,7 @@
 import HudState from "./HudState"
 import PathBuilder from "./PathBuilder"
 import { Snapshot, SocketState } from "./types"
+import type { View } from "./webview"
 
 interface HudInt {
   onAppChange: <K extends keyof HudState>(state: Pick<HudState, K>) => void
@@ -52,7 +53,7 @@ class AppController {
           this.liveSocket = true
           this.tryConnectCount = 0
 
-          let data: Proto.webviewView = JSON.parse(event.data)
+          let data: View = JSON.parse(event.data)
 
           // @ts-ignore
           this.component.onAppChange({

@@ -2,6 +2,7 @@
 
 import Features, { Flag } from "./feature"
 import { UIResource } from "./types"
+import type { ObjectMeta } from "./types"
 
 export const UNLABELED_LABEL = "unlabeled"
 export const TILTFILE_LABEL = "Tiltfile"
@@ -23,7 +24,7 @@ export type GroupByLabelView<T> = {
  *
  * `asUILabels` safely casts its input into a `UILabels` type
  */
-type UILabelsGenerated = Pick<Proto.v1ObjectMeta, "labels">
+type UILabelsGenerated = Pick<ObjectMeta, "labels">
 
 interface UILabels extends UILabelsGenerated {
   labels: { [key: string]: string } | undefined
