@@ -79,7 +79,9 @@ const testCountsAllDisabled: StatusCounts = {
 
 it("shows the counts it's given", () => {
   render(
-    <MemoryRouter>
+    <MemoryRouter
+      future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+    >
       <ResourceGroupStatus
         counts={testCounts}
         healthyLabel="healthy"
@@ -104,7 +106,9 @@ it("shows the counts it's given", () => {
 
 it("links to warning and unhealthy resources when `linkToLogFilters` is true", () => {
   render(
-    <MemoryRouter>
+    <MemoryRouter
+      future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+    >
       <ResourceGroupStatus
         counts={testCounts}
         healthyLabel="healthy"
@@ -127,7 +131,9 @@ it("links to warning and unhealthy resources when `linkToLogFilters` is true", (
 
 it("does NOT link to warning and unhealthy resources when `linkToLogFilters` is false", () => {
   render(
-    <MemoryRouter>
+    <MemoryRouter
+      future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+    >
       <ResourceGroupStatus
         counts={testCounts}
         healthyLabel="healthy"

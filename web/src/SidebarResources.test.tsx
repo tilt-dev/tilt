@@ -76,7 +76,9 @@ function customRender(
     />,
     {
       wrapper: ({ children }) => (
-        <MemoryRouter>
+        <MemoryRouter
+          future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+        >
           <tiltfileKeyContext.Provider value="test">
             <FeaturesTestProvider value={features}>
               <StarredResourcesContextProvider>

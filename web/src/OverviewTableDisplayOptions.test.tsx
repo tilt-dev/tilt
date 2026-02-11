@@ -23,7 +23,10 @@ const DisplayOptions = ({
     [Flag.Labels]: true,
   })
   return (
-    <MemoryRouter initialEntries={["/"]}>
+    <MemoryRouter
+      initialEntries={["/"]}
+      future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+    >
       <FeaturesTestProvider value={features}>
         <ResourceGroupsContextProvider>
           <ResourceListOptionsProvider

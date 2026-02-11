@@ -58,7 +58,10 @@ const tableViewWithSettings = ({
     [Flag.Labels]: labelsEnabled ?? true,
   })
   return (
-    <MemoryRouter initialEntries={["/"]}>
+    <MemoryRouter
+      initialEntries={["/"]}
+      future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+    >
       <SnackbarProvider>
         <FeaturesTestProvider value={features}>
           <ResourceGroupsContextProvider>
@@ -480,7 +483,10 @@ describe("overview table with groups", () => {
       }, {})
       // Re-mount the component with the initial groups context values
       container = renderContainer(
-        <MemoryRouter initialEntries={["/"]}>
+        <MemoryRouter
+          initialEntries={["/"]}
+          future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+        >
           <ResourceGroupsContextProvider initialValuesForTesting={testData}>
             <ResourceSelectionProvider>
               <TableGroupedByLabels

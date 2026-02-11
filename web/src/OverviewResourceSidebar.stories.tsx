@@ -162,7 +162,9 @@ export function TestsWithErrors() {
 
   let view = { uiResources: all, tiltfileKey: "test" }
   return (
-    <MemoryRouter>
+    <MemoryRouter
+      future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+    >
       <LogStoreProvider value={logStore}>
         <ResourceListOptionsProvider>
           <OverviewResourceSidebarHarness name={""} view={view} />

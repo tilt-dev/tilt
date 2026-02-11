@@ -38,7 +38,10 @@ let InjectHUD = () => {
 class RouterHUD extends Component {
   render() {
     return (
-      <MemoryRouter initialEntries={["/"]}>
+      <MemoryRouter
+        initialEntries={["/"]}
+        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+      >
         <InjectHUD />
       </MemoryRouter>
     )

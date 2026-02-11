@@ -43,7 +43,9 @@ function ApiButtonProviders({
   setError,
 }: PropsWithChildren<ApiButtonProviderProps>) {
   return (
-    <MemoryRouter>
+    <MemoryRouter
+      future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+    >
       <HudErrorContextProvider setError={setError ?? (() => {})}>
         <tiltfileKeyContext.Provider value="test">
           <SnackbarProvider>{children}</SnackbarProvider>
@@ -193,10 +195,10 @@ describe("ApiButton", () => {
 
       // Wait for the button to be enabled again,
       // which signals successful trigger button response
-      await waitFor(
-        () =>
-          expect(screen.getByLabelText(`Trigger ${uibutton.spec!.text!}`)).not
-            .toBeDisabled
+      await waitFor(() =>
+        expect(
+          screen.getByLabelText(`Trigger ${uibutton.spec!.text!}`)
+        ).not.toBeDisabled()
       )
 
       const calls = fetchMock.calls()
@@ -339,7 +341,7 @@ describe("ApiButton", () => {
       expect(screen.getByLabelText("bool1")).toBeChecked()
     })
 
-    it("are written to local storage when modal is confirmed", () => {
+    it("are written to local storage when modal is confirmed", async () => {
       // Open the modal
       userEvent.click(screen.getByLabelText(`Trigger ${uibutton.spec!.text!}`))
 
@@ -353,6 +355,13 @@ describe("ApiButton", () => {
 
       // Confirm the modal to persist values
       userEvent.click(screen.getByText("Confirm & Execute"))
+
+      // Wait for the async button submission to complete
+      await waitFor(() =>
+        expect(
+          screen.getByLabelText(`Trigger ${uibutton.spec!.text!}`)
+        ).not.toBeDisabled()
+      )
 
       // Expect local storage values are updated after confirmation
       expect(buttonInputsAccessor.get()).toEqual({
@@ -424,10 +433,10 @@ describe("ApiButton", () => {
 
       // Wait for the button to be enabled again,
       // which signals successful trigger button response
-      await waitFor(
-        () =>
-          expect(screen.getByLabelText(`Trigger ${uibutton.spec!.text!}`)).not
-            .toBeDisabled
+      await waitFor(() =>
+        expect(
+          screen.getByLabelText(`Trigger ${uibutton.spec!.text!}`)
+        ).not.toBeDisabled()
       )
 
       // Expect that the click was submitted and the button text resets

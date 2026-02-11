@@ -20,7 +20,10 @@ describe("HeaderBar", () => {
       }
 
       render(
-        <MemoryRouter initialEntries={["/"]}>
+        <MemoryRouter
+          initialEntries={["/"]}
+          future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+        >
           <SnapshotActionTestProvider value={snapshotAction}>
             <HeaderBar
               view={nResourceView(2)}
