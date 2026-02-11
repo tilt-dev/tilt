@@ -1,15 +1,6 @@
-.PHONY: all install lint test test-go check-js test-js test-storybook integration wire-check wire ensure goimports vendor shellcheck release-container update-codegen update-codegen-go update-codegen-starlark update-codegen-ts
+.PHONY: all install lint test test-go test-go-ci check-js test-js test-js-ci test-storybook integration wire-check wire ensure goimports vendor shellcheck release-container update-codegen update-codegen-go update-codegen-starlark update-codegen-ts shorttest-ci
 
 all: check-js test-js test-storybook
-
-# There are 2 Go bugs that cause problems on CI:
-# 1) Linker memory usage blew up in Go 1.11
-# 2) Go incorrectly detects the number of CPUs when running in containers,
-#    and sets the number of parallel jobs to the number of CPUs.
-# This makes CI blow up frequently without out-of-memory errors.
-# Manually setting the number of parallel jobs helps fix this.
-# https://github.com/golang/go/issues/26186#issuecomment-435544512
-GO_PARALLEL_JOBS := 4
 
 CIRCLECI := $(if $(CIRCLECI),$(CIRCLECI),false)
 
@@ -29,14 +20,16 @@ lintfix:
 	LINT_FLAGS=--fix make golangci-lint
 
 build:
-	go test -mod vendor -p $(GO_PARALLEL_JOBS) -timeout 60s ./... -run nonsenseregex
+	go test -mod vendor -timeout 60s ./... -run nonsenseregex
 
 test-go:
+	go test -mod vendor -timeout 100s ./...
+
+test-go-ci:
 ifneq ($(CIRCLECI),true)
-		gotestsum -- -mod vendor -p $(GO_PARALLEL_JOBS) -timeout 100s ./...
+	@if scripts/ci-has-go-changes.sh; then gotestsum -- -mod vendor -timeout 100s ./...; else echo "No Go changes, skipping tests"; fi
 else
-		mkdir -p test-results
-		gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- ./... -mod vendor -p $(GO_PARALLEL_JOBS) -timeout 100s
+	@if scripts/ci-has-go-changes.sh; then mkdir -p test-results && gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- ./... -mod vendor -timeout 100s; else echo "No Go changes, skipping tests"; fi
 endif
 
 test: test-go test-js
@@ -45,28 +38,27 @@ test: test-go test-js
 # TODO(matt) skiplargetiltfiletests only skips the tiltfile DC+Helm tests at the moment
 # we might also want to skip the ones in engine
 shorttest:
-	go test -mod vendor -p $(GO_PARALLEL_JOBS) -short -tags skipcontainertests,skiplargetiltfiletests -timeout 100s ./...
+	go test -mod vendor -short -tags skipcontainertests,skiplargetiltfiletests -timeout 100s ./...
 
-shorttestsum:
+shorttest-ci:
 ifneq ($(CIRCLECI),true)
-	gotestsum -- -mod vendor -p $(GO_PARALLEL_JOBS) -short -tags skipcontainertests,skiplargetiltfiletests -timeout 100s ./...
+	@if scripts/ci-has-go-changes.sh; then gotestsum -- -mod vendor -short -tags skipcontainertests,skiplargetiltfiletests -timeout 100s ./...; else echo "No Go changes, skipping tests"; fi
 else
-	mkdir -p test-results
-	gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml --rerun-fails=2 --rerun-fails-max-failures=10 --packages="./..." -- -mod vendor -count 1 -p $(GO_PARALLEL_JOBS) -short -tags skipcontainertests,skiplargetiltfiletests -timeout 100s
+	@if scripts/ci-has-go-changes.sh; then mkdir -p test-results && gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml --rerun-fails=2 --rerun-fails-max-failures=10 --packages="./..." -- -mod vendor -count 1 -short -tags skipcontainertests,skiplargetiltfiletests -timeout 100s; else echo "No Go changes, skipping tests"; fi
 endif
 
 integration:
 ifneq ($(CIRCLECI),true)
-		go test -mod vendor -v -count 1 -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 30m ./integration
+		go test -mod vendor -v -count 1 -tags 'integration' -timeout 30m ./integration
 else
 		mkdir -p test-results
-		gotestsum --format dots --junitfile test-results/unit-tests.xml -- ./integration -mod vendor -count 1 -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 1000s
+		gotestsum --format dots --junitfile test-results/unit-tests.xml -- ./integration -mod vendor -count 1 -tags 'integration' -timeout 1000s
 endif
 
 # Run the integration tests on kind
 integration-kind:
 	KIND_CLUSTER_NAME=integration ./integration/kind-with-registry.sh
-	KUBECONFIG="$(kind get kubeconfig-path --name="integration")" go test -mod vendor -p $(GO_PARALLEL_JOBS) -tags 'integration' -timeout 30m ./integration -count 1
+	KUBECONFIG="$(kind get kubeconfig-path --name="integration")" go test -mod vendor -tags 'integration' -timeout 30m ./integration -count 1
 	kind delete cluster --name=integration
 
 # Run the extension integration tests against the current kubecontext
@@ -94,6 +86,9 @@ ifneq ($(CIRCLECI),true)
 else
 	cd web && CI=true yarn ci
 endif
+
+test-js-ci:
+	@if scripts/ci-has-web-changes.sh; then $(MAKE) test-js; else echo "No web changes, skipping tests"; fi
 
 test-storybook:
 	cd web && yarn start-storybook --ci --smoke-test

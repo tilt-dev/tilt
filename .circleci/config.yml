@@ -23,7 +23,7 @@ jobs:
       - run: make test_install_version_check
       - run: make wire-check
       - run: ./scripts/check-codegen.sh
-      - run: make test-go
+      - run: make test-go-ci
       - store_test_results:
           path: test-results
       - slack/notify-on-failure:
@@ -36,7 +36,7 @@ jobs:
       - run: make check-js
       - run:
           name: Run jest with JUnit Reporter
-          command: make test-js
+          command: make test-js-ci
           environment:
             JEST_JUNIT_OUTPUT_DIR: "reports/junit/js-test-results.xml"
       - run: make test-storybook
@@ -49,6 +49,7 @@ jobs:
       - image: docker/tilt-ci@sha256:3b83314ab36d9a529f5af8ca788b00d0926d16ed981a929317aab62696a88d77
     steps:
       - checkout
+      - run: scripts/ci-has-go-changes.sh || circleci-agent step halt
       - setup_remote_docker
       - run: mkdir -p ../tilt.build && git clone git@github.com:tilt-dev/tilt.build ../tilt.build
       - run: make install
@@ -66,6 +67,11 @@ jobs:
       name: win/default
       size: "large"
     steps:
+      - checkout
+      - run:
+          name: Check for Go-related changes
+          shell: bash.exe
+          command: scripts/ci-has-go-changes.sh || circleci-agent step halt
       - run: |
           choco install -y make kustomize kubernetes-helm docker-compose
           choco upgrade -y --allow-downgrade golang --version=1.25.0
@@ -74,7 +80,6 @@ jobs:
           # https://community.chocolatey.org/packages/mingw#comment-6290804217
           choco install -y mingw --version 12.2.0.03042023 --allow-downgrade
       - run: go install gotest.tools/gotestsum@latest
-      - checkout
       # Check to make sure Windows binaries compile
       - run:
           command: go install -mod vendor ./cmd/tilt
@@ -83,7 +88,7 @@ jobs:
             CGO_ENABLED: '1'
             CGO_LDFLAGS: -static
       - run:
-          command: PATH="$HOME/go/bin:$PATH" make shorttestsum
+          command: PATH="$HOME/go/bin:$PATH" make shorttest-ci
           shell: bash.exe
           environment:
             CGO_ENABLED: '1'
@@ -97,6 +102,7 @@ jobs:
       - image: docker/tilt-integration-ci@sha256:9821f02b3304ede7a09ec0564e0a68abea9375bf596b64f34aa683c613db69f4
     steps:
       - checkout
+      - run: scripts/ci-has-go-changes.sh || circleci-agent step halt
       - run: echo 'export PATH=/go/bin:$PATH' >> $BASH_ENV
       - setup_remote_docker
       - run: ctlptl create cluster kind --registry=ctlptl-registry && make build-js integration
@@ -110,6 +116,7 @@ jobs:
       - image: "docker/tilt-extensions-ci@sha256:c22a39c287c7c3afba182f4f46044475b43bd2d4e2bb89f41136eae7d4f4b94d"
     steps:
       - checkout
+      - run: scripts/ci-has-go-changes.sh || circleci-agent step halt
       - run: echo 'export PATH=/go/bin:$PATH' >> $BASH_ENV
       - setup_remote_docker
       - run: ctlptl create cluster kind --registry=ctlptl-registry && make build-js install test-extensions
