@@ -2,6 +2,7 @@ package dockercomposeservice
 
 import (
 	"context"
+	"strings"
 
 	typescontainer "github.com/docker/docker/api/types/container"
 
@@ -113,7 +114,7 @@ func (r *Reconciler) recordContainerEvent(ctx context.Context, evt dockercompose
 	oldOutput := r.healthcheckOutputByServiceName[evt.Service]
 	r.healthcheckOutputByServiceName[evt.Service] = healthcheckOutput
 	if healthcheckOutput != "" && oldOutput != healthcheckOutput {
-		logger.Get(ctx).Warnf("healthcheck: %s", healthcheckOutput)
+		logger.Get(ctx).Warnf("healthcheck: %s", strings.TrimSpace(healthcheckOutput))
 	}
 
 	result, ok := r.resultsByServiceName[evt.Service]
