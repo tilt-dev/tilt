@@ -49,9 +49,7 @@ func CompleteView(ctx context.Context, client ctrlclient.Client, st store.RStore
 		return nil, err
 	}
 
-	for _, item := range resourceList.Items {
-		ret.UiResources = append(ret.UiResources, &item)
-	}
+	ret.UiResources = resourceList.Items
 
 	buttonList := &v1alpha1.UIButtonList{}
 	err = client.List(ctx, buttonList)
@@ -59,9 +57,7 @@ func CompleteView(ctx context.Context, client ctrlclient.Client, st store.RStore
 		return nil, err
 	}
 
-	for _, item := range buttonList.Items {
-		ret.UiButtons = append(ret.UiButtons, &item)
-	}
+	ret.UiButtons = buttonList.Items
 
 	clusterList := &v1alpha1.ClusterList{}
 	err = client.List(ctx, clusterList)
@@ -69,9 +65,7 @@ func CompleteView(ctx context.Context, client ctrlclient.Client, st store.RStore
 		return nil, err
 	}
 
-	for _, item := range clusterList.Items {
-		ret.Clusters = append(ret.Clusters, &item)
-	}
+	ret.Clusters = clusterList.Items
 
 	s := st.RLockState()
 	defer st.RUnlockState()
@@ -112,7 +106,7 @@ func LogUpdate(st store.RStore, checkpoint logstore.Checkpoint) (*proto_webview.
 	return ret, nil
 }
 
-func sortUIResources(resources []*v1alpha1.UIResource, order []model.ManifestName) {
+func sortUIResources(resources []v1alpha1.UIResource, order []model.ManifestName) {
 	resourceOrder := make(map[string]int, len(order))
 	for i, name := range order {
 		resourceOrder[name.String()] = i
@@ -181,8 +175,8 @@ func ToUISession(s store.EngineState) *v1alpha1.UISession {
 
 // Converts an EngineState into a list of UIResources.
 // The order of the list is non-deterministic.
-func ToUIResourceList(state store.EngineState, disableSources map[string][]v1alpha1.DisableSource) ([]*v1alpha1.UIResource, error) {
-	ret := make([]*v1alpha1.UIResource, 0, len(state.ManifestTargets)+1)
+func ToUIResourceList(state store.EngineState, disableSources map[string][]v1alpha1.DisableSource) ([]v1alpha1.UIResource, error) {
+	ret := make([]v1alpha1.UIResource, 0, len(state.ManifestTargets)+1)
 
 	// All tiltfiles appear earlier than other resources in the same group.
 	for _, name := range state.TiltfileDefinitionOrder {
@@ -214,7 +208,7 @@ func ToUIResourceList(state store.EngineState, disableSources map[string][]v1alp
 
 		r := TiltfileResource(name, ms, state.LogStore)
 		r.Status.Order = int32(len(ret) + 1)
-		ret = append(ret, r)
+		ret = append(ret, *r)
 	}
 
 	_, holds := buildcontrol.NextTargetToBuild(state)
@@ -227,7 +221,7 @@ func ToUIResourceList(state store.EngineState, disableSources map[string][]v1alp
 		}
 
 		r.Status.Order = int32(len(ret) + 1)
-		ret = append(ret, r)
+		ret = append(ret, *r)
 	}
 
 	return ret, nil

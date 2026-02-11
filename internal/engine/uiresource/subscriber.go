@@ -27,7 +27,7 @@ func NewSubscriber(client ctrlclient.Client) *Subscriber {
 	}
 }
 
-func (s *Subscriber) currentResources(store store.RStore, disableSources map[string][]v1alpha1.DisableSource) ([]*v1alpha1.UIResource, error) {
+func (s *Subscriber) currentResources(store store.RStore, disableSources map[string][]v1alpha1.DisableSource) ([]v1alpha1.UIResource, error) {
 	state := store.RLockState()
 	defer store.RUnlockState()
 	return webview.ToUIResourceList(state, disableSources)

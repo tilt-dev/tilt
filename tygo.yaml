@@ -1,6 +1,31 @@
 packages:
   - path: "github.com/tilt-dev/tilt/pkg/webview"
-    output_path: "web/src/view2.d.ts"
+    output_path: "web/src/webview.d.ts"
+    frontmatter: |
+      import { UISession, UIResource, UIButton, Cluster } from "./core";
     type_mappings:
       metav1.MicroTime: "string"
       metav1.Time: "string"
+      v1alpha1.UISession: "UISession"
+      v1alpha1.UIResource: "UIResource"
+      v1alpha1.UIButton: "UIButton"
+      v1alpha1.Cluster: "Cluster"
+  - path: "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+    output_path: "web/src/core.d.ts"
+    frontmatter: |
+      export interface ObjectMeta {
+        name: string;
+        namespace: string;
+        resourceVersion?: string;
+        uid: string;
+        labels?: { [key: string]: string };
+        annotations?: { [key: string]: string };
+        creationTimestamp?: string;
+        deletionTimestamp?: string;
+      }
+    type_mappings:
+      metav1.MicroTime: "string"
+      metav1.Time: "string"
+      metav1.TypeMeta: "null"
+      metav1.ListMeta: "null"
+      metav1.ObjectMeta: "ObjectMeta"
