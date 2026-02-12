@@ -28,10 +28,7 @@ export interface CopyLogsProps {
   resourceName: string
 }
 
-export const copyLogs = (
-  logStore: LogStore,
-  resourceName: string
-): number => {
+export const copyLogs = (logStore: LogStore, resourceName: string): number => {
   const all = resourceName === ResourceName.all
   const lines = all ? logStore.allLog() : logStore.manifestLog(resourceName)
   const text = logLinesToString(lines, !all)

@@ -125,9 +125,7 @@ describe("CopyLogs", () => {
     })
 
     // After the timeout, the tooltip transitions out (opacity: 0)
-    expect(
-      screen.queryByText(`Copied ${lineCount} lines`)
-    ).not.toBeVisible()
+    expect(screen.queryByText(`Copied ${lineCount} lines`)).not.toBeVisible()
   })
 
   it("returns the number of lines copied", () => {
@@ -143,9 +141,9 @@ describe("stripAnsiCodes", () => {
   })
 
   it("removes multiple ANSI sequences", () => {
-    expect(
-      stripAnsiCodes("\x1b[1m\x1b[32mbold green\x1b[0m normal")
-    ).toBe("bold green normal")
+    expect(stripAnsiCodes("\x1b[1m\x1b[32mbold green\x1b[0m normal")).toBe(
+      "bold green normal"
+    )
   })
 
   it("removes 256-color codes", () => {
@@ -153,9 +151,7 @@ describe("stripAnsiCodes", () => {
   })
 
   it("removes OSC sequences (title setting)", () => {
-    expect(stripAnsiCodes("\x1b]0;window title\x07some text")).toBe(
-      "some text"
-    )
+    expect(stripAnsiCodes("\x1b]0;window title\x07some text")).toBe("some text")
   })
 
   it("returns plain text unchanged", () => {
