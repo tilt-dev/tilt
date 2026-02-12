@@ -12,7 +12,6 @@ import { ResourceName } from "./types"
 
 const ClearLogsButton = styled(InstrumentedButton)`
   ${mixinResetButtonStyle};
-  margin-left: 1rem;
   font-size: ${FontSize.small};
   color: ${Color.white};
   transition: color ${AnimDuration.default} ease;
@@ -40,7 +39,7 @@ export const clearLogs = (logStore: LogStore, resourceName: string) => {
 const ClearLogs: React.FC<ClearLogsProps> = ({ resourceName }) => {
   const logStore = useLogStore()
   const all = resourceName == ResourceName.all
-  const label = all ? "Clear All Logs" : "Clear Logs"
+  const label = "Clear"
 
   return (
     <ClearLogsButton onClick={() => clearLogs(logStore, resourceName)}>
