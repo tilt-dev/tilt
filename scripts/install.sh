@@ -112,7 +112,6 @@ function version_check() {
     exit 1
   else
     echo "Tilt installed!"
-    echo "For the latest Tilt news, subscribe: https://tilt.dev/subscribe"
     echo "Run \`tilt up\` to start."
   fi
 }

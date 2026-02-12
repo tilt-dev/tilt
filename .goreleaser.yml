@@ -156,7 +156,7 @@ brews:
     name: homebrew-tap
   commit_author:
     name: Tilt Dev
-    email: hi@tilt.dev
+    email: it@tilt.dev
   ids:
     - default
   url_template: "https://github.com/tilt-dev/tilt/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
@@ -243,7 +243,7 @@ scoops:
     name: scoop-bucket
   commit_author:
     name: Tilt Dev
-    email: hi@tilt.dev
+    email: it@tilt.dev
   commit_msg_template: "Scoop update for {{ .ProjectName }} version {{ .Tag }}"
   homepage: "https://tilt.dev/"
   description: "A dev environment as code for microservice apps"
