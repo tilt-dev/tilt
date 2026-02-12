@@ -18,13 +18,21 @@ export function logLinesFromString(
   })
 }
 
+// Matches ANSI escape sequences (colors, cursor movement, etc.)
+// eslint-disable-next-line no-control-regex
+const ansiRegex = /\x1b\[[0-9;]*[a-zA-Z]|\x1b\].*?\x07/g
+
+export function stripAnsiCodes(text: string): string {
+  return text.replace(ansiRegex, "")
+}
+
 export function logLinesToString(
   lines: LogLine[],
   showManifestPrefix: boolean
 ): string {
   return lines
     .map((line) => {
-      let text = line.text
+      let text = stripAnsiCodes(line.text)
       if (showManifestPrefix) {
         text = sourcePrefix(line.manifestName) + text
       }
