@@ -36,7 +36,7 @@ import (
 // ToggleButton
 // +k8s:openapi-gen=true
 type ToggleButton struct {
-	metav1.TypeMeta   `json:",inline"`
+	metav1.TypeMeta   `json:",inline" tstype:"-"`
 	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
 	Spec   ToggleButtonSpec   `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
@@ -46,7 +46,7 @@ type ToggleButton struct {
 // ToggleButtonList
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type ToggleButtonList struct {
-	metav1.TypeMeta `json:",inline"`
+	metav1.TypeMeta `json:",inline" tstype:"-"`
 	metav1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
 	Items []ToggleButton `json:"items" protobuf:"bytes,2,rep,name=items"`

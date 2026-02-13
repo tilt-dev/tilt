@@ -282,7 +282,7 @@ describe("ApiButton", () => {
         inputs: [
           {
             name: inputSpecs[0].name,
-            text: {},
+            text: { value: "" },
           },
           {
             name: inputSpecs[1].name,

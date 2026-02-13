@@ -38,7 +38,7 @@ import (
 // +k8s:openapi-gen=true
 // +tilt:starlark-gen=true
 type UIButton struct {
-	metav1.TypeMeta   `json:",inline"`
+	metav1.TypeMeta   `json:",inline" tstype:"-"`
 	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
 	Spec   UIButtonSpec   `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
@@ -48,7 +48,7 @@ type UIButton struct {
 // UIButtonList
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type UIButtonList struct {
-	metav1.TypeMeta `json:",inline"`
+	metav1.TypeMeta `json:",inline" tstype:"-"`
 	metav1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
 	Items []UIButton `json:"items" protobuf:"bytes,2,rep,name=items"`

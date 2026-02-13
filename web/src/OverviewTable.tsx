@@ -78,9 +78,10 @@ import {
   UIResource,
   UIResourceStatus,
 } from "./types"
+import type { View } from "./webview"
 
 export type OverviewTableProps = {
-  view: Proto.webviewView
+  view: View
 }
 
 type TableWrapperProps = {

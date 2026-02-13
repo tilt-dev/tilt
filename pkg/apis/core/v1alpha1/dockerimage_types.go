@@ -36,7 +36,7 @@ import (
 // DockerImage describes an image to build with Docker.
 // +k8s:openapi-gen=true
 type DockerImage struct {
-	metav1.TypeMeta   `json:",inline"`
+	metav1.TypeMeta   `json:",inline" tstype:"-"`
 	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
 	Spec   DockerImageSpec   `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
@@ -46,7 +46,7 @@ type DockerImage struct {
 // DockerImageList
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type DockerImageList struct {
-	metav1.TypeMeta `json:",inline"`
+	metav1.TypeMeta `json:",inline" tstype:"-"`
 	metav1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
 	Items []DockerImage `json:"items" protobuf:"bytes,2,rep,name=items"`

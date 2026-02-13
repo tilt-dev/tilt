@@ -19,6 +19,12 @@ import {
   UIResourceStatus,
   UISession,
 } from "./types"
+import type { ObjectMeta } from "./core"
+import type { LogList } from "./webview"
+
+function testMeta(name: string, extra?: Partial<ObjectMeta>): ObjectMeta {
+  return { name, namespace: "", uid: "", ...extra }
+}
 
 export const unnamedEndpointLink: UILink = { url: "1.2.3.4:8080" }
 export const namedEndpointLink: UILink = {
@@ -30,7 +36,7 @@ export type TestDataView = {
   uiResources: Array<UIResource>
   uiButtons: Array<UIButton>
   uiSession?: UISession
-  logList?: Proto.webviewLogList
+  logList?: LogList
   clusters?: Array<Cluster>
 }
 
@@ -63,17 +69,21 @@ let runningTiltBuild = {
   version: "0.17.13",
 }
 
-const ENABLED_RESOURCE_STATUS: UIResourceStatus["disableStatus"] = {
-  disabledCount: 0,
-  enabledCount: 1,
-  state: ResourceDisableState.Enabled,
-}
+const ENABLED_RESOURCE_STATUS: NonNullable<UIResourceStatus["disableStatus"]> =
+  {
+    disabledCount: 0,
+    enabledCount: 1,
+    state: ResourceDisableState.Enabled,
+    sources: [],
+  }
 
-const DISABLED_RESOURCE_STATUS: UIResourceStatus["disableStatus"] = {
-  disabledCount: 1,
-  enabledCount: 0,
-  state: ResourceDisableState.Disabled,
-}
+const DISABLED_RESOURCE_STATUS: NonNullable<UIResourceStatus["disableStatus"]> =
+  {
+    disabledCount: 1,
+    enabledCount: 0,
+    state: ResourceDisableState.Disabled,
+    sources: [],
+  }
 
 const TEST_DATA_LABELS = [
   "frontend",
@@ -106,9 +116,7 @@ export function tiltfileResource(): UIResource {
   const ts = new Date(Date.now()).toISOString()
   const tsPast = new Date(Date.now() - 12300).toISOString()
   const resource: UIResource = {
-    metadata: {
-      name: ResourceName.tiltfile,
-    },
+    metadata: testMeta(ResourceName.tiltfile),
     status: {
       lastDeployTime: ts,
       buildHistory: [
@@ -165,15 +173,15 @@ export function oneResource({
   }
 
   // Add the number of labels specified
-  const labelsToAdd: string[] = []
+  const labelsToAdd: { [key: string]: string } = {}
   let labelIdx = 0
-  while (labels !== undefined && labelsToAdd.length < labels) {
+  while (labels !== undefined && labelIdx < labels) {
     // Exit early if there are no more test labels to add to this resource
-    if (labelsToAdd.length === TEST_DATA_LABELS.length) {
+    if (labelIdx === TEST_DATA_LABELS.length) {
       break
     }
 
-    labelsToAdd.push(TEST_DATA_LABELS[labelIdx])
+    labelsToAdd[TEST_DATA_LABELS[labelIdx]] = TEST_DATA_LABELS[labelIdx]
     labelIdx++
   }
 
@@ -191,10 +199,9 @@ export function oneResource({
   }
 
   const resource: UIResource = {
-    metadata: {
-      name: resourceName,
+    metadata: testMeta(resourceName, {
       labels: labels !== undefined ? labelsToAdd : undefined,
-    },
+    }),
     status: {
       lastDeployTime: ts,
       buildHistory,
@@ -233,9 +240,7 @@ export function twoResourceView(): TestDataView {
   const vigoda = oneResource({ isBuilding: true })
 
   const snack: UIResource = {
-    metadata: {
-      name: "snack",
-    },
+    metadata: testMeta("snack"),
     status: {
       lastDeployTime: new Date(time - 10000).toISOString(),
       buildHistory: [
@@ -383,6 +388,7 @@ export function hiddenFieldForUIButton(
 ): UIInputSpec {
   return {
     name: name,
+    label: "",
     hidden: {
       value: value,
     },
@@ -397,7 +403,7 @@ export function choiceFieldForUIButton(
     name: name,
     label: name,
     choice: {
-      choices: choices,
+      choices: choices ?? [],
     },
   }
 }
@@ -422,7 +428,7 @@ export function oneUIButton({
   }
 
   return {
-    metadata: { name, annotations },
+    metadata: testMeta(name, { annotations }),
     spec: {
       text,
       iconName,
@@ -451,6 +457,7 @@ export function disableButton(
     inputSpecs: [
       {
         name: UIBUTTON_TOGGLE_INPUT_NAME,
+        label: "",
         hidden: {
           value: enabled ? ApiButtonToggleState.On : ApiButtonToggleState.Off,
         },
@@ -466,9 +473,7 @@ export function nButtonView(n: number): TestDataView {
   return {
     uiResources: [
       {
-        metadata: {
-          name: "vigoda",
-        },
+        metadata: testMeta("vigoda"),
         status: {
           lastDeployTime: ts,
           buildHistory: [
@@ -503,9 +508,7 @@ export function nButtonView(n: number): TestDataView {
 
 export function clusterConnection(error?: string): Cluster {
   const cluster: Cluster = {
-    metadata: {
-      name: "default",
-    },
+    metadata: testMeta("default"),
     status: {
       arch: "amd64",
       registry: {
@@ -516,6 +519,7 @@ export function clusterConnection(error?: string): Cluster {
         kubernetes: {
           context: "kind-kind",
           namespace: "default",
+          cluster: "kind-kind",
           product: "kind",
         },
       },
@@ -536,9 +540,7 @@ export function clusterConnection(error?: string): Cluster {
 export function oneResourceFailedToBuild(): UIResource[] {
   return [
     {
-      metadata: {
-        name: "snack",
-      },
+      metadata: testMeta("snack"),
       status: {
         lastDeployTime: "2019-04-22T11:00:04.242586-04:00",
         buildHistory: [
@@ -585,9 +587,7 @@ export function oneResourceFailedToBuild(): UIResource[] {
 export function oneResourceBuilding(): UIResource[] {
   return [
     {
-      metadata: {
-        name: "(Tiltfile)",
-      },
+      metadata: testMeta("(Tiltfile)"),
       status: {
         lastDeployTime: "2019-04-22T10:59:53.903047-04:00",
         buildHistory: [
@@ -606,9 +606,7 @@ export function oneResourceBuilding(): UIResource[] {
       },
     },
     {
-      metadata: {
-        name: "fe",
-      },
+      metadata: testMeta("fe"),
       status: {
         lastDeployTime: "2019-04-22T11:00:01.337285-04:00",
         buildHistory: [
@@ -635,9 +633,7 @@ export function oneResourceBuilding(): UIResource[] {
       },
     },
     {
-      metadata: {
-        name: "vigoda",
-      },
+      metadata: testMeta("vigoda"),
       status: {
         lastDeployTime: "2019-04-22T11:00:02.810113-04:00",
         buildHistory: [
@@ -664,9 +660,7 @@ export function oneResourceBuilding(): UIResource[] {
       },
     },
     {
-      metadata: {
-        name: "snack",
-      },
+      metadata: testMeta("snack"),
       status: {
         lastDeployTime: "2019-04-22T11:05:58.928369-04:00",
         buildHistory: [
@@ -703,9 +697,7 @@ export function oneResourceBuilding(): UIResource[] {
 export function oneResourceCrashedOnStart(): UIResource[] {
   return [
     {
-      metadata: {
-        name: "snack",
-      },
+      metadata: testMeta("snack"),
       status: {
         lastDeployTime: "2019-04-22T13:34:59.442147-04:00",
         buildHistory: [
@@ -740,10 +732,7 @@ export function oneResourceCrashedOnStart(): UIResource[] {
 /**
  * Log helpers and data
  */
-export function logList(
-  lines: string[],
-  checkpointStart: number = 0
-): Proto.webviewLogList {
+export function logList(lines: string[], checkpointStart: number = 0): LogList {
   let now = new Date().toString()
   return {
     spans: {

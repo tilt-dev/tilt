@@ -16,10 +16,11 @@ import { AnimDuration, Color, Font, FontSize, SizeUnit } from "./style-helpers"
 import { Tooltip } from "@material-ui/core"
 import { mixinResetButtonStyle } from "./style-helpers"
 import { OverviewSidebarToggle } from "./OverviewSidebarToggle"
+import type { View } from "./webview"
 
 type OverviewResourceSidebarProps = {
   name: string
-  view: Proto.webviewView
+  view: View
 }
 
 let OverviewResourceSidebarRoot = styled.div`

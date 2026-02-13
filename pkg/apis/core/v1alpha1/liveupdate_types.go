@@ -37,7 +37,7 @@ import (
 // LiveUpdate
 // +k8s:openapi-gen=true
 type LiveUpdate struct {
-	metav1.TypeMeta   `json:",inline"`
+	metav1.TypeMeta   `json:",inline" tstype:"-"`
 	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
 	Spec   LiveUpdateSpec   `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
@@ -47,7 +47,7 @@ type LiveUpdate struct {
 // LiveUpdateList
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type LiveUpdateList struct {
-	metav1.TypeMeta `json:",inline"`
+	metav1.TypeMeta `json:",inline" tstype:"-"`
 	metav1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
 	Items []LiveUpdate `json:"items" protobuf:"bytes,2,rep,name=items"`

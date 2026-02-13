@@ -4,6 +4,7 @@
 // it starts with an empty state and there won't be _any_ feature flags
 // until the first engine state comes in over the Websocket.
 import { createContext, PropsWithChildren, useContext, useMemo } from "react"
+import type { UIFeatureFlag } from "./core"
 
 type featureFlags = { [featureFlag in Flag]?: boolean }
 
@@ -44,7 +45,7 @@ export function useFeatures(): Features {
 // Many tests uses the {key: value} format.
 export function FeaturesProvider(
   props: PropsWithChildren<{
-    featureFlags: Proto.v1alpha1UIFeatureFlag[] | null
+    featureFlags: UIFeatureFlag[] | null
   }>
 ) {
   let flagList = props.featureFlags || []

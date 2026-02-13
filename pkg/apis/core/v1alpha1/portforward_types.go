@@ -36,7 +36,7 @@ import (
 // PortForward
 // +k8s:openapi-gen=true
 type PortForward struct {
-	metav1.TypeMeta   `json:",inline"`
+	metav1.TypeMeta   `json:",inline" tstype:"-"`
 	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
 	Spec   PortForwardSpec   `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
@@ -46,7 +46,7 @@ type PortForward struct {
 // PortForwardList
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type PortForwardList struct {
-	metav1.TypeMeta `json:",inline"`
+	metav1.TypeMeta `json:",inline" tstype:"-"`
 	metav1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
 	Items []PortForward `json:"items" protobuf:"bytes,2,rep,name=items"`

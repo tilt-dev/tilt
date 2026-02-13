@@ -1,7 +1,8 @@
 import { showUpdate } from "./UpdateDialog"
+import type { View } from "./webview"
 
 it("compares versions correctly", () => {
-  function v(current: string, suggested: string): Proto.webviewView {
+  function v(current: string, suggested: string): View {
     return {
       uiSession: {
         status: {
