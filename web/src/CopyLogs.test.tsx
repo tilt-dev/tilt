@@ -49,7 +49,7 @@ describe("CopyLogs", () => {
     return logStore
   }
 
-  it("copies all logs to clipboard", () => {
+  it("copies all logs to clipboard", async () => {
     const logStore = createPopulatedLogStore()
     render(
       <LogStoreProvider value={logStore}>
@@ -57,13 +57,15 @@ describe("CopyLogs", () => {
       </LogStoreProvider>
     )
 
-    userEvent.click(screen.getByText("Copy All Logs"))
+    await act(async () => {
+      userEvent.click(screen.getByText("Copy"))
+    })
 
     const expectedText = logLinesToString(logStore.allLog(), false)
     expect(writeTextMock).toHaveBeenCalledWith(expectedText)
   })
 
-  it("copies logs for a specific resource to clipboard", () => {
+  it("copies logs for a specific resource to clipboard", async () => {
     const logStore = createPopulatedLogStore()
     render(
       <LogStoreProvider value={logStore}>
@@ -71,13 +73,15 @@ describe("CopyLogs", () => {
       </LogStoreProvider>
     )
 
-    userEvent.click(screen.getByText("Copy Logs"))
+    await act(async () => {
+      userEvent.click(screen.getByText("Copy"))
+    })
 
     const expectedText = logLinesToString(logStore.manifestLog("vigoda"), true)
     expect(writeTextMock).toHaveBeenCalledWith(expectedText)
   })
 
-  it("does not modify the log store", () => {
+  it("does not modify the log store", async () => {
     const logStore = createPopulatedLogStore()
     const logsBefore = logLinesToString(logStore.allLog(), false)
 
@@ -87,13 +91,15 @@ describe("CopyLogs", () => {
       </LogStoreProvider>
     )
 
-    userEvent.click(screen.getByText("Copy All Logs"))
+    await act(async () => {
+      userEvent.click(screen.getByText("Copy"))
+    })
 
     const logsAfter = logLinesToString(logStore.allLog(), false)
     expect(logsAfter).toEqual(logsBefore)
   })
 
-  it("shows a tooltip with the number of copied lines", () => {
+  it("shows a tooltip with the number of copied lines", async () => {
     const logStore = createPopulatedLogStore()
     render(
       <LogStoreProvider value={logStore}>
@@ -101,13 +107,15 @@ describe("CopyLogs", () => {
       </LogStoreProvider>
     )
 
-    userEvent.click(screen.getByText("Copy All Logs"))
+    await act(async () => {
+      userEvent.click(screen.getByText("Copy"))
+    })
 
     const lineCount = logStore.allLog().length
     expect(screen.getByText(`Copied ${lineCount} lines`)).toBeInTheDocument()
   })
 
-  it("hides the tooltip after a delay", () => {
+  it("hides the tooltip after a delay", async () => {
     const logStore = createPopulatedLogStore()
     render(
       <LogStoreProvider value={logStore}>
@@ -115,7 +123,9 @@ describe("CopyLogs", () => {
       </LogStoreProvider>
     )
 
-    userEvent.click(screen.getByText("Copy All Logs"))
+    await act(async () => {
+      userEvent.click(screen.getByText("Copy"))
+    })
     const lineCount = logStore.allLog().length
     expect(screen.getByText(`Copied ${lineCount} lines`)).toBeVisible()
 

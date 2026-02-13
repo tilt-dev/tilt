@@ -29,9 +29,17 @@ const FontSizeControls = styled.div`
   flex-wrap: nowrap;
 `
 
-const FontSizeControlsDivider = styled.div`
+const FontSizeDivider = styled.div`
+  color: ${Color.gray60};
   font-size: ${FontSize.default};
   user-select: none;
+`
+
+const LogActionsDivider = styled.div`
+  color: ${Color.gray60};
+  font-size: ${FontSize.default};
+  user-select: none;
+  padding: 0 6px;
 `
 
 const FontSizeButton = styled(InstrumentedButton)`
@@ -94,7 +102,7 @@ export const LogsFontSize: React.FC = () => {
       >
         A
       </FontSizeDecreaseButton>
-      <FontSizeControlsDivider aria-hidden={true}>|</FontSizeControlsDivider>
+      <FontSizeDivider aria-hidden={true}>|</FontSizeDivider>
       <FontSizeIncreaseButton
         aria-label="Increase log font size"
         onClick={() => adjustLogFontScale(zoomStep)}
@@ -116,9 +124,15 @@ const LogActions: React.FC<LogActionsProps> = ({
 }) => {
   return (
     <LogActionsGroup>
-      {isSnapshot || <CopyLogs resourceName={resourceName} />}
       <LogsFontSize />
-      {isSnapshot || <ClearLogs resourceName={resourceName} />}
+      {isSnapshot || (
+        <>
+          <LogActionsDivider aria-hidden={true}>|</LogActionsDivider>
+          <CopyLogs resourceName={resourceName} />
+          <LogActionsDivider aria-hidden={true}>|</LogActionsDivider>
+          <ClearLogs resourceName={resourceName} />
+        </>
+      )}
     </LogActionsGroup>
   )
 }

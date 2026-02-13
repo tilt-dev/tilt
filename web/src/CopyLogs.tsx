@@ -14,7 +14,6 @@ import { ResourceName } from "./types"
 
 const CopyLogsButton = styled(InstrumentedButton)`
   ${mixinResetButtonStyle};
-  margin-left: 1rem;
   font-size: ${FontSize.small};
   color: ${Color.white};
   transition: color ${AnimDuration.default} ease;
@@ -39,7 +38,7 @@ export const copyLogs = (logStore: LogStore, resourceName: string): number => {
 const CopyLogs: React.FC<CopyLogsProps> = ({ resourceName }) => {
   const logStore = useLogStore()
   const all = resourceName == ResourceName.all
-  const label = all ? "Copy All Logs" : "Copy Logs"
+  const label = "Copy"
   const [tooltipOpen, setTooltipOpen] = useState(false)
   const [tooltipText, setTooltipText] = useState("")
 
@@ -60,9 +59,7 @@ const CopyLogs: React.FC<CopyLogsProps> = ({ resourceName }) => {
       disableFocusListener
       placement="top"
     >
-      <span>
-        <CopyLogsButton onClick={handleClick}>{label}</CopyLogsButton>
-      </span>
+      <CopyLogsButton onClick={handleClick}>{label}</CopyLogsButton>
     </TiltTooltip>
   )
 }
