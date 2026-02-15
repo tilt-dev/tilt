@@ -15,6 +15,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/analytics"
 	engineanalytics "github.com/tilt-dev/tilt/internal/engine/analytics"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
@@ -30,10 +31,10 @@ const tiltfileResource = "(Tiltfile)"
 
 // treeViewCmd displays resources in a tree structure based on their dependencies.
 type treeViewCmd struct {
-	streams      genericiooptions.IOStreams
-	blockersOnly bool
-	noColor      bool
-	dedupe       bool
+	streams       genericiooptions.IOStreams
+	blockersOnly  bool
+	supportsColor bool
+	dedupe        bool
 }
 
 var _ tiltCmd = &treeViewCmd{}
@@ -71,13 +72,14 @@ filtered to show the root blockers and their dependents.`,
 
 	addConnectServerFlags(cmd)
 	cmd.Flags().BoolVar(&c.blockersOnly, "blockers", false, "Show only blocked resources and their root blockers")
-	cmd.Flags().BoolVar(&c.noColor, "no-color", false, "Disable colored output")
 	cmd.Flags().BoolVar(&c.dedupe, "dedupe", false, "Deduplicate resources with multiple parents (show subtrees only once, with [also depends on: ...] annotations)")
 
 	return cmd
 }
 
 func (c *treeViewCmd) run(ctx context.Context, args []string) error {
+	c.supportsColor = logger.Get(ctx).SupportsColor()
+
 	a := analytics.Get(ctx)
 	cmdTags := engineanalytics.CmdTags(map[string]string{
 		"blockers": fmt.Sprintf("%t", c.blockersOnly),
@@ -586,7 +588,7 @@ const (
 )
 
 func (c *treeViewCmd) colorize(text string, kind colorKind) string {
-	if c.noColor {
+	if !c.supportsColor {
 		return text
 	}
 

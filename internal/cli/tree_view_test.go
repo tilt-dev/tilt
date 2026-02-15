@@ -17,7 +17,7 @@ import (
 func TestTreeView_NoResources(t *testing.T) {
 	var out bytes.Buffer
 	streams := genericiooptions.IOStreams{Out: &out}
-	cmd := &treeViewCmd{streams: streams, noColor: true}
+	cmd := &treeViewCmd{streams: streams, supportsColor: false}
 
 	uirs := &v1alpha1.UIResourceList{}
 	deps := resourceDependencies{}
@@ -32,7 +32,7 @@ func TestTreeView_NoResources(t *testing.T) {
 func TestTreeView_SingleResource(t *testing.T) {
 	var out bytes.Buffer
 	streams := genericiooptions.IOStreams{Out: &out}
-	cmd := &treeViewCmd{streams: streams, noColor: true}
+	cmd := &treeViewCmd{streams: streams, supportsColor: false}
 
 	uirs := &v1alpha1.UIResourceList{
 		Items: []v1alpha1.UIResource{
@@ -52,7 +52,7 @@ func TestTreeView_SingleResource(t *testing.T) {
 func TestTreeView_SimpleChain(t *testing.T) {
 	var out bytes.Buffer
 	streams := genericiooptions.IOStreams{Out: &out}
-	cmd := &treeViewCmd{streams: streams, noColor: true}
+	cmd := &treeViewCmd{streams: streams, supportsColor: false}
 
 	// database -> api -> frontend (api depends on database, frontend depends on api)
 	uirs := &v1alpha1.UIResourceList{
@@ -83,7 +83,7 @@ func TestTreeView_SimpleChain(t *testing.T) {
 func TestTreeView_MultipleRoots(t *testing.T) {
 	var out bytes.Buffer
 	streams := genericiooptions.IOStreams{Out: &out}
-	cmd := &treeViewCmd{streams: streams, noColor: true}
+	cmd := &treeViewCmd{streams: streams, supportsColor: false}
 
 	// Two independent trees:
 	// database -> api
@@ -113,7 +113,7 @@ func TestTreeView_MultipleRoots(t *testing.T) {
 func TestTreeView_DiamondDependency(t *testing.T) {
 	var out bytes.Buffer
 	streams := genericiooptions.IOStreams{Out: &out}
-	cmd := &treeViewCmd{streams: streams, noColor: true}
+	cmd := &treeViewCmd{streams: streams, supportsColor: false}
 
 	// Diamond: database -> api, database -> worker, frontend depends on both api and worker
 	uirs := &v1alpha1.UIResourceList{
@@ -144,7 +144,7 @@ func TestTreeView_DiamondDependency(t *testing.T) {
 func TestTreeView_BlockersOnly_NoBlockers(t *testing.T) {
 	var out bytes.Buffer
 	streams := genericiooptions.IOStreams{Out: &out}
-	cmd := &treeViewCmd{streams: streams, blockersOnly: true, noColor: true}
+	cmd := &treeViewCmd{streams: streams, blockersOnly: true, supportsColor: false}
 
 	// All resources are OK, nothing blocked
 	uirs := &v1alpha1.UIResourceList{
@@ -164,7 +164,7 @@ func TestTreeView_BlockersOnly_NoBlockers(t *testing.T) {
 func TestTreeView_BlockersOnly_SimpleChain(t *testing.T) {
 	var out bytes.Buffer
 	streams := genericiooptions.IOStreams{Out: &out}
-	cmd := &treeViewCmd{streams: streams, blockersOnly: true, noColor: true}
+	cmd := &treeViewCmd{streams: streams, blockersOnly: true, supportsColor: false}
 
 	// database (error) -> api (pending) -> frontend (pending)
 	uirs := &v1alpha1.UIResourceList{
@@ -190,7 +190,7 @@ func TestTreeView_BlockersOnly_SimpleChain(t *testing.T) {
 func TestTreeView_BlockersOnly_MultipleBlockers(t *testing.T) {
 	var out bytes.Buffer
 	streams := genericiooptions.IOStreams{Out: &out}
-	cmd := &treeViewCmd{streams: streams, blockersOnly: true, noColor: true}
+	cmd := &treeViewCmd{streams: streams, blockersOnly: true, supportsColor: false}
 
 	// Two root blockers: database (blocks api, worker, frontend), redis (blocks cache)
 	uirs := &v1alpha1.UIResourceList{
@@ -223,7 +223,7 @@ func TestTreeView_BlockersOnly_MultipleBlockers(t *testing.T) {
 func TestTreeView_StatusFormatting(t *testing.T) {
 	var out bytes.Buffer
 	streams := genericiooptions.IOStreams{Out: &out}
-	cmd := &treeViewCmd{streams: streams, noColor: true}
+	cmd := &treeViewCmd{streams: streams, supportsColor: false}
 
 	uirs := &v1alpha1.UIResourceList{
 		Items: []v1alpha1.UIResource{
@@ -240,7 +240,7 @@ func TestTreeView_StatusFormatting(t *testing.T) {
 }
 
 func TestBuildTreeNode_Basic(t *testing.T) {
-	cmd := &treeViewCmd{noColor: true}
+	cmd := &treeViewCmd{supportsColor: false}
 	resourceByName := map[string]*v1alpha1.UIResource{
 		"root": {
 			ObjectMeta: metav1.ObjectMeta{Name: "root"},
@@ -260,7 +260,7 @@ func TestBuildTreeNode_Basic(t *testing.T) {
 }
 
 func TestBuildTreeNode_WithChildren(t *testing.T) {
-	cmd := &treeViewCmd{noColor: true}
+	cmd := &treeViewCmd{supportsColor: false}
 	resourceByName := map[string]*v1alpha1.UIResource{
 		"parent": {
 			ObjectMeta: metav1.ObjectMeta{Name: "parent"},
@@ -288,7 +288,7 @@ func TestBuildTreeNode_WithChildren(t *testing.T) {
 }
 
 func TestGetStatusText(t *testing.T) {
-	cmd := &treeViewCmd{noColor: true}
+	cmd := &treeViewCmd{supportsColor: false}
 
 	tests := []struct {
 		name     string
@@ -398,7 +398,7 @@ func TestTreeView_ColorOutput(t *testing.T) {
 
 	var out bytes.Buffer
 	streams := genericiooptions.IOStreams{Out: &out}
-	cmd := &treeViewCmd{streams: streams, noColor: false} // Colors enabled
+	cmd := &treeViewCmd{streams: streams, supportsColor: true} // Colors enabled
 
 	uirs := &v1alpha1.UIResourceList{
 		Items: []v1alpha1.UIResource{
@@ -435,7 +435,7 @@ func TestTreeView_ColorOutput(t *testing.T) {
 func TestTreeView_Default(t *testing.T) {
 	var out bytes.Buffer
 	streams := genericiooptions.IOStreams{Out: &out}
-	cmd := &treeViewCmd{streams: streams, noColor: true, dedupe: false}
+	cmd := &treeViewCmd{streams: streams, supportsColor: false, dedupe: false}
 
 	// Complex dependency: database -> api -> frontend, database -> worker -> frontend
 	// frontend has children: mobile
@@ -473,7 +473,7 @@ func TestTreeView_Default(t *testing.T) {
 func TestTreeView_Dedupe(t *testing.T) {
 	var out bytes.Buffer
 	streams := genericiooptions.IOStreams{Out: &out}
-	cmd := &treeViewCmd{streams: streams, noColor: true, dedupe: true}
+	cmd := &treeViewCmd{streams: streams, supportsColor: false, dedupe: true}
 
 	// Same setup as default test
 	uirs := &v1alpha1.UIResourceList{
@@ -518,7 +518,7 @@ func TestTreeView_AlsoDependsOnColored(t *testing.T) {
 
 	var out bytes.Buffer
 	streams := genericiooptions.IOStreams{Out: &out}
-	cmd := &treeViewCmd{streams: streams, noColor: false, dedupe: true}
+	cmd := &treeViewCmd{streams: streams, supportsColor: true, dedupe: true}
 
 	uirs := &v1alpha1.UIResourceList{
 		Items: []v1alpha1.UIResource{
