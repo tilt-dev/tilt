@@ -329,11 +329,11 @@ func (c *treeViewCmd) prepareBlockersTree(graph dependencyGraph, tiltfilePath st
 
 // isResourceNotOK checks if a resource has a problematic status
 func (c *treeViewCmd) isResourceNotOK(res *v1alpha1.UIResource) bool {
-	updateStatus := strings.ToLower(string(res.Status.UpdateStatus))
-	runtimeStatus := strings.ToLower(string(res.Status.RuntimeStatus))
+	update := res.Status.UpdateStatus
+	runtime := res.Status.RuntimeStatus
 
-	updateBad := updateStatus != "ok" && updateStatus != "not_applicable" && updateStatus != "none" && updateStatus != ""
-	runtimeBad := runtimeStatus != "ok" && runtimeStatus != "not_applicable" && runtimeStatus != "none" && runtimeStatus != ""
+	updateBad := update != v1alpha1.UpdateStatusOK && update != v1alpha1.UpdateStatusNotApplicable && update != v1alpha1.UpdateStatusNone && update != ""
+	runtimeBad := runtime != v1alpha1.RuntimeStatusOK && runtime != v1alpha1.RuntimeStatusNotApplicable && runtime != v1alpha1.RuntimeStatusNone && runtime != ""
 
 	return updateBad || runtimeBad
 }
