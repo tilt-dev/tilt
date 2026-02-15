@@ -180,13 +180,12 @@ func buildDependencyGraph(uirs *v1alpha1.UIResourceList, deps resourceDependenci
 
 // treeConfig holds configuration for tree printing
 type treeConfig struct {
-	roots             []*treeNode                     // root nodes to print
-	resourceByName    map[string]*v1alpha1.UIResource // all resources
-	deps              resourceDependencies            // child -> parents mapping
-	filterDeps        map[string]bool                 // if set, filter "also depends on" to these
-	header            string                          // header to print before tree
-	emptyMessage      string                          // message if no roots
-	circularResources []string                        // resources in circular dependencies (not reachable from roots)
+	roots          []*treeNode                     // root nodes to print
+	resourceByName map[string]*v1alpha1.UIResource // all resources
+	deps           resourceDependencies            // child -> parents mapping
+	filterDeps     map[string]bool                 // if set, filter "also depends on" to these
+	header         string                          // header to print before tree
+	emptyMessage   string                          // message if no roots
 }
 
 // treeNode represents a node in the tree
@@ -240,19 +239,6 @@ func (c *treeViewCmd) prepareFullTree(graph dependencyGraph, tiltfilePath string
 	}
 	sort.Strings(roots)
 
-	// Detect circular dependencies: resources that have parents but are not reachable from roots
-	reachable := make(map[string]bool)
-	for _, rootName := range roots {
-		c.collectDescendants(rootName, graph.childrenOf, reachable)
-	}
-	var circularResources []string
-	for name := range graph.resourceByName {
-		if name != tiltfileResource && graph.hasParent[name] && !reachable[name] {
-			circularResources = append(circularResources, name)
-		}
-	}
-	sort.Strings(circularResources)
-
 	graph.childrenOf[tiltfileResource] = roots
 
 	tiltfileDisplayName := "Tiltfile"
@@ -261,16 +247,15 @@ func (c *treeViewCmd) prepareFullTree(graph dependencyGraph, tiltfilePath string
 	}
 
 	// Build tree starting from Tiltfile
-	rootNode := c.buildTreeNode(tiltfileResource, graph.resourceByName, graph.childrenOf, make(map[string]bool))
+	rootNode := c.buildTreeNode(tiltfileResource, graph.resourceByName, graph.childrenOf)
 	rootNode.displayName = tiltfileDisplayName
 
 	return treeConfig{
-		roots:             []*treeNode{rootNode},
-		resourceByName:    graph.resourceByName,
-		deps:              graph.deps,
-		filterDeps:        nil, // show all deps in "also depends on"
-		emptyMessage:      "No resources found.",
-		circularResources: circularResources,
+		roots:          []*treeNode{rootNode},
+		resourceByName: graph.resourceByName,
+		deps:           graph.deps,
+		filterDeps:     nil, // show all deps in "also depends on"
+		emptyMessage:   "No resources found.",
 	}
 }
 
@@ -320,7 +305,7 @@ func (c *treeViewCmd) prepareBlockersTree(graph dependencyGraph, tiltfilePath st
 	// Build root nodes
 	var roots []*treeNode
 	for _, blockerName := range rootBlockers {
-		root := c.buildTreeNode(blockerName, graph.resourceByName, graph.childrenOf, make(map[string]bool))
+		root := c.buildTreeNode(blockerName, graph.resourceByName, graph.childrenOf)
 		roots = append(roots, root)
 	}
 
@@ -356,7 +341,6 @@ func (c *treeViewCmd) buildTreeNode(
 	name string,
 	resourceByName map[string]*v1alpha1.UIResource,
 	childrenOf map[string][]string,
-	visited map[string]bool,
 ) *treeNode {
 	node := &treeNode{name: name, displayName: name}
 
@@ -365,22 +349,11 @@ func (c *treeViewCmd) buildTreeNode(
 		node.runtimeStatus = string(res.Status.RuntimeStatus)
 	}
 
-	// Check for circular dependency
-	if visited[name] {
-		node.displayName = name + " (circular)"
-		return node
-	}
-	visited[name] = true
-
 	// Add children
 	children := childrenOf[name]
 	sort.Strings(children)
 	for _, childName := range children {
-		childVisited := make(map[string]bool)
-		for k, v := range visited {
-			childVisited[k] = v
-		}
-		child := c.buildTreeNode(childName, resourceByName, childrenOf, childVisited)
+		child := c.buildTreeNode(childName, resourceByName, childrenOf)
 		node.children = append(node.children, child)
 	}
 
@@ -414,43 +387,6 @@ func (c *treeViewCmd) printTree(config treeConfig) {
 			c.outputText("\n")
 		}
 		c.printNode(root, "", true, true, "", state)
-	}
-
-	// Print circular dependencies section if any
-	if len(config.circularResources) > 0 {
-		c.outputText("\nCircular dependencies:\n")
-		for _, name := range config.circularResources {
-			// Count these in stats
-			state.stats.total++
-			if res, ok := config.resourceByName[name]; ok {
-				node := &treeNode{
-					name:          name,
-					displayName:   name,
-					updateStatus:  string(res.Status.UpdateStatus),
-					runtimeStatus: string(res.Status.RuntimeStatus),
-				}
-				statusText, colorKind := c.getStatusText(node)
-				switch colorKind {
-				case colorOK:
-					state.stats.ok++
-				case colorWarning:
-					if strings.ToLower(node.updateStatus) == "in_progress" {
-						state.stats.building++
-					} else {
-						state.stats.pending++
-					}
-				case colorError:
-					state.stats.errors++
-				}
-				nodeText := name
-				if statusText != "" {
-					nodeText = name + " " + statusText
-				}
-				c.outputText("  %s\n", c.colorize(nodeText, colorKind))
-			} else {
-				c.outputText("  %s\n", name)
-			}
-		}
 	}
 
 	c.printStats(state.stats)

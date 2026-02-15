@@ -220,32 +220,6 @@ func TestTreeView_BlockersOnly_MultipleBlockers(t *testing.T) {
 		"database should appear before redis (blocks more resources)")
 }
 
-func TestTreeView_CircularDependency(t *testing.T) {
-	var out bytes.Buffer
-	streams := genericiooptions.IOStreams{Out: &out}
-	cmd := &treeViewCmd{streams: streams, noColor: true}
-
-	// a depends on b, b depends on a (circular)
-	uirs := &v1alpha1.UIResourceList{
-		Items: []v1alpha1.UIResource{
-			makeTreeViewResource("(Tiltfile)", "ok", "not_applicable"),
-			makeTreeViewResource("a", "ok", ""),
-			makeTreeViewResource("b", "ok", ""),
-		},
-	}
-	deps := resourceDependencies{
-		"a": {"b"},
-		"b": {"a"},
-	}
-	testPrintFullTree(cmd, uirs, deps, "")
-
-	output := out.String()
-	// Should detect circular dependency - shown in "Circular dependencies" section
-	assert.Contains(t, output, "Circular dependencies")
-	assert.Contains(t, output, "a")
-	assert.Contains(t, output, "b")
-}
-
 func TestTreeView_StatusFormatting(t *testing.T) {
 	var out bytes.Buffer
 	streams := genericiooptions.IOStreams{Out: &out}
@@ -277,9 +251,8 @@ func TestBuildTreeNode_Basic(t *testing.T) {
 		},
 	}
 	childrenOf := map[string][]string{}
-	visited := make(map[string]bool)
 
-	node := cmd.buildTreeNode("root", resourceByName, childrenOf, visited)
+	node := cmd.buildTreeNode("root", resourceByName, childrenOf)
 
 	assert.Equal(t, "root", node.name)
 	assert.Equal(t, "ok", node.updateStatus)
@@ -305,9 +278,8 @@ func TestBuildTreeNode_WithChildren(t *testing.T) {
 	childrenOf := map[string][]string{
 		"parent": {"child1", "child2"},
 	}
-	visited := make(map[string]bool)
 
-	node := cmd.buildTreeNode("parent", resourceByName, childrenOf, visited)
+	node := cmd.buildTreeNode("parent", resourceByName, childrenOf)
 
 	assert.Equal(t, "parent", node.name)
 	require.Len(t, node.children, 2)
