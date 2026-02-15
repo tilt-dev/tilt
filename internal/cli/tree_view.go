@@ -194,8 +194,8 @@ type treeConfig struct {
 type treeNode struct {
 	name          string
 	displayName   string // can differ from name (e.g., Tiltfile path)
-	updateStatus  string
-	runtimeStatus string
+	updateStatus  v1alpha1.UpdateStatus
+	runtimeStatus v1alpha1.RuntimeStatus
 	children      []*treeNode
 }
 
@@ -347,8 +347,8 @@ func (c *treeViewCmd) buildTreeNode(
 	node := &treeNode{name: name, displayName: name}
 
 	if res := resourceByName[name]; res != nil {
-		node.updateStatus = string(res.Status.UpdateStatus)
-		node.runtimeStatus = string(res.Status.RuntimeStatus)
+		node.updateStatus = res.Status.UpdateStatus
+		node.runtimeStatus = res.Status.RuntimeStatus
 	}
 
 	// Add children
@@ -416,7 +416,7 @@ func (c *treeViewCmd) printNode(node *treeNode, prefix string, isLast bool, isRo
 		case colorOK:
 			state.stats.ok++
 		case colorWarning:
-			if strings.ToLower(node.updateStatus) == "in_progress" {
+			if node.updateStatus == v1alpha1.UpdateStatusInProgress {
 				state.stats.building++
 			} else {
 				state.stats.pending++
@@ -483,8 +483,8 @@ func (c *treeViewCmd) buildAlsoDependsOn(resourceName string, parentName string,
 		var depKind colorKind
 		if res, ok := config.resourceByName[depName]; ok {
 			node := &treeNode{
-				updateStatus:  string(res.Status.UpdateStatus),
-				runtimeStatus: string(res.Status.RuntimeStatus),
+				updateStatus:  res.Status.UpdateStatus,
+				runtimeStatus: res.Status.RuntimeStatus,
 			}
 			_, depKind = c.getStatusText(node)
 		}
@@ -531,45 +531,45 @@ func (c *treeViewCmd) collectDescendants(name string, childrenOf map[string][]st
 }
 
 func (c *treeViewCmd) getStatusText(node *treeNode) (string, colorKind) {
-	update := strings.ToLower(node.updateStatus)
-	runtime := strings.ToLower(node.runtimeStatus)
+	update := node.updateStatus
+	runtime := node.runtimeStatus
 
 	// Error states take priority
-	if update == "error" && runtime == "error" {
+	if update == v1alpha1.UpdateStatusError && runtime == v1alpha1.RuntimeStatusError {
 		return "(error)", colorError
 	}
-	if update == "error" {
+	if update == v1alpha1.UpdateStatusError {
 		return "(build error)", colorError
 	}
-	if runtime == "error" {
+	if runtime == v1alpha1.RuntimeStatusError {
 		return "(runtime error)", colorError
 	}
 
-	if update == "in_progress" {
+	if update == v1alpha1.UpdateStatusInProgress {
 		return "(building)", colorWarning
 	}
 
-	if update == "pending" && runtime == "pending" {
+	if update == v1alpha1.UpdateStatusPending && runtime == v1alpha1.RuntimeStatusPending {
 		return "(pending)", colorWarning
 	}
-	if update == "pending" {
+	if update == v1alpha1.UpdateStatusPending {
 		return "(build pending)", colorWarning
 	}
-	if runtime == "pending" {
+	if runtime == v1alpha1.RuntimeStatusPending {
 		return "(starting)", colorWarning
 	}
 
-	if runtime == "unknown" {
+	if runtime == v1alpha1.RuntimeStatusUnknown {
 		return "(unknown)", colorWarning
 	}
 
 	// None states (manual trigger, not started)
-	if update == "none" || runtime == "none" {
+	if update == v1alpha1.UpdateStatusNone || runtime == v1alpha1.RuntimeStatusNone {
 		return "(not started)", colorWarning
 	}
 
-	updateOK := update == "ok" || update == "not_applicable" || update == ""
-	runtimeOK := runtime == "ok" || runtime == "not_applicable" || runtime == ""
+	updateOK := update == v1alpha1.UpdateStatusOK || update == v1alpha1.UpdateStatusNotApplicable || update == ""
+	runtimeOK := runtime == v1alpha1.RuntimeStatusOK || runtime == v1alpha1.RuntimeStatusNotApplicable || runtime == ""
 
 	if updateOK && runtimeOK {
 		return "(ok)", colorOK
