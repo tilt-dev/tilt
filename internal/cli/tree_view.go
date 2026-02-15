@@ -298,6 +298,18 @@ func (c *treeViewCmd) prepareBlockersTree(graph dependencyGraph, tiltfilePath st
 		}
 	}
 
+	// Sort root blockers by descendant count (most impactful first), then by name
+	sort.Slice(rootBlockers, func(i, j int) bool {
+		di := make(map[string]bool)
+		c.collectDescendants(rootBlockers[i], graph.childrenOf, di)
+		dj := make(map[string]bool)
+		c.collectDescendants(rootBlockers[j], graph.childrenOf, dj)
+		if len(di) != len(dj) {
+			return len(di) > len(dj)
+		}
+		return rootBlockers[i] < rootBlockers[j]
+	})
+
 	// Collect all displayed resources for filtering "also depends on"
 	displayedResources := make(map[string]bool)
 	for _, rootName := range rootBlockers {
