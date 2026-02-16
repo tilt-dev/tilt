@@ -19,6 +19,7 @@ limitations under the License.
 // of the same resource
 
 // +k8s:openapi-gen=true
+// +k8s:openapi-model-package=github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1
 // +k8s:deepcopy-gen=package,register
 // +k8s:conversion-gen=github.com/tilt-dev/tilt/pkg/apis/core
 // +k8s:defaulter-gen=TypeMeta

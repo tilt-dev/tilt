@@ -428,7 +428,7 @@ func newWatchTestFixture(t *testing.T) *watchTestFixture {
 		return true, watch, nil
 	}
 
-	cs := kfake.NewSimpleClientset()
+	cs := kfake.NewClientset()
 	cs.PrependReactor("*", "*", ktesting.ObjectReaction(tracker))
 	cs.PrependWatchReactor("*", wr)
 
