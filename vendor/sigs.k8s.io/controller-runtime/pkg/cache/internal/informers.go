@@ -242,11 +242,9 @@ func (ip *Informers) startInformerLocked(cacheEntry *Cache) {
 		return
 	}
 
-	ip.waitGroup.Add(1)
-	go func() {
-		defer ip.waitGroup.Done()
+	ip.waitGroup.Go(func() {
 		cacheEntry.Start(ip.ctx.Done())
-	}()
+	})
 }
 
 func (ip *Informers) waitForStarted(ctx context.Context) bool {

@@ -24,8 +24,6 @@ import (
 	"net/http"
 
 	"github.com/spf13/cobra"
-	"github.com/tilt-dev/tilt-apiserver/pkg/server/apiserver"
-	"github.com/tilt-dev/tilt-apiserver/pkg/server/options"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -33,12 +31,17 @@ import (
 	"k8s.io/apiserver/pkg/authentication/request/anonymous"
 	"k8s.io/apiserver/pkg/authorization/authorizerfactory"
 	"k8s.io/apiserver/pkg/authorization/union"
+	"k8s.io/apiserver/pkg/features"
 	"k8s.io/apiserver/pkg/registry/generic"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	"k8s.io/apiserver/pkg/server/dynamiccertificates"
 	"k8s.io/apiserver/pkg/storage/storagebackend"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/client-go/rest"
 	"k8s.io/klog/v2"
+
+	"github.com/tilt-dev/tilt-apiserver/pkg/server/apiserver"
+	"github.com/tilt-dev/tilt-apiserver/pkg/server/options"
 )
 
 // TiltServerOptions contains state for master/api server
@@ -130,6 +133,19 @@ func (o *TiltServerOptions) Complete() error {
 
 // Config returns config for the api server given TiltServerOptions
 func (o *TiltServerOptions) Config() (*apiserver.Config, error) {
+	// tilt-apiserver's storage does not implement the WatchList protocol.
+	//
+	// in the future, we should come back and implement this. but for now,
+	// let's just manually disable the feature.
+	//
+	// the server will return 403 for watch requests that use
+	// SendInitialEvents=true, which signals clients to fall back to the
+	// standard List+Watch protocol per the KEP version-skew strategy:
+	// https://github.com/kubernetes/enhancements/blob/master/keps/sig-api-machinery/3157-watch-list/README.md
+	if err := utilfeature.DefaultMutableFeatureGate.Set(string(features.WatchList) + "=false"); err != nil {
+		return nil, fmt.Errorf("failed to disable WatchList feature gate: %w", err)
+	}
+
 	if o.ConnProvider != nil {
 		if o.ServingOptions.BindPort == 0 {
 			o.ServingOptions.BindPort = 443 // Create a fake port.
