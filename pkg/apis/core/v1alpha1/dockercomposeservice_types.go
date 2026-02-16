@@ -37,7 +37,7 @@ import (
 //
 // +k8s:openapi-gen=true
 type DockerComposeService struct {
-	metav1.TypeMeta   `json:",inline"`
+	metav1.TypeMeta   `json:",inline" tstype:"-"`
 	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
 	Spec   DockerComposeServiceSpec   `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
@@ -47,7 +47,7 @@ type DockerComposeService struct {
 // DockerComposeServiceList
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type DockerComposeServiceList struct {
-	metav1.TypeMeta `json:",inline"`
+	metav1.TypeMeta `json:",inline" tstype:"-"`
 	metav1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
 	Items []DockerComposeService `json:"items" protobuf:"bytes,2,rep,name=items"`

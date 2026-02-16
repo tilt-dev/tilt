@@ -1,3 +1,5 @@
+import type { UIResourceStateWaiting } from "./core"
+
 export class Hold {
   reason: string
   count: number = 0
@@ -5,7 +7,7 @@ export class Hold {
   images: string[] = []
   clusters: string[] = []
 
-  constructor(waiting: Proto.v1alpha1UIResourceStateWaiting) {
+  constructor(waiting: UIResourceStateWaiting) {
     this.reason = waiting.reason ?? ""
     for (const ref of waiting.on ?? []) {
       this.count++

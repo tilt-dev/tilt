@@ -15,6 +15,7 @@ import { useSnapshotAction } from "./snapshot"
 import { SnapshotBar } from "./SnapshotBar"
 import { AnimDuration, Color, Font, FontSize, SizeUnit } from "./style-helpers"
 import { showUpdate } from "./UpdateDialog"
+import type { View } from "./webview"
 
 const HeaderBarRoot = styled.nav`
   display: flex;
@@ -109,7 +110,7 @@ export enum HeaderBarPage {
 }
 
 type HeaderBarProps = {
-  view: Proto.webviewView
+  view: View
   currentPage: HeaderBarPage
   isSocketConnected: boolean
 }

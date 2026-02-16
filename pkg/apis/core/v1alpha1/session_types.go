@@ -37,7 +37,7 @@ import (
 // Session provides introspective data about the status of the Tilt process.
 // +k8s:openapi-gen=true
 type Session struct {
-	metav1.TypeMeta   `json:",inline"`
+	metav1.TypeMeta   `json:",inline" tstype:"-"`
 	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
 	Spec   SessionSpec   `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
@@ -47,7 +47,7 @@ type Session struct {
 // SessionList is a list of Session objects.
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type SessionList struct {
-	metav1.TypeMeta `json:",inline"`
+	metav1.TypeMeta `json:",inline" tstype:"-"`
 	metav1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
 	Items []Session `json:"items" protobuf:"bytes,2,rep,name=items"`

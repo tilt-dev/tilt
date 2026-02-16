@@ -40,7 +40,7 @@ import (
 // +k8s:openapi-gen=true
 // +tilt:starlark-gen=true
 type ConfigMap struct {
-	metav1.TypeMeta   `json:",inline"`
+	metav1.TypeMeta   `json:",inline" tstype:"-"`
 	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
 	// Data contains the configuration data.
@@ -52,7 +52,7 @@ type ConfigMap struct {
 // ConfigMapList
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type ConfigMapList struct {
-	metav1.TypeMeta `json:",inline"`
+	metav1.TypeMeta `json:",inline" tstype:"-"`
 	metav1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
 	Items []ConfigMap `json:"items" protobuf:"bytes,2,rep,name=items"`

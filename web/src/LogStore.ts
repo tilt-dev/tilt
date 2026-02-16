@@ -7,6 +7,7 @@
 import React, { useContext } from "react"
 import { isBuildSpanId } from "./logs"
 import { LogLevel, LogLine, LogPatchSet } from "./types"
+import type { LogList, LogSegment, LogSpan as WebviewLogSpan } from "./webview"
 
 // Firestore doesn't properly handle maps with keys equal to the empty string, so
 // we normalize all empty span ids to '_' client-side.
@@ -52,7 +53,7 @@ class StoredLine {
   anchor: boolean
   fields: { [key: string]: string } | null
 
-  constructor(seg: Proto.webviewLogSegment) {
+  constructor(seg: LogSegment) {
     this.spanId = seg.spanId || defaultSpanId
     this.time = seg.time ?? ""
     this.text = seg.text ?? ""
@@ -96,7 +97,7 @@ class LogStore implements LogAlertIndex {
 
   // These are held in-memory so we can send them on snapshot, and are
   // also used to help with incremental log rendering.
-  segments: Proto.webviewLogSegment[]
+  segments: LogSegment[]
 
   // A map of segment indices to the line indices that they rendered.
   segmentToLine: number[]
@@ -140,11 +141,11 @@ class LogStore implements LogAlertIndex {
     return span && span.firstLineIndex !== -1
   }
 
-  toLogList(maxSize: number | null | undefined): Proto.webviewLogList {
-    let spans = {} as { [key: string]: Proto.webviewLogSpan }
+  toLogList(maxSize: number | null | undefined): LogList {
+    let spans = {} as { [key: string]: WebviewLogSpan }
 
     let size = 0
-    const segments = [] as Proto.webviewLogSegment[]
+    const segments = [] as LogSegment[]
     for (let i = this.segments.length - 1; i >= 0; i--) {
       let segment = this.segments[i]
       size += segment.text?.length || 0
@@ -176,8 +177,8 @@ class LogStore implements LogAlertIndex {
     }
   }
 
-  append(logList: Proto.webviewLogList) {
-    let newSpans = logList.spans as { [key: string]: Proto.webviewLogSpan }
+  append(logList: LogList) {
+    let newSpans = logList.spans as { [key: string]: WebviewLogSpan }
     let newSegments = logList.segments ?? []
     let fromCheckpoint = logList.fromCheckpoint ?? 0
     let toCheckpoint = logList.toCheckpoint ?? 0
@@ -209,7 +210,9 @@ class LogStore implements LogAlertIndex {
       }
     }
 
-    newSegments.forEach((segment) => this.addSegment(segment))
+    newSegments.forEach((segment) => {
+      if (segment) this.addSegment(segment)
+    })
 
     this.invokeUpdateCallbacks({
       action: LogUpdateAction.append,
@@ -241,7 +244,7 @@ class LogStore implements LogAlertIndex {
     })
   }
 
-  private addSegment(newSegment: Proto.webviewLogSegment) {
+  private addSegment(newSegment: LogSegment) {
     // workaround firestore bug. see comments on defaultSpanId.
     newSegment.spanId = newSegment.spanId || defaultSpanId
     this.segments.push(newSegment)

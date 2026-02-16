@@ -14,7 +14,12 @@ import {
   oneResourceView,
   twoResourceView,
 } from "./testdata"
+import type { ObjectMeta } from "./core"
 import { SocketState } from "./types"
+
+function testMeta(name: string, extra?: Partial<ObjectMeta>): ObjectMeta {
+  return { name, namespace: "", uid: "", ...extra }
+}
 
 // Note: `body` is used as the app element _only_ in a test env
 // since the app root element isn't available; in prod, it should
@@ -212,10 +217,9 @@ describe("mergeAppUpdates", () => {
       view: {
         uiResources: [
           {
-            metadata: {
-              name: "vigoda",
+            metadata: testMeta("vigoda", {
               deletionTimestamp: new Date().toString(),
-            },
+            }),
           },
         ],
       },
@@ -228,7 +232,7 @@ describe("mergeAppUpdates", () => {
 
   it("handles replace resource", () => {
     let prevState = { view: twoResourceView() }
-    let update = { view: { uiResources: [{ metadata: { name: "vigoda" } }] } }
+    let update = { view: { uiResources: [{ metadata: testMeta("vigoda") }] } }
     let result = mergeAppUpdate(prevState as any, update)
     expect(result!.view).not.toBe(prevState.view)
     expect(result!.view.uiResources!.length).toEqual(2)
@@ -254,10 +258,9 @@ describe("mergeAppUpdates", () => {
       view: {
         uiButtons: [
           {
-            metadata: {
-              name: "button1",
+            metadata: testMeta("button1", {
               deletionTimestamp: new Date().toString(),
-            },
+            }),
           },
         ],
       },
@@ -271,7 +274,7 @@ describe("mergeAppUpdates", () => {
 
   it("handles replace button", () => {
     let prevState = { view: nButtonView(2) }
-    let update = { view: { uiButtons: [{ metadata: { name: "button1" } }] } }
+    let update = { view: { uiButtons: [{ metadata: testMeta("button1") }] } }
     let result = mergeAppUpdate(prevState as any, update)
     expect(result!.view).not.toBe(prevState.view)
     expect(result!.view.uiResources).toBe(prevState.view.uiResources)
@@ -294,8 +297,8 @@ describe("mergeAppUpdates", () => {
 
     let update = {
       view: {
-        uiResources: [{ metadata: { name: "b" } }, { metadata: { name: "a" } }],
-        uiButtons: [{ metadata: { name: "z" } }, { metadata: { name: "y" } }],
+        uiResources: [{ metadata: testMeta("b") }, { metadata: testMeta("a") }],
+        uiButtons: [{ metadata: testMeta("z") }, { metadata: testMeta("y") }],
         logList: logList(["line1", "line2"]),
         isComplete: true,
       },

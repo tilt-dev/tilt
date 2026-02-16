@@ -37,7 +37,7 @@ import (
 // +k8s:openapi-gen=true
 // +tilt:starlark-gen=true
 type Extension struct {
-	metav1.TypeMeta   `json:",inline"`
+	metav1.TypeMeta   `json:",inline" tstype:"-"`
 	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
 	Spec   ExtensionSpec   `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
@@ -47,7 +47,7 @@ type Extension struct {
 // ExtensionList
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type ExtensionList struct {
-	metav1.TypeMeta `json:",inline"`
+	metav1.TypeMeta `json:",inline" tstype:"-"`
 	metav1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
 	Items []Extension `json:"items" protobuf:"bytes,2,rep,name=items"`

@@ -26,6 +26,7 @@ import {
 } from "./style-helpers"
 import TiltTooltip from "./Tooltip"
 import { ResourceName, ResourceStatus } from "./types"
+import type { View } from "./webview"
 
 export const StarredResourceLabel = styled.div`
   max-width: ${SizeUnit(4.5)};
@@ -279,7 +280,7 @@ export default function StarredResourceBar(props: StarredResourceBarProps) {
 
 // translates the view to a pared-down model so that `StarredResourceBar` can have a simple API for testing.
 export function starredResourcePropsFromView(
-  view: Proto.webviewView,
+  view: View,
   selectedResource: string
 ): StarredResourceBarProps {
   const ls = useLogStore()

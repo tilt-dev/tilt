@@ -17,6 +17,7 @@ import {
   twoResourceView,
 } from "./testdata"
 import { LogLevel, UIResource, UpdateStatus } from "./types"
+import type { View } from "./webview"
 
 export default {
   title: "New UI/Log View/OverviewResourceSidebar",
@@ -58,10 +59,7 @@ export default {
   },
 }
 
-function OverviewResourceSidebarHarness(props: {
-  name: string
-  view: Proto.webviewView
-}) {
+function OverviewResourceSidebarHarness(props: { name: string; view: View }) {
   let { name, view } = props
   const { isSidebarOpen, setSidebarOpen, setSidebarClosed } =
     useSidebarContext()

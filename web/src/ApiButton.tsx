@@ -550,7 +550,7 @@ function buttonStatusWithInputs(
     // if you modify one value, you get a cookie and then never get to see any default values
     // that get added/changed)
     if (spec.text) {
-      status.text = { value: defined ? value : spec.text?.defaultValue }
+      status.text = { value: defined ? value : spec.text?.defaultValue ?? "" }
     } else if (spec.bool) {
       status.bool = {
         value: (defined ? value : spec.bool.defaultValue) === true,

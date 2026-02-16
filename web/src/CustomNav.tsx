@@ -9,9 +9,10 @@ import {
 } from "./ApiButton"
 import { MenuButtonLabeled, MenuButtonMixin } from "./GlobalNav"
 import { Color, SizeUnit } from "./style-helpers"
+import type { View } from "./webview"
 
 type CustomNavProps = {
-  view: Proto.webviewView
+  view: View
 }
 
 const CustomNavButton = styled(ApiButton)`

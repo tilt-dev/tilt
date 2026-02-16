@@ -1,6 +1,7 @@
 import { render } from "@testing-library/react"
 import React from "react"
 import Features, { FeaturesProvider, Flag, useFeatures } from "./feature"
+import type { UIFeatureFlag } from "./core"
 
 describe("feature", () => {
   it("returns false if the feature does not exist", () => {
@@ -34,7 +35,7 @@ it("memoizes renders", () => {
   })
 
   let flags = [{ name: "foo", value: true }]
-  let tree = (flags: Proto.v1alpha1UIFeatureFlag[]) => {
+  let tree = (flags: UIFeatureFlag[]) => {
     return (
       <FeaturesProvider featureFlags={flags}>
         <FakeEl />

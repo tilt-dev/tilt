@@ -21,7 +21,6 @@ export const ClusterNameDocker = "docker"
  * +k8s:openapi-gen=true
  */
 export interface Cluster {
-  TypeMeta: null
   metadata?: ObjectMeta
   spec?: ClusterSpec
   status?: ClusterStatus
@@ -31,7 +30,6 @@ export interface Cluster {
  * +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
  */
 export interface ClusterList {
-  TypeMeta: null
   metadata?: null
   items: Cluster[]
 }
@@ -203,7 +201,6 @@ export const ClusterImageNeedsBase: ClusterImageNeeds = "base-image"
  * +tilt:starlark-gen=true
  */
 export interface Cmd {
-  TypeMeta: null
   metadata?: ObjectMeta
   spec?: CmdSpec
   status?: CmdStatus
@@ -213,7 +210,6 @@ export interface Cmd {
  * +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
  */
 export interface CmdList {
-  TypeMeta: null
   metadata?: null
   items: Cmd[]
 }
@@ -360,7 +356,6 @@ export interface CmdStateTerminated {
  * +k8s:openapi-gen=true
  */
 export interface CmdImage {
-  TypeMeta: null
   metadata?: ObjectMeta
   spec?: CmdImageSpec
   status?: CmdImageStatus
@@ -370,7 +365,6 @@ export interface CmdImage {
  * +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
  */
 export interface CmdImageList {
-  TypeMeta: null
   metadata?: null
   items: CmdImage[]
 }
@@ -550,7 +544,6 @@ export interface CmdImageStateCompleted {
  * +tilt:starlark-gen=true
  */
 export interface ConfigMap {
-  TypeMeta: null
   metadata?: ObjectMeta
   /**
    * Data contains the configuration data.
@@ -564,7 +557,6 @@ export interface ConfigMap {
  * +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
  */
 export interface ConfigMapList {
-  TypeMeta: null
   metadata?: null
   items: ConfigMap[]
 }
@@ -639,7 +631,6 @@ export const DisableStateError: DisableState = "Error"
  * +k8s:openapi-gen=true
  */
 export interface DockerComposeLogStream {
-  TypeMeta: null
   metadata?: ObjectMeta
   spec?: DockerComposeLogStreamSpec
   status?: DockerComposeLogStreamStatus
@@ -649,7 +640,6 @@ export interface DockerComposeLogStream {
  * +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
  */
 export interface DockerComposeLogStreamList {
-  TypeMeta: null
   metadata?: null
   items: DockerComposeLogStream[]
 }
@@ -689,7 +679,6 @@ export interface DockerComposeLogStreamStatus {
  * +k8s:openapi-gen=true
  */
 export interface DockerComposeService {
-  TypeMeta: null
   metadata?: ObjectMeta
   spec?: DockerComposeServiceSpec
   status?: DockerComposeServiceStatus
@@ -699,7 +688,6 @@ export interface DockerComposeService {
  * +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
  */
 export interface DockerComposeServiceList {
-  TypeMeta: null
   metadata?: null
   items: DockerComposeService[]
 }
@@ -885,7 +873,6 @@ export interface DockerPortBinding {
  * +k8s:openapi-gen=true
  */
 export interface DockerImage {
-  TypeMeta: null
   metadata?: ObjectMeta
   spec?: DockerImageSpec
   status?: DockerImageStatus
@@ -895,7 +882,6 @@ export interface DockerImage {
  * +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
  */
 export interface DockerImageList {
-  TypeMeta: null
   metadata?: null
   items: DockerImage[]
 }
@@ -1141,7 +1127,6 @@ export interface DockerImageStageStatus {
  * +tilt:starlark-gen=true
  */
 export interface Extension {
-  TypeMeta: null
   metadata?: ObjectMeta
   spec?: ExtensionSpec
   status?: ExtensionStatus
@@ -1151,7 +1136,6 @@ export interface Extension {
  * +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
  */
 export interface ExtensionList {
-  TypeMeta: null
   metadata?: null
   items: Extension[]
 }
@@ -1204,7 +1188,6 @@ export interface ExtensionStatus {
  * +tilt:starlark-gen=true
  */
 export interface ExtensionRepo {
-  TypeMeta: null
   metadata?: ObjectMeta
   spec?: ExtensionRepoSpec
   status?: ExtensionRepoStatus
@@ -1214,7 +1197,6 @@ export interface ExtensionRepo {
  * +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
  */
 export interface ExtensionRepoList {
-  TypeMeta: null
   metadata?: null
   items: ExtensionRepo[]
 }
@@ -1293,7 +1275,6 @@ export interface ExtensionRepoStatus {
  * +tilt:starlark-gen=true
  */
 export interface FileWatch {
-  TypeMeta: null
   metadata?: ObjectMeta
   spec?: FileWatchSpec
   status?: FileWatchStatus
@@ -1303,7 +1284,6 @@ export interface FileWatch {
  * +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
  */
 export interface FileWatchList {
-  TypeMeta: null
   metadata?: null
   items: FileWatch[]
 }
@@ -1410,7 +1390,6 @@ export interface FileEvent {
  * +k8s:openapi-gen=true
  */
 export interface ImageMap {
-  TypeMeta: null
   metadata?: ObjectMeta
   spec?: ImageMapSpec
   status?: ImageMapStatus
@@ -1420,7 +1399,6 @@ export interface ImageMap {
  * +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
  */
 export interface ImageMapList {
-  TypeMeta: null
   metadata?: null
   items: ImageMap[]
 }
@@ -1547,7 +1525,6 @@ export const KubernetesApplyTimeoutDefault = 30 * any /* time.Second */
  * +tilt:starlark-gen=true
  */
 export interface KubernetesApply {
-  TypeMeta: null
   metadata?: ObjectMeta
   spec?: KubernetesApplySpec
   status?: KubernetesApplyStatus
@@ -1557,7 +1534,6 @@ export interface KubernetesApply {
  * +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
  */
 export interface KubernetesApplyList {
-  TypeMeta: null
   metadata?: null
   items: KubernetesApply[]
 }
@@ -1812,7 +1788,6 @@ export interface KubernetesApplyCmd {
  * +tilt:starlark-gen=true
  */
 export interface KubernetesDiscovery {
-  TypeMeta: null
   metadata?: ObjectMeta
   spec?: KubernetesDiscoverySpec
   status?: KubernetesDiscoveryStatus
@@ -1822,7 +1797,6 @@ export interface KubernetesDiscovery {
  * +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
  */
 export interface KubernetesDiscoveryList {
-  TypeMeta: null
   metadata?: null
   items: KubernetesDiscovery[]
 }
@@ -2195,7 +2169,6 @@ export interface ContainerStateTerminated {
  * +k8s:openapi-gen=true
  */
 export interface LiveUpdate {
-  TypeMeta: null
   metadata?: ObjectMeta
   spec?: LiveUpdateSpec
   status?: LiveUpdateStatus
@@ -2205,7 +2178,6 @@ export interface LiveUpdate {
  * +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
  */
 export interface LiveUpdateList {
-  TypeMeta: null
   metadata?: null
   items: LiveUpdate[]
 }
@@ -2527,7 +2499,6 @@ export interface ObjectSelector {
  * +k8s:openapi-gen=true
  */
 export interface PodLogStream {
-  TypeMeta: null
   metadata?: ObjectMeta
   spec?: PodLogStreamSpec
   status?: PodLogStreamStatus
@@ -2537,7 +2508,6 @@ export interface PodLogStream {
  * +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
  */
 export interface PodLogStreamList {
-  TypeMeta: null
   metadata?: null
   items: PodLogStream[]
 }
@@ -2637,7 +2607,6 @@ export interface ContainerLogStreamStatus {
  * +k8s:openapi-gen=true
  */
 export interface PortForward {
-  TypeMeta: null
   metadata?: ObjectMeta
   spec?: PortForwardSpec
   status?: PortForwardStatus
@@ -2647,7 +2616,6 @@ export interface PortForward {
  * +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
  */
 export interface PortForwardList {
-  TypeMeta: null
   metadata?: null
   items: PortForward[]
 }
@@ -3032,7 +3000,6 @@ export const RuntimeStatusNone: RuntimeStatus = "none"
  * +k8s:openapi-gen=true
  */
 export interface Session {
-  TypeMeta: null
   metadata?: ObjectMeta
   spec?: SessionSpec
   status?: SessionStatus
@@ -3042,7 +3009,6 @@ export interface Session {
  * +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
  */
 export interface SessionList {
-  TypeMeta: null
   metadata?: null
   items: Session[]
 }
@@ -3271,7 +3237,6 @@ export interface TargetStateDisabled {}
  * +k8s:openapi-gen=true
  */
 export interface Tiltfile {
-  TypeMeta: null
   metadata?: ObjectMeta
   spec?: TiltfileSpec
   status?: TiltfileStatus
@@ -3281,7 +3246,6 @@ export interface Tiltfile {
  * +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
  */
 export interface TiltfileList {
-  TypeMeta: null
   metadata?: null
   items: Tiltfile[]
 }
@@ -3401,7 +3365,6 @@ export interface TiltfileStateTerminated {
  * +k8s:openapi-gen=true
  */
 export interface ToggleButton {
-  TypeMeta: null
   metadata?: ObjectMeta
   spec?: ToggleButtonSpec
   status?: ToggleButtonStatus
@@ -3411,7 +3374,6 @@ export interface ToggleButton {
  * +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
  */
 export interface ToggleButtonList {
-  TypeMeta: null
   metadata?: null
   items: ToggleButton[]
 }
@@ -3567,7 +3529,6 @@ export interface StopOnSpec {
  * +tilt:starlark-gen=true
  */
 export interface UIButton {
-  TypeMeta: null
   metadata?: ObjectMeta
   spec?: UIButtonSpec
   status?: UIButtonStatus
@@ -3577,7 +3538,6 @@ export interface UIButton {
  * +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
  */
 export interface UIButtonList {
-  TypeMeta: null
   metadata?: null
   items: UIButton[]
 }
@@ -3813,7 +3773,6 @@ export interface UIButtonStatus {
  * +k8s:openapi-gen=true
  */
 export interface UIResource {
-  TypeMeta: null
   metadata?: ObjectMeta
   spec?: UIResourceSpec
   status?: UIResourceStatus
@@ -3823,7 +3782,6 @@ export interface UIResource {
  * +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
  */
 export interface UIResourceList {
-  TypeMeta: null
   metadata?: null
   items: UIResource[]
 }
@@ -4233,7 +4191,6 @@ export interface UIResourceCondition {
  * +k8s:openapi-gen=true
  */
 export interface UISession {
-  TypeMeta: null
   metadata?: ObjectMeta
   spec?: UISessionSpec
   status?: UISessionStatus
@@ -4243,7 +4200,6 @@ export interface UISession {
  * +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
  */
 export interface UISessionList {
-  TypeMeta: null
   metadata?: null
   items: UISession[]
 }

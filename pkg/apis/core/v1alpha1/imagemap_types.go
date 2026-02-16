@@ -54,7 +54,7 @@ import (
 //
 // +k8s:openapi-gen=true
 type ImageMap struct {
-	metav1.TypeMeta   `json:",inline"`
+	metav1.TypeMeta   `json:",inline" tstype:"-"`
 	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
 	Spec   ImageMapSpec   `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
@@ -64,7 +64,7 @@ type ImageMap struct {
 // ImageMapList
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type ImageMapList struct {
-	metav1.TypeMeta `json:",inline"`
+	metav1.TypeMeta `json:",inline" tstype:"-"`
 	metav1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
 	Items []ImageMap `json:"items" protobuf:"bytes,2,rep,name=items"`
