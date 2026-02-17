@@ -255,7 +255,7 @@ func TestBuildTreeNode_Basic(t *testing.T) {
 	node := cmd.buildTreeNode("root", resourceByName, childrenOf)
 
 	assert.Equal(t, "root", node.name)
-	assert.Equal(t, "ok", node.updateStatus)
+	assert.Equal(t, v1alpha1.UpdateStatusOK, node.updateStatus)
 	assert.Empty(t, node.children)
 }
 
@@ -566,7 +566,7 @@ func testPrintFullTree(cmd *treeViewCmd, uirs *v1alpha1.UIResourceList, deps res
 	graph := buildDependencyGraph(uirs, deps)
 	config := cmd.prepareFullTree(graph, tiltfilePath)
 
-	if len(config.roots) == 0 {
+	if config.root == nil {
 		cmd.outputText("%s\n", config.emptyMessage)
 		return
 	}
@@ -578,11 +578,7 @@ func testPrintBlockersTree(cmd *treeViewCmd, uirs *v1alpha1.UIResourceList, deps
 	graph := buildDependencyGraph(uirs, deps)
 	config := cmd.prepareBlockersTree(graph, tiltfilePath)
 
-	if config.header != "" {
-		cmd.outputText("%s\n\n", config.header)
-	}
-
-	if len(config.roots) == 0 {
+	if config.root == nil {
 		cmd.outputText("%s\n", config.emptyMessage)
 		return
 	}

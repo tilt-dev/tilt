@@ -129,13 +129,7 @@ func (c *treeViewCmd) run(ctx context.Context, args []string) error {
 		treeConfig = c.prepareFullTree(graph, tiltfilePath)
 	}
 
-	// Print header if any
-	if treeConfig.header != "" {
-		c.outputText("%s\n\n", treeConfig.header)
-	}
-
-	// Handle empty tree
-	if len(treeConfig.roots) == 0 {
+	if treeConfig.root == nil {
 		c.outputText("%s\n", treeConfig.emptyMessage)
 		return nil
 	}
@@ -182,12 +176,11 @@ func buildDependencyGraph(uirs *v1alpha1.UIResourceList, deps resourceDependenci
 
 // treeConfig holds configuration for tree printing
 type treeConfig struct {
-	roots          []*treeNode                     // root nodes to print
+	root           *treeNode                       // root node of the tree (nil if empty)
 	resourceByName map[string]*v1alpha1.UIResource // all resources
 	deps           resourceDependencies            // child -> parents mapping
 	filterDeps     map[string]bool                 // if set, filter "also depends on" to these
-	header         string                          // header to print before tree
-	emptyMessage   string                          // message if no roots
+	emptyMessage   string                          // message if root is nil
 }
 
 // treeNode represents a node in the tree
@@ -253,7 +246,7 @@ func (c *treeViewCmd) prepareFullTree(graph dependencyGraph, tiltfilePath string
 	rootNode.displayName = tiltfileDisplayName
 
 	return treeConfig{
-		roots:          []*treeNode{rootNode},
+		root:           rootNode,
 		resourceByName: graph.resourceByName,
 		deps:           graph.deps,
 		filterDeps:     nil, // show all deps in "also depends on"
@@ -271,7 +264,6 @@ func (c *treeViewCmd) prepareBlockersTree(graph dependencyGraph, tiltfilePath st
 
 	if len(notOK) == 0 {
 		return treeConfig{
-			roots:        nil,
 			emptyMessage: "No blocked resources found. All resources are OK.",
 		}
 	}
@@ -293,7 +285,6 @@ func (c *treeViewCmd) prepareBlockersTree(graph dependencyGraph, tiltfilePath st
 
 	if len(rootBlockers) == 0 {
 		return treeConfig{
-			roots:        nil,
 			emptyMessage: "No root blockers found.",
 		}
 	}
@@ -316,25 +307,28 @@ func (c *treeViewCmd) prepareBlockersTree(graph dependencyGraph, tiltfilePath st
 		c.collectDescendants(rootName, graph.childrenOf, displayedResources)
 	}
 
-	// Build root nodes
-	var roots []*treeNode
+	// Build blocker subtrees as children of a synthetic root
+	var children []*treeNode
 	for _, blockerName := range rootBlockers {
-		root := c.buildTreeNode(blockerName, graph.resourceByName, graph.childrenOf)
-		roots = append(roots, root)
+		child := c.buildTreeNode(blockerName, graph.resourceByName, graph.childrenOf)
+		children = append(children, child)
 	}
 
-	// Build header
-	header := "Blocked resources (root blockers and their dependents):"
+	displayName := "Blocked resources (root blockers and their dependents):"
 	if tiltfilePath != "" {
-		header = fmt.Sprintf("Blocked resources for Tiltfile: %s", tiltfilePath)
+		displayName = fmt.Sprintf("Blocked resources for Tiltfile: %s", tiltfilePath)
+	}
+
+	root := &treeNode{
+		displayName: displayName,
+		children:    children,
 	}
 
 	return treeConfig{
-		roots:          roots,
+		root:           root,
 		resourceByName: graph.resourceByName,
 		deps:           graph.deps,
 		filterDeps:     displayedResources,
-		header:         header,
 		emptyMessage:   "No root blockers found.",
 	}
 }
@@ -383,27 +377,54 @@ type treeStats struct {
 }
 
 type treePrintState struct {
-	expanded  map[string]bool // tracks which nodes have been expanded (for dedupe)
-	stats     treeStats       // stats collected during printing
-	config    treeConfig      // tree configuration
-	seenNodes map[string]bool // tracks unique nodes for stats (not affected by dedupe)
+	expanded map[string]bool // tracks which nodes have been expanded (for dedupe)
+	config   treeConfig      // tree configuration
+}
+
+// collectStats traverses the tree and collects resource statistics.
+// getStats returns resource statistics for the tree, excluding the root container node.
+func (c *treeViewCmd) getStats(root *treeNode) treeStats {
+	var stats treeStats
+	c.walkStats(root, make(map[string]bool), &stats)
+	stats.total--
+	stats.ok-- // root has no status set, which resolves to "ok"
+	return stats
+}
+
+func (c *treeViewCmd) walkStats(node *treeNode, seen map[string]bool, stats *treeStats) {
+	if seen[node.name] {
+		return
+	}
+	seen[node.name] = true
+	stats.total++
+	_, ck := c.getStatusText(node)
+	switch ck {
+	case colorOK:
+		stats.ok++
+	case colorWarning:
+		if node.updateStatus == v1alpha1.UpdateStatusInProgress {
+			stats.building++
+		} else {
+			stats.pending++
+		}
+	case colorError:
+		stats.errors++
+	}
+	for _, child := range node.children {
+		c.walkStats(child, seen, stats)
+	}
 }
 
 func (c *treeViewCmd) printTree(config treeConfig) {
+	stats := c.getStats(config.root)
+
 	state := &treePrintState{
-		expanded:  make(map[string]bool),
-		seenNodes: make(map[string]bool),
-		config:    config,
+		expanded: make(map[string]bool),
+		config:   config,
 	}
+	c.printNode(config.root, "", true, true, "", state)
 
-	for i, root := range config.roots {
-		if i > 0 {
-			c.outputText("\n")
-		}
-		c.printNode(root, "", true, true, "", state)
-	}
-
-	c.printStats(state.stats)
+	c.printStats(stats)
 }
 
 // printNode recursively prints a tree node
@@ -418,29 +439,14 @@ func (c *treeViewCmd) printNode(node *treeNode, prefix string, isLast bool, isRo
 		linePrefix = prefix + treeBranch + " "
 	}
 
-	statusText, colorKind := c.getStatusText(node)
-
-	// Collect stats (only count each unique node once, skip Tiltfile)
-	if !state.seenNodes[node.name] && node.name != tiltfileResource {
-		state.seenNodes[node.name] = true
-		state.stats.total++
-		switch colorKind {
-		case colorOK:
-			state.stats.ok++
-		case colorWarning:
-			if node.updateStatus == v1alpha1.UpdateStatusInProgress {
-				state.stats.building++
-			} else {
-				state.stats.pending++
-			}
-		case colorError:
-			state.stats.errors++
-		}
-	}
-
 	nodeText := node.displayName
-	if statusText != "" {
-		nodeText = node.displayName + " " + statusText
+	var colorKind colorKind
+	if !isRoot {
+		var statusText string
+		statusText, colorKind = c.getStatusText(node)
+		if statusText != "" {
+			nodeText = node.displayName + " " + statusText
+		}
 	}
 
 	alsoText := ""
