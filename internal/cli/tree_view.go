@@ -1,0 +1,625 @@
+package cli
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"sort"
+	"strings"
+	"time"
+
+	"github.com/fatih/color"
+	"github.com/spf13/cobra"
+	"k8s.io/cli-runtime/pkg/genericiooptions"
+
+	"github.com/tilt-dev/tilt/internal/analytics"
+	engineanalytics "github.com/tilt-dev/tilt/internal/engine/analytics"
+	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/model"
+)
+
+// Tree drawing characters
+const (
+	treeBranch = "├──"
+	treeCorner = "└──"
+	treeSpace  = "   "
+	treeIndent = "│  "
+)
+
+const tiltfileResource = "(Tiltfile)"
+
+// treeViewCmd displays resources in a tree structure based on their dependencies.
+type treeViewCmd struct {
+	streams       genericiooptions.IOStreams
+	blockersOnly  bool
+	supportsColor bool
+	dedupe        bool
+}
+
+var _ tiltCmd = &treeViewCmd{}
+
+func newTreeViewCmd(streams genericiooptions.IOStreams) *treeViewCmd {
+	return &treeViewCmd{
+		streams: streams,
+	}
+}
+
+func (c *treeViewCmd) name() model.TiltSubcommand { return "tree-view" }
+
+func (c *treeViewCmd) outputText(format string, a ...interface{}) {
+	_, _ = fmt.Fprintf(c.streams.Out, format, a...)
+}
+
+func (c *treeViewCmd) register() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "tree-view",
+		Short: "Display resources in a tree structure based on dependencies",
+		Long: `Display resources in a tree structure showing their dependency relationships.
+
+By default, shows all resources organized by their resource_deps relationships
+as defined in the Tiltfile. Resources with no dependencies appear as root nodes,
+with resources that depend on them shown as children.
+
+Use --blockers to show only resources that are currently pending/blocked,
+filtered to show the root blockers and their dependents.`,
+		Example: `  # Show full resource dependency tree
+  tilt alpha tree-view
+
+  # Show only blocked resources and their blockers
+  tilt alpha tree-view --blockers`,
+	}
+
+	addConnectServerFlags(cmd)
+	cmd.Flags().BoolVar(&c.blockersOnly, "blockers", false, "Show only blocked resources and their root blockers")
+	cmd.Flags().BoolVar(&c.dedupe, "dedupe", false, "Deduplicate resources with multiple parents (show subtrees only once, with [also depends on: ...] annotations)")
+
+	return cmd
+}
+
+func (c *treeViewCmd) run(ctx context.Context, args []string) error {
+	c.supportsColor = logger.Get(ctx).SupportsColor()
+
+	a := analytics.Get(ctx)
+	cmdTags := engineanalytics.CmdTags(map[string]string{
+		"blockers": fmt.Sprintf("%t", c.blockersOnly),
+	})
+	a.Incr("cmd.tree-view", cmdTags.AsMap())
+	defer a.Flush(time.Second)
+
+	// Fetch UIResources for status information
+	ctrlclient, err := newClient(ctx)
+	if err != nil {
+		return err
+	}
+
+	var uirs v1alpha1.UIResourceList
+	err = ctrlclient.List(ctx, &uirs)
+	if err != nil {
+		return err
+	}
+
+	// Fetch Session to get Tiltfile path
+	var sessions v1alpha1.SessionList
+	if err := ctrlclient.List(ctx, &sessions); err != nil {
+		return err
+	}
+
+	tiltfilePath := ""
+	if len(sessions.Items) > 0 {
+		tiltfilePath = sessions.Items[0].Spec.TiltfilePath
+	}
+
+	// Fetch engine state for static resource dependencies
+	deps := c.fetchResourceDependencies()
+
+	if len(uirs.Items) == 0 {
+		c.outputText("No resources found.\n")
+		return nil
+	}
+
+	// Build dependency graph
+	graph := buildDependencyGraph(&uirs, deps)
+
+	// Prepare tree configuration based on mode
+	var treeConfig treeConfig
+	if c.blockersOnly {
+		treeConfig = c.prepareBlockersTree(graph, tiltfilePath)
+	} else {
+		treeConfig = c.prepareFullTree(graph, tiltfilePath)
+	}
+
+	if treeConfig.root == nil {
+		c.outputText("%s\n", treeConfig.emptyMessage)
+		return nil
+	}
+
+	c.printTree(treeConfig)
+
+	return nil
+}
+
+// dependencyGraph holds the processed dependency relationships
+type dependencyGraph struct {
+	resourceByName map[string]*v1alpha1.UIResource // resource name -> resource
+	deps           resourceDependencies            // child -> parents mapping
+	childrenOf     map[string][]string             // parent -> children mapping
+	hasParent      map[string]bool                 // resources that have at least one parent
+}
+
+// buildDependencyGraph creates a dependency graph from resources and their dependencies
+func buildDependencyGraph(uirs *v1alpha1.UIResourceList, deps resourceDependencies) dependencyGraph {
+	resourceByName := make(map[string]*v1alpha1.UIResource)
+	for i := range uirs.Items {
+		res := &uirs.Items[i]
+		resourceByName[res.Name] = res
+	}
+
+	childrenOf := make(map[string][]string)
+	hasParent := make(map[string]bool)
+	for childName, parents := range deps {
+		for _, parentName := range parents {
+			if _, exists := resourceByName[parentName]; exists {
+				childrenOf[parentName] = append(childrenOf[parentName], childName)
+				hasParent[childName] = true
+			}
+		}
+	}
+
+	return dependencyGraph{
+		resourceByName: resourceByName,
+		deps:           deps,
+		childrenOf:     childrenOf,
+		hasParent:      hasParent,
+	}
+}
+
+// treeConfig holds configuration for tree printing
+type treeConfig struct {
+	root           *treeNode                       // root node of the tree (nil if empty)
+	resourceByName map[string]*v1alpha1.UIResource // all resources
+	deps           resourceDependencies            // child -> parents mapping
+	filterDeps     map[string]bool                 // if set, filter "also depends on" to these
+	emptyMessage   string                          // message if root is nil
+}
+
+// treeNode represents a node in the tree
+type treeNode struct {
+	name          string
+	displayName   string // can differ from name (e.g., Tiltfile path)
+	updateStatus  v1alpha1.UpdateStatus
+	runtimeStatus v1alpha1.RuntimeStatus
+	children      []*treeNode
+}
+
+// resourceDependencies maps resource name -> list of dependencies (resources it depends on)
+type resourceDependencies map[string][]string
+
+// fetchResourceDependencies fetches the static resource dependencies from the engine dump.
+func (c *treeViewCmd) fetchResourceDependencies() resourceDependencies {
+	body := apiGet("dump/engine")
+	defer func() {
+		_ = body.Close()
+	}()
+
+	var engineState struct {
+		ManifestTargets map[string]struct {
+			Manifest struct {
+				ResourceDependencies []string `json:"ResourceDependencies"`
+			} `json:"Manifest"`
+		} `json:"ManifestTargets"`
+	}
+
+	if err := json.NewDecoder(body).Decode(&engineState); err != nil {
+		cmdFail(fmt.Errorf("failed to decode engine state: %v", err))
+	}
+
+	deps := make(resourceDependencies)
+	for name, target := range engineState.ManifestTargets {
+		if len(target.Manifest.ResourceDependencies) > 0 {
+			deps[name] = target.Manifest.ResourceDependencies
+		}
+	}
+
+	return deps
+}
+
+func (c *treeViewCmd) prepareFullTree(graph dependencyGraph, tiltfilePath string) treeConfig {
+	// Find root resources (resources with no dependencies, excluding Tiltfile)
+	var roots []string
+	for name := range graph.resourceByName {
+		if !graph.hasParent[name] && name != tiltfileResource {
+			roots = append(roots, name)
+		}
+	}
+	sort.Strings(roots)
+
+	graph.childrenOf[tiltfileResource] = roots
+
+	tiltfileDisplayName := "Tiltfile"
+	if tiltfilePath != "" {
+		tiltfileDisplayName = "Tiltfile: " + tiltfilePath
+	}
+
+	// Build tree starting from Tiltfile
+	rootNode := c.buildTreeNode(tiltfileResource, graph.resourceByName, graph.childrenOf)
+	rootNode.displayName = tiltfileDisplayName
+
+	return treeConfig{
+		root:           rootNode,
+		resourceByName: graph.resourceByName,
+		deps:           graph.deps,
+		filterDeps:     nil, // show all deps in "also depends on"
+		emptyMessage:   "No resources found.",
+	}
+}
+
+func (c *treeViewCmd) prepareBlockersTree(graph dependencyGraph, tiltfilePath string) treeConfig {
+	notOK := make(map[string]bool)
+	for name, res := range graph.resourceByName {
+		if c.isResourceNotOK(res) {
+			notOK[name] = true
+		}
+	}
+
+	if len(notOK) == 0 {
+		return treeConfig{
+			emptyMessage: "No blocked resources found. All resources are OK.",
+		}
+	}
+
+	// Find root blockers: not-OK resources whose parents are all OK
+	var rootBlockers []string
+	for name := range notOK {
+		hasNotOKParent := false
+		for _, parentName := range graph.deps[name] {
+			if notOK[parentName] {
+				hasNotOKParent = true
+				break
+			}
+		}
+		if !hasNotOKParent {
+			rootBlockers = append(rootBlockers, name)
+		}
+	}
+
+	if len(rootBlockers) == 0 {
+		return treeConfig{
+			emptyMessage: "No root blockers found.",
+		}
+	}
+
+	// Sort root blockers by descendant count (most impactful first), then by name
+	sort.Slice(rootBlockers, func(i, j int) bool {
+		di := make(map[string]bool)
+		c.collectDescendants(rootBlockers[i], graph.childrenOf, di)
+		dj := make(map[string]bool)
+		c.collectDescendants(rootBlockers[j], graph.childrenOf, dj)
+		if len(di) != len(dj) {
+			return len(di) > len(dj)
+		}
+		return rootBlockers[i] < rootBlockers[j]
+	})
+
+	// Collect all displayed resources for filtering "also depends on"
+	displayedResources := make(map[string]bool)
+	for _, rootName := range rootBlockers {
+		c.collectDescendants(rootName, graph.childrenOf, displayedResources)
+	}
+
+	// Build blocker subtrees as children of a synthetic root
+	var children []*treeNode
+	for _, blockerName := range rootBlockers {
+		child := c.buildTreeNode(blockerName, graph.resourceByName, graph.childrenOf)
+		children = append(children, child)
+	}
+
+	displayName := "Blocked resources (root blockers and their dependents):"
+	if tiltfilePath != "" {
+		displayName = fmt.Sprintf("Blocked resources for Tiltfile: %s", tiltfilePath)
+	}
+
+	root := &treeNode{
+		displayName: displayName,
+		children:    children,
+	}
+
+	return treeConfig{
+		root:           root,
+		resourceByName: graph.resourceByName,
+		deps:           graph.deps,
+		filterDeps:     displayedResources,
+		emptyMessage:   "No root blockers found.",
+	}
+}
+
+// isResourceNotOK checks if a resource has a problematic status
+func (c *treeViewCmd) isResourceNotOK(res *v1alpha1.UIResource) bool {
+	update := res.Status.UpdateStatus
+	runtime := res.Status.RuntimeStatus
+
+	updateBad := update != v1alpha1.UpdateStatusOK && update != v1alpha1.UpdateStatusNotApplicable && update != v1alpha1.UpdateStatusNone && update != ""
+	runtimeBad := runtime != v1alpha1.RuntimeStatusOK && runtime != v1alpha1.RuntimeStatusNotApplicable && runtime != v1alpha1.RuntimeStatusNone && runtime != ""
+
+	return updateBad || runtimeBad
+}
+
+// buildTreeNode recursively builds a tree node
+func (c *treeViewCmd) buildTreeNode(
+	name string,
+	resourceByName map[string]*v1alpha1.UIResource,
+	childrenOf map[string][]string,
+) *treeNode {
+	node := &treeNode{name: name, displayName: name}
+
+	if res := resourceByName[name]; res != nil {
+		node.updateStatus = res.Status.UpdateStatus
+		node.runtimeStatus = res.Status.RuntimeStatus
+	}
+
+	// Add children
+	children := childrenOf[name]
+	sort.Strings(children)
+	for _, childName := range children {
+		child := c.buildTreeNode(childName, resourceByName, childrenOf)
+		node.children = append(node.children, child)
+	}
+
+	return node
+}
+
+type treeStats struct {
+	total    int
+	ok       int
+	pending  int
+	building int
+	errors   int
+}
+
+type treePrintState struct {
+	expanded map[string]bool // tracks which nodes have been expanded (for dedupe)
+	config   treeConfig      // tree configuration
+}
+
+// collectStats traverses the tree and collects resource statistics.
+// getStats returns resource statistics for the tree, excluding the root container node.
+func (c *treeViewCmd) getStats(root *treeNode) treeStats {
+	var stats treeStats
+	c.walkStats(root, make(map[string]bool), &stats)
+	stats.total--
+	stats.ok-- // root has no status set, which resolves to "ok"
+	return stats
+}
+
+func (c *treeViewCmd) walkStats(node *treeNode, seen map[string]bool, stats *treeStats) {
+	if seen[node.name] {
+		return
+	}
+	seen[node.name] = true
+	stats.total++
+	_, ck := c.getStatusText(node)
+	switch ck {
+	case colorOK:
+		stats.ok++
+	case colorWarning:
+		if node.updateStatus == v1alpha1.UpdateStatusInProgress {
+			stats.building++
+		} else {
+			stats.pending++
+		}
+	case colorError:
+		stats.errors++
+	}
+	for _, child := range node.children {
+		c.walkStats(child, seen, stats)
+	}
+}
+
+func (c *treeViewCmd) printTree(config treeConfig) {
+	stats := c.getStats(config.root)
+
+	state := &treePrintState{
+		expanded: make(map[string]bool),
+		config:   config,
+	}
+	c.printNode(config.root, "", true, true, "", state)
+
+	c.printStats(stats)
+}
+
+// printNode recursively prints a tree node
+func (c *treeViewCmd) printNode(node *treeNode, prefix string, isLast bool, isRoot bool, parentName string, state *treePrintState) {
+	// Build the line prefix
+	var linePrefix string
+	if isRoot {
+		linePrefix = ""
+	} else if isLast {
+		linePrefix = prefix + treeCorner + " "
+	} else {
+		linePrefix = prefix + treeBranch + " "
+	}
+
+	nodeText := node.displayName
+	var colorKind colorKind
+	if !isRoot {
+		var statusText string
+		statusText, colorKind = c.getStatusText(node)
+		if statusText != "" {
+			nodeText = node.displayName + " " + statusText
+		}
+	}
+
+	alsoText := ""
+	if c.dedupe && state.expanded[node.name] {
+		alsoText = c.buildAlsoDependsOn(node.name, parentName, state.config)
+	}
+
+	c.outputText("%s%s%s\n", linePrefix, c.colorize(nodeText, colorKind), alsoText)
+
+	alreadyExpanded := state.expanded[node.name]
+	shouldShowChildren := !c.dedupe || !alreadyExpanded
+
+	state.expanded[node.name] = true
+
+	var childPrefix string
+	if isRoot {
+		childPrefix = ""
+	} else if isLast {
+		childPrefix = prefix + treeSpace + " "
+	} else {
+		childPrefix = prefix + treeIndent + " "
+	}
+
+	if shouldShowChildren {
+		for i, child := range node.children {
+			isLastChild := i == len(node.children)-1
+			c.printNode(child, childPrefix, isLastChild, false, node.name, state)
+		}
+	}
+}
+
+// buildAlsoDependsOn builds the "[also depends on: ...]" text
+func (c *treeViewCmd) buildAlsoDependsOn(resourceName string, parentName string, config treeConfig) string {
+	allDeps := config.deps[resourceName]
+
+	var deps []string
+	for _, depName := range allDeps {
+		if depName == parentName {
+			continue
+		}
+		if config.filterDeps == nil || config.filterDeps[depName] {
+			deps = append(deps, depName)
+		}
+	}
+
+	if len(deps) == 0 {
+		return ""
+	}
+
+	var depParts []string
+	for _, depName := range deps {
+		var depKind colorKind
+		if res, ok := config.resourceByName[depName]; ok {
+			node := &treeNode{
+				updateStatus:  res.Status.UpdateStatus,
+				runtimeStatus: res.Status.RuntimeStatus,
+			}
+			_, depKind = c.getStatusText(node)
+		}
+		depParts = append(depParts, c.colorize(depName, depKind))
+	}
+
+	bracket := c.colorize("[also depends on: ", colorDependsOn)
+	closeBracket := c.colorize("]", colorDependsOn)
+
+	return " " + bracket + strings.Join(depParts, ", ") + closeBracket
+}
+
+func (c *treeViewCmd) printStats(stats treeStats) {
+	c.outputText("\n---\n")
+
+	var parts []string
+	parts = append(parts, fmt.Sprintf("%d total", stats.total))
+
+	if stats.ok > 0 {
+		parts = append(parts, c.colorize(fmt.Sprintf("%d ok", stats.ok), colorOK))
+	}
+	if stats.building > 0 {
+		parts = append(parts, c.colorize(fmt.Sprintf("%d building", stats.building), colorWarning))
+	}
+	if stats.pending > 0 {
+		parts = append(parts, c.colorize(fmt.Sprintf("%d pending", stats.pending), colorWarning))
+	}
+	if stats.errors > 0 {
+		parts = append(parts, c.colorize(fmt.Sprintf("%d errors", stats.errors), colorError))
+	}
+
+	c.outputText("Resources: %s\n", strings.Join(parts, ", "))
+}
+
+// collectDescendants adds the resource and all descendants to the set
+func (c *treeViewCmd) collectDescendants(name string, childrenOf map[string][]string, set map[string]bool) {
+	if set[name] {
+		return
+	}
+	set[name] = true
+	for _, child := range childrenOf[name] {
+		c.collectDescendants(child, childrenOf, set)
+	}
+}
+
+func (c *treeViewCmd) getStatusText(node *treeNode) (string, colorKind) {
+	update := node.updateStatus
+	runtime := node.runtimeStatus
+
+	// Error states take priority
+	if update == v1alpha1.UpdateStatusError && runtime == v1alpha1.RuntimeStatusError {
+		return "(error)", colorError
+	}
+	if update == v1alpha1.UpdateStatusError {
+		return "(build error)", colorError
+	}
+	if runtime == v1alpha1.RuntimeStatusError {
+		return "(runtime error)", colorError
+	}
+
+	if update == v1alpha1.UpdateStatusInProgress {
+		return "(building)", colorWarning
+	}
+
+	if update == v1alpha1.UpdateStatusPending && runtime == v1alpha1.RuntimeStatusPending {
+		return "(pending)", colorWarning
+	}
+	if update == v1alpha1.UpdateStatusPending {
+		return "(build pending)", colorWarning
+	}
+	if runtime == v1alpha1.RuntimeStatusPending {
+		return "(starting)", colorWarning
+	}
+
+	if runtime == v1alpha1.RuntimeStatusUnknown {
+		return "(unknown)", colorWarning
+	}
+
+	// None states (manual trigger, not started)
+	if update == v1alpha1.UpdateStatusNone || runtime == v1alpha1.RuntimeStatusNone {
+		return "(not started)", colorWarning
+	}
+
+	updateOK := update == v1alpha1.UpdateStatusOK || update == v1alpha1.UpdateStatusNotApplicable || update == ""
+	runtimeOK := runtime == v1alpha1.RuntimeStatusOK || runtime == v1alpha1.RuntimeStatusNotApplicable || runtime == ""
+
+	if updateOK && runtimeOK {
+		return "(ok)", colorOK
+	}
+
+	return "", colorOK
+}
+
+type colorKind int
+
+const (
+	colorOK colorKind = iota
+	colorWarning
+	colorError
+	colorDependsOn
+)
+
+func (c *treeViewCmd) colorize(text string, kind colorKind) string {
+	if !c.supportsColor {
+		return text
+	}
+
+	switch kind {
+	case colorOK:
+		return color.GreenString(text)
+	case colorWarning:
+		return color.YellowString(text)
+	case colorError:
+		return color.RedString(text)
+	case colorDependsOn:
+		return color.CyanString(text)
+	default:
+		return text
+	}
+}
