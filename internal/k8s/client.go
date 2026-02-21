@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"golang.org/x/sync/errgroup"
 	"helm.sh/helm/v3/pkg/kube"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -54,6 +55,7 @@ import (
 //
 // So our health check timeout is a bit longer than we'd like.
 const healthCheckTimeout = 5 * time.Second
+const maxUpsertWorkers = 10
 
 type Namespace string
 type NamespaceOverride string
@@ -357,22 +359,45 @@ func (k *K8sClient) ToRawKubeConfigLoader() clientcmd.ClientConfig {
 }
 
 func (k *K8sClient) Upsert(ctx context.Context, entities []K8sEntity, timeout time.Duration, ssa SSAOptions) ([]K8sEntity, error) {
-	result := make([]K8sEntity, 0, len(entities))
+	g, wgCtx := errgroup.WithContext(ctx)
+	defer wgCtx.Done()
+	g.SetLimit(maxUpsertWorkers)
+	resultsMutex := &sync.Mutex{}
+	results := make([]K8sEntity, 0, len(entities))
 	for _, e := range entities {
-		innerCtx, cancel := context.WithTimeout(ctx, timeout)
-		defer cancel()
-
-		newEntity, err := k.escalatingUpdate(innerCtx, e, ssa)
-		if err != nil {
-			if ctx.Err() == context.DeadlineExceeded {
-				return nil, timeoutError(timeout)
+		entity := e
+		g.Go(func() error {
+			select {
+			case <-wgCtx.Done():
+				// errgroup will cancel the outer context when a task returns an error
+				return wgCtx.Err()
+			default:
 			}
-			return nil, err
-		}
-		result = append(result, newEntity...)
+
+			innerCtx, cancel := context.WithTimeout(wgCtx, timeout)
+			defer cancel()
+
+			newEntity, err := k.escalatingUpdate(innerCtx, entity, ssa)
+			if err != nil {
+				if errors.Is(wgCtx.Err(), context.DeadlineExceeded) {
+					return timeoutError(timeout)
+				}
+				return err
+			}
+
+			select {
+			case <-wgCtx.Done():
+				return wgCtx.Err()
+			default:
+				resultsMutex.Lock()
+				results = append(results, newEntity...)
+				resultsMutex.Unlock()
+				return nil
+			}
+		})
 	}
 
-	return result, nil
+	return results, g.Wait()
 }
 
 func (k *K8sClient) OwnerFetcher() OwnerFetcher {
