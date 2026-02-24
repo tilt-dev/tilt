@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/tilt-dev/tilt/internal/kustomize"
 	"golang.org/x/sync/errgroup"
 	"helm.sh/helm/v3/pkg/kube"
 	v1 "k8s.io/api/core/v1"
@@ -358,7 +359,9 @@ func (k *K8sClient) ToRawKubeConfigLoader() clientcmd.ClientConfig {
 	return k.clientLoader
 }
 
-func (k *K8sClient) Upsert(ctx context.Context, entities []K8sEntity, timeout time.Duration, ssa SSAOptions) ([]K8sEntity, error) {
+// upsertParallel is a helper for Upsert that parallelizes the upsert of entities.
+// The entities MUST be of the same application order, otherwise dependencies may fail to resolve non-deterministically.
+func (k *K8sClient) upsertParallel(ctx context.Context, entities []K8sEntity, timeout time.Duration, ssa SSAOptions) ([]K8sEntity, error) {
 	g, wgCtx := errgroup.WithContext(ctx)
 	defer wgCtx.Done()
 	g.SetLimit(maxUpsertWorkers)
@@ -396,8 +399,40 @@ func (k *K8sClient) Upsert(ctx context.Context, entities []K8sEntity, timeout ti
 			}
 		})
 	}
-
 	return results, g.Wait()
+}
+
+func (k *K8sClient) Upsert(ctx context.Context, entities []K8sEntity, timeout time.Duration, ssa SSAOptions) ([]K8sEntity, error) {
+	results := make([]K8sEntity, 0, len(entities))
+	previousTypeOrder := -1
+	var entityBatch []K8sEntity
+	var batchResults []K8sEntity
+	var err error
+	for _, e := range entities {
+		thisTypeOrder := kustomize.TypeOrders[e.GVK().Kind]
+		if previousTypeOrder != -1 && thisTypeOrder > previousTypeOrder {
+			entityBatch = append(entityBatch, e)
+			logger.Get(ctx).Infof("Upserting batch of %d entities of type %s", len(entityBatch), e.GVK())
+			batchResults, err = k.upsertParallel(ctx, entityBatch, timeout, ssa)
+			if err != nil {
+				return nil, err
+			}
+			results = append(results, batchResults...)
+			entityBatch = []K8sEntity{}
+		} else {
+			entityBatch = append(entityBatch, e)
+		}
+		previousTypeOrder = thisTypeOrder
+	}
+	if len(entityBatch) > 0 {
+		batchResults, err = k.upsertParallel(ctx, entityBatch, timeout, ssa)
+		if err != nil {
+			return nil, err
+		}
+		results = append(results, batchResults...)
+	}
+
+	return results, nil
 }
 
 func (k *K8sClient) OwnerFetcher() OwnerFetcher {
