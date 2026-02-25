@@ -60,9 +60,7 @@ func TestDefault(t *testing.T) {
 
 	f.waitForRunning(tf.Name)
 
-	f.popQueue()
-
-	f.waitForTerminatedAfter(tf.Name, ts)
+	f.popQueueUntilTerminatedAfter(tf.Name, ts)
 
 	f.Delete(&tf)
 
@@ -282,8 +280,7 @@ func TestArgsChangeResetsEnabledResources(t *testing.T) {
 
 	f.MustReconcile(types.NamespacedName{Name: "my-tf"})
 	f.waitForRunning("my-tf")
-	f.popQueue()
-	f.waitForTerminatedAfter("my-tf", ts)
+	f.popQueueUntilTerminatedAfter("my-tf", ts)
 
 	f.requireEnabled(m1, false)
 	f.requireEnabled(m2, true)
@@ -321,8 +318,7 @@ func TestRunWithoutArgsChangePreservesEnabledResources(t *testing.T) {
 	ts := time.Now()
 	f.MustReconcile(types.NamespacedName{Name: "my-tf"})
 	f.waitForRunning("my-tf")
-	f.popQueue()
-	f.waitForTerminatedAfter("my-tf", ts)
+	f.popQueueUntilTerminatedAfter("my-tf", ts)
 
 	f.requireEnabled(m1, true)
 	f.requireEnabled(m2, true)
@@ -361,8 +357,7 @@ func TestTiltfileFailurePreservesEnabledResources(t *testing.T) {
 	ts := time.Now()
 	f.MustReconcile(types.NamespacedName{Name: "my-tf"})
 	f.waitForRunning("my-tf")
-	f.popQueue()
-	f.waitForTerminatedAfter("my-tf", ts)
+	f.popQueueUntilTerminatedAfter("my-tf", ts)
 
 	f.requireEnabled(m1, true)
 	f.requireEnabled(m2, false)
@@ -400,9 +395,7 @@ func TestCancel(t *testing.T) {
 
 	f.MustReconcile(types.NamespacedName{Name: tf.Name})
 
-	f.popQueue()
-
-	f.waitForTerminatedAfter(tf.Name, ts)
+	f.popQueueUntilTerminatedAfter(tf.Name, ts)
 
 	f.Get(types.NamespacedName{Name: tf.Name}, &tf)
 	require.NotNil(t, tf.Status.Terminated)
@@ -447,9 +440,7 @@ func TestCancelClickedBeforeLoad(t *testing.T) {
 
 	f.MustReconcile(nn)
 
-	f.popQueue()
-
-	f.waitForTerminatedAfter(tf.Name, ts)
+	f.popQueueUntilTerminatedAfter(tf.Name, ts)
 
 	f.Get(nn, &tf)
 	require.NotNil(t, tf.Status.Terminated)
@@ -567,32 +558,36 @@ func newFixture(t *testing.T) *fixture {
 	}
 }
 
-// Wait for the next item on the workqueue, then run reconcile on it.
-func (f *fixture) popQueue() {
+// Pop items off the workqueue until the tiltfile has terminated.
+func (f *fixture) popQueueUntilTerminatedAfter(name string, ts time.Time) {
 	f.T().Helper()
 
-	done := make(chan error)
-	go func() {
-		item, _ := f.q.Get()
-		_, err := f.r.Reconcile(f.Context(), item)
-		f.q.Done(item)
-		done <- err
-	}()
+	ctx, cancel := context.WithTimeout(f.Context(), time.Second)
+	defer cancel()
+	for ctx.Err() == nil {
+		done := make(chan error)
+		go func() {
+			item, _ := f.q.Get()
+			_, err := f.r.Reconcile(ctx, item)
+			f.q.Done(item)
+			done <- err
+		}()
 
-	select {
-	case <-time.After(time.Second):
-		f.T().Fatal("timeout waiting for workqueue")
-	case err := <-done:
-		assert.NoError(f.T(), err)
-	}
-}
+		select {
+		case <-ctx.Done():
+			f.T().Fatal("timeout waiting for workqueue")
+		case err := <-done:
+			assert.NoError(f.T(), err)
+		}
 
-func (f *fixture) waitForTerminatedAfter(name string, ts time.Time) {
-	require.Eventually(f.T(), func() bool {
 		var tf v1alpha1.Tiltfile
 		f.MustGet(types.NamespacedName{Name: name}, &tf)
-		return tf.Status.Terminated != nil && tf.Status.Terminated.FinishedAt.After(ts)
-	}, time.Second, time.Millisecond, "waiting for tiltfile to finish running")
+		if tf.Status.Terminated != nil && tf.Status.Terminated.FinishedAt.After(ts) {
+			return
+		}
+	}
+
+	f.T().Fatal("timeout waiting for workqueue")
 }
 
 func (f *fixture) waitForRunning(name string) {
@@ -609,9 +604,7 @@ func (f *fixture) createAndWaitForLoaded(tf *v1alpha1.Tiltfile) {
 
 	f.waitForRunning(tf.Name)
 
-	f.popQueue()
-
-	f.waitForTerminatedAfter(tf.Name, ts)
+	f.popQueueUntilTerminatedAfter(tf.Name, ts)
 
 	f.MustGet(types.NamespacedName{Name: tf.Name}, tf)
 }
