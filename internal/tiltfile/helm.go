@@ -9,7 +9,11 @@ import (
 	"runtime"
 	"strings"
 
+	"go.starlark.net/starlark"
 	"sigs.k8s.io/yaml"
+
+	"github.com/tilt-dev/tilt/internal/tiltfile/starkit"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 // The helm template command outputs predictable yaml with a "Source:" comment,
@@ -88,18 +92,21 @@ func isHelmInstalled() bool {
 	return true
 }
 
-func getHelmVersion() (helmVersion, error) {
+func (s *tiltfileState) getHelmVersion(thread *starlark.Thread) (helmVersion, error) {
 	if !isHelmInstalled() {
 		return unknownHelmVersion, unableToFindHelmErrorMessage()
 	}
 
-	cmd := exec.Command("helm", "version", "--short")
-	out, err := cmd.Output()
+	cmd := model.Cmd{Argv: []string{"helm", "version", "--short"}, Dir: starkit.AbsWorkingDir(thread)}
+	out, err := s.execLocalCmd(thread, cmd, execCommandOptions{
+		logOutput:  false,
+		logCommand: false,
+	})
 	if err != nil {
 		return unknownHelmVersion, err
 	}
 
-	return parseVersion(string(out))
+	return parseVersion(out)
 }
 
 func unableToFindHelmErrorMessage() error {

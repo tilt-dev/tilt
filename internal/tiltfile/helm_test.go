@@ -7,6 +7,7 @@
 package tiltfile
 
 import (
+	"os/exec"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -388,8 +389,12 @@ k8s_yaml(helm('./helm'))
 
 	m := manifests[0]
 	yaml := m.K8sTarget().YAML
-	v, err := getHelmVersion()
-	assert.NoError(t, err)
+	out, execErr := exec.Command("helm", "version", "--short").Output()
+	var v helmVersion
+	if execErr == nil {
+		v, _ = parseVersion(string(out))
+	}
+	assert.NoError(t, execErr)
 	assert.Contains(t, yaml, "kind: ServiceAccount")
 	if v == helmV3_0 || v == helmV3_1andAbove {
 		assert.Contains(t, yaml, "kind: UselessMachine")

@@ -230,7 +230,7 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 
 	deps, err := localSubchartDependenciesFromPath(localPath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("reading subchart deps: %v", err)
 	}
 	for _, d := range deps {
 		err = tiltfile_io.RecordReadPath(thread, tiltfile_io.WatchRecursive, starkit.AbsPath(thread, d))
@@ -239,7 +239,7 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 		}
 	}
 
-	version, err := getHelmVersion()
+	version, err := s.getHelmVersion(thread)
 	if err != nil {
 		return nil, err
 	}
