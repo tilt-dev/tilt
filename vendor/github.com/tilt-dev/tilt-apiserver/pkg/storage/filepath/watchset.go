@@ -33,6 +33,7 @@ func (s *WatchSet) newWatch() *watchNode {
 		s:        s,
 		updateCh: make(chan watch.Event),
 		outCh:    make(chan watch.Event),
+		stopCh:   make(chan struct{}),
 	}
 }
 
@@ -50,6 +51,7 @@ type watchNode struct {
 	id       int
 	updateCh chan watch.Event
 	outCh    chan watch.Event
+	stopCh   chan struct{}
 }
 
 // Start sending events to this watch.
@@ -63,8 +65,14 @@ func (w *watchNode) Start(p storage.SelectionPredicate, initEventFactory func() 
 	}
 
 	go func() {
+		// When writing to outCh, we always check stopCh too
+		// and drop events if we are stopping and the consumer is not ready.
+
 		for _, e := range initEvents {
-			w.outCh <- e
+			select {
+			case <-w.stopCh:
+			case w.outCh <- e:
+			}
 		}
 
 		for e := range w.updateCh {
@@ -76,7 +84,11 @@ func (w *watchNode) Start(p storage.SelectionPredicate, initEventFactory func() 
 			if !ok {
 				continue
 			}
-			w.outCh <- e
+
+			select {
+			case <-w.stopCh:
+			case w.outCh <- e:
+			}
 		}
 		close(w.outCh)
 	}()
@@ -85,6 +97,8 @@ func (w *watchNode) Start(p storage.SelectionPredicate, initEventFactory func() 
 }
 
 func (w *watchNode) Stop() {
+	close(w.stopCh)
+
 	w.s.mu.Lock()
 	delete(w.s.nodes, w.id)
 	w.s.mu.Unlock()

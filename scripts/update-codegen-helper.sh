@@ -52,9 +52,10 @@ VIOLATIONS_FILE=$(mktemp)
 kube::codegen::gen_openapi \
   --output-pkg github.com/tilt-dev/tilt/pkg/openapi \
   --output-dir ./pkg/openapi \
+  --output-model-name-file zz_generated.model_name.go \
   --report-filename "${VIOLATIONS_ORIG_FILE}" \
   --update-report \
-  --boilerplate "${SCRIPT_ROOT}"/hack/boilerplate.go.txt \
+  --boilerplate "${SCRIPT_ROOT}"/hack/openapi-boilerplate.go.txt \
   ./pkg/apis
 
 # add a sentinel line at the end of the file.
@@ -78,6 +79,7 @@ FIXUPS=(
 ./pkg/openapi
 ./pkg/openapi/zz_generated.openapi.go
 ./pkg/apis/core/v1alpha1/zz_generated.conversion.go
+./pkg/apis/core/v1alpha1/zz_generated.model_name.go
 ./pkg/apis/core/v1alpha1/generated.proto
 ./pkg/apis/core/v1alpha1/zz_generated.defaults.go
 ./pkg/apis/core/v1alpha1/generated.pb.go
