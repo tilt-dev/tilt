@@ -19,7 +19,7 @@ package override
 import "github.com/compose-spec/compose-go/v2/tree"
 
 func ExtendService(base, override map[string]any) (map[string]any, error) {
-	yaml, err := mergeYaml(base, override, tree.NewPath("services.x"))
+	yaml, err := MergeYaml(base, override, tree.NewPath("services.x"))
 	if err != nil {
 		return nil, err
 	}

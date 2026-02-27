@@ -95,7 +95,7 @@ func (m *MappingWithEquals) DecodeMapstructure(value interface{}) error {
 		mapping := make(MappingWithEquals, len(v))
 		for _, s := range v {
 			k, e, ok := strings.Cut(fmt.Sprint(s), "=")
-			if unicode.IsSpace(rune(k[len(k)-1])) {
+			if k != "" && unicode.IsSpace(rune(k[len(k)-1])) {
 				return fmt.Errorf("environment variable %s is declared with a trailing space", k)
 			}
 			if !ok {

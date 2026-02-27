@@ -20,14 +20,13 @@ import (
 	"cmp"
 	"fmt"
 	"slices"
-	"strings"
 
 	"github.com/compose-spec/compose-go/v2/tree"
 )
 
 // Merge applies overrides to a config model
 func Merge(right, left map[string]any) (map[string]any, error) {
-	merged, err := mergeYaml(right, left, tree.NewPath())
+	merged, err := MergeYaml(right, left, tree.NewPath())
 	if err != nil {
 		return nil, err
 	}
@@ -62,15 +61,17 @@ func init() {
 	mergeSpecials["services.*.extra_hosts"] = mergeExtraHosts
 	mergeSpecials["services.*.healthcheck.test"] = override
 	mergeSpecials["services.*.labels"] = mergeToSequence
+	mergeSpecials["services.*.volumes.*.volume.labels"] = mergeToSequence
 	mergeSpecials["services.*.logging"] = mergeLogging
+	mergeSpecials["services.*.models"] = mergeModels
 	mergeSpecials["services.*.networks"] = mergeNetworks
 	mergeSpecials["services.*.sysctls"] = mergeToSequence
 	mergeSpecials["services.*.tmpfs"] = mergeToSequence
 	mergeSpecials["services.*.ulimits.*"] = mergeUlimit
 }
 
-// mergeYaml merges map[string]any yaml trees handling special rules
-func mergeYaml(e any, o any, p tree.Path) (any, error) {
+// MergeYaml merges map[string]any yaml trees handling special rules
+func MergeYaml(e any, o any, p tree.Path) (any, error) {
 	for pattern, merger := range mergeSpecials {
 		if p.Matches(pattern) {
 			merged, err := merger(e, o, p)
@@ -104,12 +105,12 @@ func mergeYaml(e any, o any, p tree.Path) (any, error) {
 func mergeMappings(mapping map[string]any, other map[string]any, p tree.Path) (map[string]any, error) {
 	for k, v := range other {
 		e, ok := mapping[k]
-		if !ok || strings.HasPrefix(k, "x-") {
+		if !ok {
 			mapping[k] = v
 			continue
 		}
 		next := p.Next(k)
-		merged, err := mergeYaml(e, v, next)
+		merged, err := MergeYaml(e, v, next)
 		if err != nil {
 			return nil, err
 		}
@@ -155,6 +156,12 @@ func mergeDependsOn(c any, o any, path tree.Path) (any, error) {
 		"condition": "service_started",
 		"required":  true,
 	})
+	return mergeMappings(right, left, path)
+}
+
+func mergeModels(c any, o any, path tree.Path) (any, error) {
+	right := convertIntoMapping(c, nil)
+	left := convertIntoMapping(o, nil)
 	return mergeMappings(right, left, path)
 }
 
@@ -227,9 +234,17 @@ func mergeUlimit(_ any, o any, p tree.Path) (any, error) {
 
 func mergeIPAMConfig(c any, o any, path tree.Path) (any, error) {
 	var ipamConfigs []any
-	for _, original := range c.([]any) {
+	configs, ok := c.([]any)
+	if !ok {
+		return o, fmt.Errorf("%s: unexpected type %T", path, c)
+	}
+	overrides, ok := o.([]any)
+	if !ok {
+		return o, fmt.Errorf("%s: unexpected type %T", path, c)
+	}
+	for _, original := range configs {
 		right := convertIntoMapping(original, nil)
-		for _, override := range o.([]any) {
+		for _, override := range overrides {
 			left := convertIntoMapping(override, nil)
 			if left["subnet"] != right["subnet"] {
 				// check if left is already in ipamConfigs, add it if not and continue with the next config

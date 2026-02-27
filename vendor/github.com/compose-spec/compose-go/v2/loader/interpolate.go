@@ -36,6 +36,8 @@ var interpolateTypeCastMapping = map[tree.Path]interp.Cast{
 	servicePath("cpus"):                                            toFloat32,
 	servicePath("cpu_shares"):                                      toInt64,
 	servicePath("init"):                                            toBoolean,
+	servicePath("depends_on", tree.PathMatchAll, "required"):       toBoolean,
+	servicePath("depends_on", tree.PathMatchAll, "restart"):        toBoolean,
 	servicePath("deploy", "replicas"):                              toInt,
 	servicePath("deploy", "update_config", "parallelism"):          toInt,
 	servicePath("deploy", "update_config", "max_failure_ratio"):    toFloat,

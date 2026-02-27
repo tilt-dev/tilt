@@ -25,7 +25,7 @@ import (
 	"strings"
 
 	"github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 
 	"github.com/compose-spec/compose-go/v2/consts"
 	"github.com/compose-spec/compose-go/v2/dotenv"
@@ -81,6 +81,8 @@ type ProjectOptions struct {
 	// Callbacks to retrieve metadata information during parse defined before
 	// creating the project
 	Listeners []loader.Listener
+	// ResourceLoaders manages support for remote resources
+	ResourceLoaders []loader.ResourceLoader
 }
 
 type ProjectOptionsFn func(*ProjectOptions) error
@@ -347,8 +349,9 @@ func WithResolvedPaths(resolve bool) ProjectOptionsFn {
 // WithResourceLoader register support for ResourceLoader to manage remote resources
 func WithResourceLoader(r loader.ResourceLoader) ProjectOptionsFn {
 	return func(o *ProjectOptions) error {
+		o.ResourceLoaders = append(o.ResourceLoaders, r)
 		o.loadOptions = append(o.loadOptions, func(options *loader.Options) {
-			options.ResourceLoaders = append(options.ResourceLoaders, r)
+			options.ResourceLoaders = o.ResourceLoaders
 		})
 		return nil
 	}
@@ -390,8 +393,14 @@ func (o *ProjectOptions) GetWorkingDir() (string, error) {
 	if o.WorkingDir != "" {
 		return filepath.Abs(o.WorkingDir)
 	}
+PATH:
 	for _, path := range o.ConfigPaths {
 		if path != "-" {
+			for _, l := range o.ResourceLoaders {
+				if l.Accept(path) {
+					break PATH
+				}
+			}
 			absPath, err := filepath.Abs(path)
 			if err != nil {
 				return "", err
