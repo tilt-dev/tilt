@@ -353,8 +353,8 @@ func (r *Reconciler) runYAMLDeploy(ctx context.Context, spec v1alpha1.Kubernetes
 
 	deployed, err := r.k8sClient.Upsert(ctx, newK8sEntities, timeout, k8s.SSAOptions{
 		Enabled:      spec.ServerSideApply,
-		Force:        spec.ForceConflicts,
-		FieldManager: spec.FieldManager,
+		Force:        spec.ServerSideApply,
+		FieldManager: "tilt",
 	})
 	if err != nil {
 		r.printAppliedReport(ctx, "Tried to apply objects to cluster:", newK8sEntities)

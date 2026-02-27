@@ -1639,19 +1639,6 @@ export interface KubernetesApplySpec {
    * +optional
    */
   serverSideApply?: boolean
-  /**
-   * ForceConflicts enables server-side apply to force changes against conflicts.
-   * Only applies when ServerSideApply is true. If there are conflicting fields,
-   * server-side apply will force the changes rather than returning an error.
-   * +optional
-   */
-  forceConflicts?: boolean
-  /**
-   * FieldManager specifies the name of the manager tracking field ownership for server-side apply.
-   * Only applies when ServerSideApply is true. If not specified, defaults to "tilt".
-   * +optional
-   */
-  fieldManager?: string
 }
 /**
  * KubernetesApplyStatus defines the observed state of KubernetesApply
