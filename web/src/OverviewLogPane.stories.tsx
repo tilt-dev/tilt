@@ -142,6 +142,22 @@ export const StyledLines = () => {
   )
 }
 
+export const UrlWithAnsiInPort = () => {
+  let logStore = new LogStore()
+  let lines = [
+    "Standalone URL with ANSI in port:\n",
+    "http://localhost:\u001b[1m3000\u001b[22m/\u001b[0m\n",
+    "\nWith surrounding text:\n",
+    "Visit http://admin.localhost:\u001b[1m3000\u001b[22m/\u001b[0m for more\n",
+  ]
+  appendLines(logStore, "fe", ...lines)
+  return (
+    <LogStoreProvider value={logStore}>
+      <OverviewLogPane manifestName="fe" filterSet={defaultFilter} />
+    </LogStoreProvider>
+  )
+}
+
 export const BuildEventLines = () => {
   let logStore = new LogStore()
   let lines = [

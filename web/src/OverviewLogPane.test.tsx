@@ -21,6 +21,7 @@ import {
   ThreeLines,
   ThreeLinesAllLog,
   StarredResourcesLog,
+  UrlWithAnsiInPort,
 } from "./OverviewLogPane.stories"
 import { newFakeRaf, RafProvider, SyncRafProvider, TestRafContext } from "./raf"
 import { renderTestComponent } from "./test-helpers"
@@ -60,6 +61,16 @@ describe("OverviewLogPane", () => {
     customRender(<StyledLines />)
     expect(screen.getAllByRole("link")).toHaveLength(3)
     expect(screen.queryByRole("button")).toBeNull()
+  })
+
+  it("linkifies URLs with ANSI in port (UrlWithAnsiInPort story)", () => {
+    const { container } = customRender(<UrlWithAnsiInPort />)
+    expect(
+      container.querySelector('a[href="http://localhost:3000/"]')
+    ).toBeTruthy()
+    expect(
+      container.querySelector('a[href="http://admin.localhost:3000/"]')
+    ).toBeTruthy()
   })
 
   it("properly escapes ansi chars", () => {
