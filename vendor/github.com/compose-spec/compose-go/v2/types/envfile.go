@@ -16,32 +16,8 @@
 
 package types
 
-import (
-	"encoding/json"
-)
-
 type EnvFile struct {
 	Path     string `yaml:"path,omitempty" json:"path,omitempty"`
-	Required bool   `yaml:"required" json:"required"`
+	Required OptOut `yaml:"required,omitempty" json:"required,omitzero"`
 	Format   string `yaml:"format,omitempty" json:"format,omitempty"`
-}
-
-// MarshalYAML makes EnvFile implement yaml.Marshaler
-func (e EnvFile) MarshalYAML() (interface{}, error) {
-	if e.Required {
-		return e.Path, nil
-	}
-	return map[string]any{
-		"path":     e.Path,
-		"required": e.Required,
-	}, nil
-}
-
-// MarshalJSON makes EnvFile implement json.Marshaler
-func (e *EnvFile) MarshalJSON() ([]byte, error) {
-	if e.Required {
-		return json.Marshal(e.Path)
-	}
-	// Pass as a value to avoid re-entering this method and use the default implementation
-	return json.Marshal(*e)
 }

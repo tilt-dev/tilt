@@ -103,6 +103,7 @@ type ServiceConfig struct {
 	MemSwapLimit    UnitBytes                        `yaml:"memswap_limit,omitempty" json:"memswap_limit,omitempty"`
 	MemSwappiness   UnitBytes                        `yaml:"mem_swappiness,omitempty" json:"mem_swappiness,omitempty"`
 	MacAddress      string                           `yaml:"mac_address,omitempty" json:"mac_address,omitempty"`
+	Models          map[string]*ServiceModelConfig   `yaml:"models,omitempty" json:"models,omitempty"`
 	Net             string                           `yaml:"net,omitempty" json:"net,omitempty"`
 	NetworkMode     string                           `yaml:"network_mode,omitempty" json:"network_mode,omitempty"`
 	Networks        map[string]*ServiceNetworkConfig `yaml:"networks,omitempty" json:"networks,omitempty"`
@@ -129,6 +130,7 @@ type ServiceConfig struct {
 	Tmpfs           StringList                       `yaml:"tmpfs,omitempty" json:"tmpfs,omitempty"`
 	Tty             bool                             `yaml:"tty,omitempty" json:"tty,omitempty"`
 	Ulimits         map[string]*UlimitsConfig        `yaml:"ulimits,omitempty" json:"ulimits,omitempty"`
+	UseAPISocket    bool                             `yaml:"use_api_socket,omitempty" json:"use_api_socket,omitempty"`
 	User            string                           `yaml:"user,omitempty" json:"user,omitempty"`
 	UserNSMode      string                           `yaml:"userns_mode,omitempty" json:"userns_mode,omitempty"`
 	Uts             string                           `yaml:"uts,omitempty" json:"uts,omitempty"`
@@ -143,9 +145,9 @@ type ServiceConfig struct {
 }
 
 type ServiceProviderConfig struct {
-	Type       string     `yaml:"type,omitempty" json:"driver,omitempty"`
-	Options    Options    `yaml:"options,omitempty" json:"options,omitempty"`
-	Extensions Extensions `yaml:"#extensions,inline,omitempty" json:"-"`
+	Type       string       `yaml:"type,omitempty" json:"type,omitempty"`
+	Options    MultiOptions `yaml:"options,omitempty" json:"options,omitempty"`
+	Extensions Extensions   `yaml:"#extensions,inline,omitempty" json:"-"`
 }
 
 // MarshalYAML makes ServiceConfig implement yaml.Marshaller
@@ -300,34 +302,6 @@ func (s ServiceConfig) GetPullPolicy() (string, time.Duration, error) {
 	}
 }
 
-// BuildConfig is a type for build
-type BuildConfig struct {
-	Context            string                    `yaml:"context,omitempty" json:"context,omitempty"`
-	Dockerfile         string                    `yaml:"dockerfile,omitempty" json:"dockerfile,omitempty"`
-	DockerfileInline   string                    `yaml:"dockerfile_inline,omitempty" json:"dockerfile_inline,omitempty"`
-	Entitlements       []string                  `yaml:"entitlements,omitempty" json:"entitlements,omitempty"`
-	Args               MappingWithEquals         `yaml:"args,omitempty" json:"args,omitempty"`
-	SSH                SSHConfig                 `yaml:"ssh,omitempty" json:"ssh,omitempty"`
-	Labels             Labels                    `yaml:"labels,omitempty" json:"labels,omitempty"`
-	CacheFrom          StringList                `yaml:"cache_from,omitempty" json:"cache_from,omitempty"`
-	CacheTo            StringList                `yaml:"cache_to,omitempty" json:"cache_to,omitempty"`
-	NoCache            bool                      `yaml:"no_cache,omitempty" json:"no_cache,omitempty"`
-	AdditionalContexts Mapping                   `yaml:"additional_contexts,omitempty" json:"additional_contexts,omitempty"`
-	Pull               bool                      `yaml:"pull,omitempty" json:"pull,omitempty"`
-	ExtraHosts         HostsList                 `yaml:"extra_hosts,omitempty" json:"extra_hosts,omitempty"`
-	Isolation          string                    `yaml:"isolation,omitempty" json:"isolation,omitempty"`
-	Network            string                    `yaml:"network,omitempty" json:"network,omitempty"`
-	Target             string                    `yaml:"target,omitempty" json:"target,omitempty"`
-	Secrets            []ServiceSecretConfig     `yaml:"secrets,omitempty" json:"secrets,omitempty"`
-	ShmSize            UnitBytes                 `yaml:"shm_size,omitempty" json:"shm_size,omitempty"`
-	Tags               StringList                `yaml:"tags,omitempty" json:"tags,omitempty"`
-	Ulimits            map[string]*UlimitsConfig `yaml:"ulimits,omitempty" json:"ulimits,omitempty"`
-	Platforms          StringList                `yaml:"platforms,omitempty" json:"platforms,omitempty"`
-	Privileged         bool                      `yaml:"privileged,omitempty" json:"privileged,omitempty"`
-
-	Extensions Extensions `yaml:"#extensions,inline,omitempty" json:"-"`
-}
-
 // BlkioConfig define blkio config
 type BlkioConfig struct {
 	Weight          uint16           `yaml:"weight,omitempty" json:"weight,omitempty"`
@@ -470,14 +444,15 @@ type PlacementPreferences struct {
 
 // ServiceNetworkConfig is the network configuration for a service
 type ServiceNetworkConfig struct {
-	Priority        int      `yaml:"priority,omitempty" json:"priority,omitempty"`
-	GatewayPriority int      `yaml:"gw_priority,omitempty" json:"gw_priority,omitempty"`
 	Aliases         []string `yaml:"aliases,omitempty" json:"aliases,omitempty"`
+	DriverOpts      Options  `yaml:"driver_opts,omitempty" json:"driver_opts,omitempty"`
+	GatewayPriority int      `yaml:"gw_priority,omitempty" json:"gw_priority,omitempty"`
+	InterfaceName   string   `yaml:"interface_name,omitempty" json:"interface_name,omitempty"`
 	Ipv4Address     string   `yaml:"ipv4_address,omitempty" json:"ipv4_address,omitempty"`
 	Ipv6Address     string   `yaml:"ipv6_address,omitempty" json:"ipv6_address,omitempty"`
 	LinkLocalIPs    []string `yaml:"link_local_ips,omitempty" json:"link_local_ips,omitempty"`
 	MacAddress      string   `yaml:"mac_address,omitempty" json:"mac_address,omitempty"`
-	DriverOpts      Options  `yaml:"driver_opts,omitempty" json:"driver_opts,omitempty"`
+	Priority        int      `yaml:"priority,omitempty" json:"priority,omitempty"`
 
 	Extensions Extensions `yaml:"#extensions,inline,omitempty" json:"-"`
 }
@@ -541,6 +516,7 @@ type ServiceVolumeConfig struct {
 	Bind        *ServiceVolumeBind   `yaml:"bind,omitempty" json:"bind,omitempty"`
 	Volume      *ServiceVolumeVolume `yaml:"volume,omitempty" json:"volume,omitempty"`
 	Tmpfs       *ServiceVolumeTmpfs  `yaml:"tmpfs,omitempty" json:"tmpfs,omitempty"`
+	Image       *ServiceVolumeImage  `yaml:"image,omitempty" json:"image,omitempty"`
 
 	Extensions Extensions `yaml:"#extensions,inline,omitempty" json:"-"`
 }
@@ -575,6 +551,8 @@ const (
 	VolumeTypeNamedPipe = "npipe"
 	// VolumeTypeCluster is the type for mounting container storage interface (CSI) volumes
 	VolumeTypeCluster = "cluster"
+	// VolumeTypeImage is the tpe for mounting an image
+	VolumeTypeImage = "image"
 
 	// SElinuxShared share the volume content
 	SElinuxShared = "z"
@@ -586,10 +564,18 @@ const (
 type ServiceVolumeBind struct {
 	SELinux        string `yaml:"selinux,omitempty" json:"selinux,omitempty"`
 	Propagation    string `yaml:"propagation,omitempty" json:"propagation,omitempty"`
-	CreateHostPath bool   `yaml:"create_host_path,omitempty" json:"create_host_path,omitempty"`
+	CreateHostPath OptOut `yaml:"create_host_path,omitempty" json:"create_host_path,omitzero"`
 	Recursive      string `yaml:"recursive,omitempty" json:"recursive,omitempty"`
 
 	Extensions Extensions `yaml:"#extensions,inline,omitempty" json:"-"`
+}
+
+// OptOut is a boolean which default value is 'true'
+type OptOut bool
+
+func (o OptOut) IsZero() bool {
+	// Attribute can be omitted if value is true
+	return bool(o)
 }
 
 // SELinux represents the SELinux re-labeling options.
@@ -618,8 +604,9 @@ const (
 
 // ServiceVolumeVolume are options for a service volume of type volume
 type ServiceVolumeVolume struct {
-	NoCopy  bool   `yaml:"nocopy,omitempty" json:"nocopy,omitempty"`
-	Subpath string `yaml:"subpath,omitempty" json:"subpath,omitempty"`
+	Labels  Mapping `yaml:"labels,omitempty" json:"labels,omitempty"`
+	NoCopy  bool    `yaml:"nocopy,omitempty" json:"nocopy,omitempty"`
+	Subpath string  `yaml:"subpath,omitempty" json:"subpath,omitempty"`
 
 	Extensions Extensions `yaml:"#extensions,inline,omitempty" json:"-"`
 }
@@ -630,6 +617,11 @@ type ServiceVolumeTmpfs struct {
 
 	Mode uint32 `yaml:"mode,omitempty" json:"mode,omitempty"`
 
+	Extensions Extensions `yaml:"#extensions,inline,omitempty" json:"-"`
+}
+
+type ServiceVolumeImage struct {
+	SubPath    string     `yaml:"subpath,omitempty" json:"subpath,omitempty"`
 	Extensions Extensions `yaml:"#extensions,inline,omitempty" json:"-"`
 }
 

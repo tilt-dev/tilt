@@ -101,6 +101,8 @@ type Secrets map[string]SecretConfig
 // Configs is a map of ConfigObjConfig
 type Configs map[string]ConfigObjConfig
 
+type Models map[string]ModelConfig
+
 // Extensions is a map of custom extension
 type Extensions map[string]any
 

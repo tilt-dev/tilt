@@ -29,13 +29,13 @@ func transformService(data any, p tree.Path, ignoreParseError bool) (any, error)
 	}
 }
 
-func transformServiceNetworks(data any, _ tree.Path, _ bool) (any, error) {
+func transformStringSliceToMap(data any, _ tree.Path, _ bool) (any, error) {
 	if slice, ok := data.([]any); ok {
-		networks := make(map[string]any, len(slice))
+		mapping := make(map[string]any, len(slice))
 		for _, net := range slice {
-			networks[net.(string)] = nil
+			mapping[net.(string)] = nil
 		}
-		return networks, nil
+		return mapping, nil
 	}
 	return data, nil
 }

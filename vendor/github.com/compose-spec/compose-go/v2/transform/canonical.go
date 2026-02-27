@@ -17,23 +17,29 @@
 package transform
 
 import (
+	"fmt"
+
 	"github.com/compose-spec/compose-go/v2/tree"
 )
 
-type transformFunc func(data any, p tree.Path, ignoreParseError bool) (any, error)
+// Func is a function that can transform data at a specific path
+type Func func(data any, p tree.Path, ignoreParseError bool) (any, error)
 
-var transformers = map[tree.Path]transformFunc{}
+var transformers = map[tree.Path]Func{}
 
 func init() {
 	transformers["services.*"] = transformService
 	transformers["services.*.build.secrets.*"] = transformFileMount
+	transformers["services.*.build.provenance"] = transformStringOrX
+	transformers["services.*.build.sbom"] = transformStringOrX
 	transformers["services.*.build.additional_contexts"] = transformKeyValue
 	transformers["services.*.depends_on"] = transformDependsOn
 	transformers["services.*.env_file"] = transformEnvFile
 	transformers["services.*.label_file"] = transformStringOrList
 	transformers["services.*.extends"] = transformExtends
 	transformers["services.*.gpus"] = transformGpus
-	transformers["services.*.networks"] = transformServiceNetworks
+	transformers["services.*.networks"] = transformStringSliceToMap
+	transformers["services.*.models"] = transformStringSliceToMap
 	transformers["services.*.volumes.*"] = transformVolumeMount
 	transformers["services.*.dns"] = transformStringOrList
 	transformers["services.*.devices.*"] = transformDeviceMapping
@@ -119,4 +125,13 @@ func transformMapping(v map[string]any, p tree.Path, ignoreParseError bool) (map
 		v[k] = t
 	}
 	return v, nil
+}
+
+func transformStringOrX(data any, _ tree.Path, _ bool) (any, error) {
+	switch v := data.(type) {
+	case string:
+		return v, nil
+	default:
+		return fmt.Sprint(v), nil
+	}
 }

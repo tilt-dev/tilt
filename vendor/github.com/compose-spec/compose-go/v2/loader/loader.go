@@ -43,7 +43,7 @@ import (
 	"github.com/compose-spec/compose-go/v2/validation"
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 // Options supported by Load
@@ -260,11 +260,13 @@ func WithProfiles(profiles []string) func(*Options) {
 // PostProcessor is used to tweak compose model based on metadata extracted during yaml Unmarshal phase
 // that hardly can be implemented using go-yaml and mapstructure
 type PostProcessor interface {
-	yaml.Unmarshaler
-
 	// Apply changes to compose model based on recorder metadata
 	Apply(interface{}) error
 }
+
+type NoopPostProcessor struct{}
+
+func (NoopPostProcessor) Apply(interface{}) error { return nil }
 
 // LoadConfigFiles ingests config files with ResourceLoader and returns config details with paths to local copies
 func LoadConfigFiles(ctx context.Context, configFiles []string, workingDir string, options ...func(*Options)) (*types.ConfigDetails, error) {
@@ -320,17 +322,17 @@ func LoadConfigFiles(ctx context.Context, configFiles []string, workingDir strin
 
 // LoadWithContext reads a ConfigDetails and returns a fully loaded configuration as a compose-go Project
 func LoadWithContext(ctx context.Context, configDetails types.ConfigDetails, options ...func(*Options)) (*types.Project, error) {
-	opts := toOptions(&configDetails, options)
+	opts := ToOptions(&configDetails, options)
 	dict, err := loadModelWithContext(ctx, &configDetails, opts)
 	if err != nil {
 		return nil, err
 	}
-	return modelToProject(dict, opts, configDetails)
+	return ModelToProject(dict, opts, configDetails)
 }
 
 // LoadModelWithContext reads a ConfigDetails and returns a fully loaded configuration as a yaml dictionary
 func LoadModelWithContext(ctx context.Context, configDetails types.ConfigDetails, options ...func(*Options)) (map[string]any, error) {
-	opts := toOptions(&configDetails, options)
+	opts := ToOptions(&configDetails, options)
 	return loadModelWithContext(ctx, &configDetails, opts)
 }
 
@@ -348,7 +350,7 @@ func loadModelWithContext(ctx context.Context, configDetails *types.ConfigDetail
 	return load(ctx, *configDetails, opts, nil)
 }
 
-func toOptions(configDetails *types.ConfigDetails, options []func(*Options)) *Options {
+func ToOptions(configDetails *types.ConfigDetails, options []func(*Options)) *Options {
 	opts := &Options{
 		Interpolate: &interp.Options{
 			Substitute:      template.Substitute,
@@ -425,7 +427,7 @@ func loadYamlFile(ctx context.Context,
 		file.Content = content
 	}
 
-	processRawYaml := func(raw interface{}, processors ...PostProcessor) error {
+	processRawYaml := func(raw interface{}, processor PostProcessor) error {
 		converted, err := convertToStringKeysRecursive(raw, "")
 		if err != nil {
 			return err
@@ -445,21 +447,19 @@ func loadYamlFile(ctx context.Context,
 		fixEmptyNotNull(cfg)
 
 		if !opts.SkipExtends {
-			err = ApplyExtends(ctx, cfg, opts, ct, processors...)
+			err = ApplyExtends(ctx, cfg, opts, ct, processor)
 			if err != nil {
 				return err
 			}
 		}
 
-		for _, processor := range processors {
-			if err := processor.Apply(dict); err != nil {
-				return err
-			}
+		if err := processor.Apply(dict); err != nil {
+			return err
 		}
 
 		if !opts.SkipInclude {
 			included = append(included, file.Filename)
-			err = ApplyInclude(ctx, workingDir, environment, cfg, opts, included)
+			err = ApplyInclude(ctx, workingDir, environment, cfg, opts, included, processor)
 			if err != nil {
 				return err
 			}
@@ -509,7 +509,7 @@ func loadYamlFile(ctx context.Context,
 				break
 			}
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, fmt.Errorf("failed to parse %s: %w", file.Filename, err)
 			}
 			processor = reset
 			if err := processRawYaml(raw, processor); err != nil {
@@ -517,7 +517,7 @@ func loadYamlFile(ctx context.Context,
 			}
 		}
 	} else {
-		if err := processRawYaml(file.Config); err != nil {
+		if err := processRawYaml(file.Config, NoopPostProcessor{}); err != nil {
 			return nil, nil, err
 		}
 	}
@@ -557,8 +557,8 @@ func load(ctx context.Context, configDetails types.ConfigDetails, opts *Options,
 	return dict, nil
 }
 
-// modelToProject binds a canonical yaml dict into compose-go structs
-func modelToProject(dict map[string]interface{}, opts *Options, configDetails types.ConfigDetails) (*types.Project, error) {
+// ModelToProject binds a canonical yaml dict into compose-go structs
+func ModelToProject(dict map[string]interface{}, opts *Options, configDetails types.ConfigDetails) (*types.Project, error) {
 	project := &types.Project{
 		Name:        opts.projectName,
 		WorkingDir:  configDetails.WorkingDir,
@@ -686,7 +686,10 @@ func projectName(details *types.ConfigDetails, opts *Options) error {
 		}
 		pjNameFromConfigFile = interpolated["name"].(string)
 	}
-	pjNameFromConfigFile = NormalizeProjectName(pjNameFromConfigFile)
+
+	if !opts.SkipNormalization {
+		pjNameFromConfigFile = NormalizeProjectName(pjNameFromConfigFile)
+	}
 	if pjNameFromConfigFile != "" {
 		opts.projectName = pjNameFromConfigFile
 	}
