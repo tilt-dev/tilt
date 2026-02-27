@@ -1367,9 +1367,6 @@ export interface FileEvent {
 }
 
 //////////
-// source: generated.pb.go
-
-//////////
 // source: imagemap_types.go
 
 /**
