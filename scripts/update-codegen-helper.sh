@@ -80,9 +80,7 @@ FIXUPS=(
 ./pkg/openapi/zz_generated.openapi.go
 ./pkg/apis/core/v1alpha1/zz_generated.conversion.go
 ./pkg/apis/core/v1alpha1/zz_generated.model_name.go
-./pkg/apis/core/v1alpha1/generated.proto
 ./pkg/apis/core/v1alpha1/zz_generated.defaults.go
-./pkg/apis/core/v1alpha1/generated.pb.go
 ./pkg/apis/core/v1alpha1/zz_generated.deepcopy.go
 ./pkg/apis/core/zz_generated.deepcopy.go
 )
