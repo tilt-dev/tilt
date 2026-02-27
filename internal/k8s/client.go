@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"golang.org/x/sync/errgroup"
 	"helm.sh/helm/v3/pkg/kube"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -43,6 +44,7 @@ import (
 
 	"github.com/tilt-dev/clusterid"
 	"github.com/tilt-dev/tilt/internal/container"
+	"github.com/tilt-dev/tilt/internal/kustomize"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 )
@@ -54,6 +56,7 @@ import (
 //
 // So our health check timeout is a bit longer than we'd like.
 const healthCheckTimeout = 5 * time.Second
+const maxUpsertWorkers = 10
 
 type Namespace string
 type NamespaceOverride string
@@ -356,23 +359,78 @@ func (k *K8sClient) ToRawKubeConfigLoader() clientcmd.ClientConfig {
 	return k.clientLoader
 }
 
-func (k *K8sClient) Upsert(ctx context.Context, entities []K8sEntity, timeout time.Duration, ssa SSAOptions) ([]K8sEntity, error) {
-	result := make([]K8sEntity, 0, len(entities))
-	for _, e := range entities {
-		innerCtx, cancel := context.WithTimeout(ctx, timeout)
-		defer cancel()
-
-		newEntity, err := k.escalatingUpdate(innerCtx, e, ssa)
-		if err != nil {
-			if ctx.Err() == context.DeadlineExceeded {
-				return nil, timeoutError(timeout)
+// upsertParallel is a helper for Upsert that parallelizes the upsert of entities.
+// The entities MUST be of the same application order, otherwise dependencies may fail to resolve non-deterministically.
+// upsertParallel returns results in the same order as the input entities, so the caller can correlate results to inputs.
+func (k *K8sClient) upsertParallel(ctx context.Context, entities []K8sEntity, timeout time.Duration, ssa SSAOptions) ([]K8sEntity, error) {
+	g, wgCtx := errgroup.WithContext(ctx)
+	defer wgCtx.Done()
+	g.SetLimit(maxUpsertWorkers)
+	results := make([]K8sEntity, len(entities))
+	for i, e := range entities {
+		entity := e
+		g.Go(func() error {
+			select {
+			case <-wgCtx.Done():
+				// errgroup will cancel the outer context when a task returns an error
+				return wgCtx.Err()
+			default:
 			}
+
+			innerCtx, cancel := context.WithTimeout(wgCtx, timeout)
+			defer cancel()
+
+			newEntityList, err := k.escalatingUpdate(innerCtx, entity, ssa)
+			if err != nil {
+				if errors.Is(wgCtx.Err(), context.DeadlineExceeded) {
+					return timeoutError(timeout)
+				}
+				return err
+			}
+			if len(newEntityList) > 1 {
+				logger.Get(ctx).Warnf("expected exactly 1 entity to be returned from upsert, but got %d", len(newEntityList))
+			}
+			results[i] = newEntityList[0]
+			return nil
+		})
+	}
+	return results, g.Wait()
+}
+
+func (k *K8sClient) Upsert(ctx context.Context, entities []K8sEntity, timeout time.Duration, ssa SSAOptions) ([]K8sEntity, error) {
+	results := make([]K8sEntity, 0, len(entities))
+	if len(entities) == 0 {
+		return results, nil
+	}
+	previousTypeOrder := kustomize.TypeOrders[entities[0].GVK().Kind]
+	var entityBatch []K8sEntity
+	var batchResults []K8sEntity
+	var err error
+	for _, e := range entities {
+		thisTypeOrder := kustomize.TypeOrders[e.GVK().Kind]
+		if thisTypeOrder > previousTypeOrder {
+			logger.Get(ctx).Infof("Upserting batch of %d entities of type %s", len(entityBatch), entityBatch[0].GVK())
+			batchResults, err = k.upsertParallel(ctx, entityBatch, timeout, ssa)
+			if err != nil {
+				return nil, err
+			}
+			results = append(results, batchResults...)
+			entityBatch = []K8sEntity{e}
+		} else {
+			entityBatch = append(entityBatch, e)
+		}
+		previousTypeOrder = thisTypeOrder
+	}
+	if len(entityBatch) > 0 {
+		batchResults, err = k.upsertParallel(ctx, entityBatch, timeout, ssa)
+		logger.Get(ctx).Infof("Upserting batch of %d entities of type %s", len(entityBatch), entityBatch[0].GVK())
+		if err != nil {
 			return nil, err
 		}
-		result = append(result, newEntity...)
+		results = append(results, batchResults...)
 	}
 
-	return result, nil
+	return results, nil
 }
 
 func (k *K8sClient) OwnerFetcher() OwnerFetcher {

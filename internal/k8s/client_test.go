@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/rand/v2"
 	"net/http"
 	"strings"
 	"testing"
@@ -176,6 +177,51 @@ func TestUpsertToTerminatingNamespaceForbidden(t *testing.T) {
 	assert.Equal(t, 0, len(f.resourceClient.creates))
 }
 
+func TestUpsertIsParallelized(t *testing.T) {
+	f := newClientTestFixture(t)
+	entities := MustParseYAMLFromString(t, testyaml.SanchoYAML)
+	entities = append(entities, MustParseYAMLFromString(t, testyaml.SanchoTwinYAML)...)
+	entities = append(entities, MustParseYAMLFromString(t, testyaml.SanchoTwoContainersOneImageYAML)...)
+	entities = append(entities, MustParseYAMLFromString(t, testyaml.PodYAML)...)
+	entities = append(entities, MustParseYAMLFromString(t, testyaml.LonelyPodYAML)...)
+	// Entities will be passed sorted
+	entities = SortedEntities(entities)
+	// Override the apply function to sleep for 100ms
+	sleepyApply := func(target kube.ResourceList, ssa SSAOptions) (*kube.Result, error) {
+		time.Sleep(50 * time.Millisecond)
+		return &kube.Result{Updated: target}, nil
+	}
+	f.resourceClient.applyFn = &sleepyApply
+	start := time.Now()
+	_, err := f.k8sUpsert(f.ctx, entities)
+	duration := time.Since(start)
+	assert.Nil(t, err)
+	assert.Greater(t, duration, 100*time.Millisecond, "Upsert didn't take long enough, were all requests were run properly?")
+	assert.Less(t, duration, 200*time.Millisecond, "Upsert took too long, it may not be parallelized")
+}
+
+// Even within resource types, objects should be returned in the same order they were provided.
+func TestUpsertMaintainsOrdering(t *testing.T) {
+	f := newClientTestFixture(t)
+	var results []K8sEntity
+	var err error
+	// Only one type per group should be present in the input!
+	entities := MustParseYAMLFromString(t, testyaml.PostgresYAML)
+	entities = append(entities, MustParseYAMLFromString(t, testyaml.LonelyPodYAML)...)
+	assert.Nil(t, err)
+	rand.Shuffle(len(entities), func(i, j int) {
+		entities[i], entities[j] = entities[j], entities[i]
+	})
+	results, err = f.k8sUpsert(f.ctx, entities)
+	assert.Nil(t, err)
+	assert.Equal(t, len(entities), len(results), "number of results should match number of input entities")
+	for i := range entities {
+		assert.Equal(t, entities[i].GVK(), results[i].GVK(), "GVK should be the same for input and output")
+		assert.Equal(t, entities[i].Name(), results[i].Name(), "Name should be the same for input and output")
+		assert.Equal(t, entities[i].Namespace(), results[i].Namespace(), "Namespace should be the same for input and output")
+	}
+}
+
 func TestNodePortServiceURL(t *testing.T) {
 	// Taken from a Docker Desktop NodePort service.
 	s := &v1.Service{
@@ -309,9 +355,14 @@ type fakeResourceClient struct {
 	createOrReplaces kube.ResourceList
 	updateErr        error
 	buildErrFn       func(e K8sEntity) error
+	applyFn          *func(target kube.ResourceList, ssa SSAOptions) (*kube.Result, error)
 }
 
 func (c *fakeResourceClient) Apply(target kube.ResourceList, ssa SSAOptions) (*kube.Result, error) {
+	if c.applyFn != nil {
+		return (*c.applyFn)(target, ssa)
+	}
+
 	defer func() {
 		c.updateErr = nil
 	}()
