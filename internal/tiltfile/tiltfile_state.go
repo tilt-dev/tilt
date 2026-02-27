@@ -1196,8 +1196,6 @@ func (s *tiltfileState) k8sDeployTarget(targetName model.TargetName, r *k8sResou
 
 	if updateSettings.K8sServerSideApply() == "true" {
 		applySpec.ServerSideApply = true
-		applySpec.ForceConflicts = true
-		applySpec.FieldManager = "tilt"
 	}
 
 	var deps []string

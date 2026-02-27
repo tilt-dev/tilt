@@ -191,21 +191,6 @@ type KubernetesApplySpec struct {
 	//
 	// +optional
 	ServerSideApply bool `json:"serverSideApply,omitempty" protobuf:"bytes,14,opt,name=serverSideApply"`
-
-	// ForceConflicts enables server-side apply to force changes against conflicts.
-	//
-	// Only applies when ServerSideApply is true. If there are conflicting fields,
-	// server-side apply will force the changes rather than returning an error.
-	//
-	// +optional
-	ForceConflicts bool `json:"forceConflicts,omitempty" protobuf:"bytes,15,opt,name=forceConflicts"`
-
-	// FieldManager specifies the name of the manager tracking field ownership for server-side apply.
-	//
-	// Only applies when ServerSideApply is true. If not specified, defaults to "tilt".
-	//
-	// +optional
-	FieldManager string `json:"fieldManager,omitempty" protobuf:"bytes,16,opt,name=fieldManager"`
 }
 
 var _ resource.Object = &KubernetesApply{}
