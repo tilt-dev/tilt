@@ -123,12 +123,13 @@ function newLineEl(
 
   // newline ensures this takes up at least one line
   let spacer = "\n"
-  code.innerHTML = anser.linkify(
-    anser.ansiToHtml(anser.escapeForHtml(text) + spacer, {
-      // Let anser colorize the html as it appears from various consoles
-      use_classes: false,
-    })
-  )
+  // Linkify before ansiToHtml so URLs with ANSI in the middle are captured fully.
+  let escaped = anser.escapeForHtml(text) + spacer
+  let linkified = anser.linkifyWithAnsi(escaped)
+  code.innerHTML = anser.ansiToHtml(linkified, {
+    // Let anser colorize the html as it appears from various consoles
+    use_classes: false,
+  })
   span.appendChild(code)
   return span
 }

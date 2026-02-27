@@ -64,6 +64,19 @@ class Anser {
     }
 
     /**
+     * Anser.linkifyWithAnsi
+     * Adds HTML link elements to text that may contain ANSI escape sequences.
+     *
+     * @name Anser.linkifyWithAnsi
+     * @function
+     * @param {String} txt The input text (may contain ANSI codes).
+     * @returns {String} The HTML output containing link elements.
+     */
+    static linkifyWithAnsi (txt) {
+        return new Anser().linkifyWithAnsi(txt);
+    }
+
+    /**
      * Anser.ansiToHtml
      * This replaces ANSI terminal escape codes with SPAN tags that wrap the
      * content.
@@ -198,6 +211,26 @@ class Anser {
      */
     linkify (txt) {
         return txt.replace(/(https?:\/\/[^\s<>"]+)/gm, str => `<a href="${str}">${str}</a>`);
+    }
+
+    /**
+     * linkifyWithAnsi
+     * Adds HTML link elements to text that may contain ANSI escape sequences.
+     * Matches URLs including ANSI codes (e.g. \x1b[1m for bold) so the full URL
+     * is captured when tools like Vite output the port in a different style.
+     *
+     * @name linkifyWithAnsi
+     * @function
+     * @param {String} txt The input text (may contain ANSI codes).
+     * @returns {String} The HTML output containing link elements.
+     */
+    linkifyWithAnsi (txt) {
+        const ansiEscape = /\x1b\[[\d;]*[a-zA-Z]/g;
+        const urlWithAnsiRegex = /(https?:\/\/(?:[^\s<>"\x1b]|\x1b\[[\d;]*[a-zA-Z])*)/g;
+        return txt.replace(urlWithAnsiRegex, (match) => {
+            const cleanUrl = match.replace(ansiEscape, "");
+            return `<a href="${cleanUrl}">${cleanUrl}</a>`;
+        });
     }
 
     /**
