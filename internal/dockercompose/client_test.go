@@ -117,6 +117,25 @@ OpenSSL version: OpenSSL 1.1.0l  10 Sep 2019
 	}
 }
 
+// TestBuildProvenanceSBOM tests that compose files with provenance and sbom
+// build fields are accepted. These were added to the compose spec but older
+// versions of compose-go rejected them as unknown fields.
+// https://github.com/tilt-dev/tilt/issues/6704
+func TestBuildProvenanceSBOM(t *testing.T) {
+	f := newDCFixture(t)
+
+	dcYAML := `services:
+  foo:
+    build:
+      context: .
+      provenance: false
+      sbom: true
+    image: asdf
+`
+	proj := f.loadProject(dcYAML)
+	require.NotNil(t, proj.Services["foo"].Build)
+}
+
 func TestLoadEnvFile(t *testing.T) {
 	if testing.Short() {
 		// remove this once the fallback to docker-compose CLI for YAML parse is eliminated

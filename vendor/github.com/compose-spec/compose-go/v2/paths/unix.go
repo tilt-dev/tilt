@@ -35,7 +35,7 @@ func (r *relativePathsResolver) maybeUnixPath(a any) (any, error) {
 	// Note that this is not required for Docker for Windows when specifying
 	// a local Windows path, because Docker for Windows translates the Windows
 	// path into a valid path within the VM.
-	if !path.IsAbs(p) && !isWindowsAbs(p) {
+	if !path.IsAbs(p) && !IsWindowsAbs(p) {
 		if filepath.IsAbs(p) {
 			return p, nil
 		}

@@ -50,3 +50,14 @@ func cleanTarget(target string) string {
 	}
 	return path.Clean(target)
 }
+
+func defaultVolumeBind(data any, p tree.Path, _ bool) (any, error) {
+	bind, ok := data.(map[string]any)
+	if !ok {
+		return data, fmt.Errorf("%s: invalid type %T for service volume bind", p, data)
+	}
+	if _, ok := bind["create_host_path"]; !ok {
+		bind["create_host_path"] = true
+	}
+	return bind, nil
+}

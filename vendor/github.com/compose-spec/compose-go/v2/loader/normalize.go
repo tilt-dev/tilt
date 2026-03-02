@@ -158,6 +158,9 @@ func normalizeNetworks(dict map[string]any) {
 		services := s.(map[string]any)
 		for name, se := range services {
 			service := se.(map[string]any)
+			if _, ok := service["provider"]; ok {
+				continue
+			}
 			if _, ok := service["network_mode"]; ok {
 				continue
 			}

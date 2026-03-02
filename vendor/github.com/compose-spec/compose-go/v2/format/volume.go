@@ -42,11 +42,26 @@ func ParseVolume(spec string) (types.ServiceVolumeConfig, error) {
 	}
 
 	var buffer []rune
-	for _, char := range spec + string(endOfSpec) {
+	var inVarSubstitution int // Track nesting depth of ${...}
+	for i, char := range spec + string(endOfSpec) {
+		// Check if we're entering a variable substitution
+		if char == '$' && i+1 < len(spec) && rune(spec[i+1]) == '{' {
+			inVarSubstitution++
+			buffer = append(buffer, char)
+			continue
+		}
+
+		// Check if we're exiting a variable substitution
+		if char == '}' && inVarSubstitution > 0 {
+			inVarSubstitution--
+			buffer = append(buffer, char)
+			continue
+		}
+
 		switch {
 		case isWindowsDrive(buffer, char):
 			buffer = append(buffer, char)
-		case char == ':' || char == endOfSpec:
+		case (char == ':' || char == endOfSpec) && inVarSubstitution == 0:
 			if err := populateFieldFromBuffer(char, buffer, &volume); err != nil {
 				populateType(&volume)
 				return volume, fmt.Errorf("invalid spec: %s: %w", spec, err)

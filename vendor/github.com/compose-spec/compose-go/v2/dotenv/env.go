@@ -56,7 +56,7 @@ func GetEnvFromFile(currentEnv map[string]string, filenames []string) (map[strin
 			return envMap, err
 		}
 
-		env, err := ParseWithLookup(bytes.NewReader(b), func(k string) (string, bool) {
+		err = parseWithLookup(bytes.NewReader(b), envMap, func(k string) (string, bool) {
 			v, ok := currentEnv[k]
 			if ok {
 				return v, true
@@ -66,9 +66,6 @@ func GetEnvFromFile(currentEnv map[string]string, filenames []string) (map[strin
 		})
 		if err != nil {
 			return envMap, fmt.Errorf("failed to read %s: %w", dotEnvFile, err)
-		}
-		for k, v := range env {
-			envMap[k] = v
 		}
 	}
 

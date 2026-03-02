@@ -19,35 +19,26 @@ package schema
 import (
 	// Enable support for embedded static resources
 	_ "embed"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
-	"github.com/xeipuuv/gojsonschema"
+	"github.com/santhosh-tekuri/jsonschema/v6"
+	"github.com/santhosh-tekuri/jsonschema/v6/kind"
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
 )
 
-type portsFormatChecker struct{}
-
-func (checker portsFormatChecker) IsFormat(_ interface{}) bool {
-	// TODO: implement this
-	return true
-}
-
-type durationFormatChecker struct{}
-
-func (checker durationFormatChecker) IsFormat(input interface{}) bool {
+func durationFormatChecker(input any) error {
 	value, ok := input.(string)
 	if !ok {
-		return false
+		return fmt.Errorf("expected string")
 	}
 	_, err := time.ParseDuration(value)
-	return err == nil
-}
-
-func init() {
-	gojsonschema.FormatCheckers.Add("expose", portsFormatChecker{})
-	gojsonschema.FormatCheckers.Add("ports", portsFormatChecker{})
-	gojsonschema.FormatCheckers.Add("duration", durationFormatChecker{})
+	return err
 }
 
 // Schema is the compose-spec JSON schema
@@ -57,108 +48,102 @@ var Schema string
 
 // Validate uses the jsonschema to validate the configuration
 func Validate(config map[string]interface{}) error {
-	schemaLoader := gojsonschema.NewStringLoader(Schema)
-	dataLoader := gojsonschema.NewGoLoader(config)
+	compiler := jsonschema.NewCompiler()
+	shema, err := jsonschema.UnmarshalJSON(strings.NewReader(Schema))
+	if err != nil {
+		return err
+	}
+	err = compiler.AddResource("compose-spec.json", shema)
+	if err != nil {
+		return err
+	}
+	compiler.RegisterFormat(&jsonschema.Format{
+		Name:     "duration",
+		Validate: durationFormatChecker,
+	})
+	schema := compiler.MustCompile("compose-spec.json")
 
-	result, err := gojsonschema.Validate(schemaLoader, dataLoader)
+	// santhosh-tekuri doesn't allow derived types
+	// see https://github.com/santhosh-tekuri/jsonschema/pull/240
+	marshaled, err := json.Marshal(config)
 	if err != nil {
 		return err
 	}
 
-	if !result.Valid() {
-		return toError(result)
+	var raw map[string]interface{}
+	err = json.Unmarshal(marshaled, &raw)
+	if err != nil {
+		return err
 	}
 
-	return nil
-}
-
-func toError(result *gojsonschema.Result) error {
-	err := getMostSpecificError(result.Errors())
+	err = schema.Validate(raw)
+	var verr *jsonschema.ValidationError
+	if ok := errors.As(err, &verr); ok {
+		return validationError{getMostSpecificError(verr)}
+	}
 	return err
 }
 
-const (
-	jsonschemaOneOf = "number_one_of"
-	jsonschemaAnyOf = "number_any_of"
-)
-
-func getDescription(err validationError) string {
-	switch err.parent.Type() {
-	case "invalid_type":
-		if expectedType, ok := err.parent.Details()["expected"].(string); ok {
-			return fmt.Sprintf("must be a %s", humanReadableType(expectedType))
-		}
-	case jsonschemaOneOf, jsonschemaAnyOf:
-		if err.child == nil {
-			return err.parent.Description()
-		}
-		return err.child.Description()
-	}
-	return err.parent.Description()
-}
-
-func humanReadableType(definition string) string {
-	if definition[0:1] == "[" {
-		allTypes := strings.Split(definition[1:len(definition)-1], ",")
-		for i, t := range allTypes {
-			allTypes[i] = humanReadableType(t)
-		}
-		return fmt.Sprintf(
-			"%s or %s",
-			strings.Join(allTypes[0:len(allTypes)-1], ", "),
-			allTypes[len(allTypes)-1],
-		)
-	}
-	if definition == "object" {
-		return "mapping"
-	}
-	if definition == "array" {
-		return "list"
-	}
-	return definition
-}
-
 type validationError struct {
-	parent gojsonschema.ResultError
-	child  gojsonschema.ResultError
+	err *jsonschema.ValidationError
 }
 
-func (err validationError) Error() string {
-	description := getDescription(err)
-	return fmt.Sprintf("%s %s", err.parent.Field(), description)
+func (e validationError) Error() string {
+	path := strings.Join(e.err.InstanceLocation, ".")
+	p := message.NewPrinter(language.English)
+	switch k := e.err.ErrorKind.(type) {
+	case *kind.Type:
+		return fmt.Sprintf("%s must be a %s", path, humanReadableType(k.Want...))
+	case *kind.Minimum:
+		return fmt.Sprintf("%s must be greater than or equal to %s", path, k.Want.Num())
+	case *kind.Maximum:
+		return fmt.Sprintf("%s must be less than or equal to %s", path, k.Want.Num())
+	}
+	return fmt.Sprintf("%s %s", path, e.err.ErrorKind.LocalizedString(p))
 }
 
-func getMostSpecificError(errors []gojsonschema.ResultError) validationError {
-	mostSpecificError := 0
-	for i, err := range errors {
-		if specificity(err) > specificity(errors[mostSpecificError]) {
-			mostSpecificError = i
-			continue
-		}
-
-		if specificity(err) == specificity(errors[mostSpecificError]) {
-			// Invalid type errors win in a tie-breaker for most specific field name
-			if err.Type() == "invalid_type" && errors[mostSpecificError].Type() != "invalid_type" {
-				mostSpecificError = i
-			}
+func humanReadableType(want ...string) string {
+	if len(want) == 1 {
+		switch want[0] {
+		case "object":
+			return "mapping"
+		default:
+			return want[0]
 		}
 	}
 
-	if mostSpecificError+1 == len(errors) {
-		return validationError{parent: errors[mostSpecificError]}
+	for i, s := range want {
+		want[i] = humanReadableType(s)
 	}
 
-	switch errors[mostSpecificError].Type() {
-	case "number_one_of", "number_any_of":
-		return validationError{
-			parent: errors[mostSpecificError],
-			child:  errors[mostSpecificError+1],
-		}
-	default:
-		return validationError{parent: errors[mostSpecificError]}
-	}
+	slices.Sort(want)
+	return fmt.Sprintf(
+		"%s or %s",
+		strings.Join(want[0:len(want)-1], ", "),
+		want[len(want)-1],
+	)
 }
 
-func specificity(err gojsonschema.ResultError) int {
-	return len(strings.Split(err.Field(), "."))
+func getMostSpecificError(err *jsonschema.ValidationError) *jsonschema.ValidationError {
+	var mostSpecificError *jsonschema.ValidationError
+	if len(err.Causes) == 0 {
+		return err
+	}
+	for _, cause := range err.Causes {
+		cause = getMostSpecificError(cause)
+		if specificity(cause) > specificity(mostSpecificError) {
+			mostSpecificError = cause
+		}
+	}
+	return mostSpecificError
+}
+
+func specificity(err *jsonschema.ValidationError) int {
+	if err == nil {
+		return -1
+	}
+	if _, ok := err.ErrorKind.(*kind.AdditionalProperties); ok {
+		return len(err.InstanceLocation) + 1
+	}
+	return len(err.InstanceLocation)
 }

@@ -20,14 +20,21 @@ import (
 	"github.com/compose-spec/compose-go/v2/tree"
 )
 
-var defaultValues = map[tree.Path]transformFunc{}
+// DefaultValues contains the default value transformers for compose fields
+var DefaultValues = map[tree.Path]Func{}
 
 func init() {
-	defaultValues["services.*.build"] = defaultBuildContext
-	defaultValues["services.*.secrets.*"] = defaultSecretMount
-	defaultValues["services.*.ports.*"] = portDefaults
-	defaultValues["services.*.deploy.resources.reservations.devices.*"] = deviceRequestDefaults
-	defaultValues["services.*.gpus.*"] = deviceRequestDefaults
+	DefaultValues["services.*.build"] = defaultBuildContext
+	DefaultValues["services.*.secrets.*"] = defaultSecretMount
+	DefaultValues["services.*.ports.*"] = portDefaults
+	DefaultValues["services.*.deploy.resources.reservations.devices.*"] = deviceRequestDefaults
+	DefaultValues["services.*.gpus.*"] = deviceRequestDefaults
+	DefaultValues["services.*.volumes.*.bind"] = defaultVolumeBind
+}
+
+// RegisterDefaultValue registers a custom transformer for the given path pattern
+func RegisterDefaultValue(path string, transformer Func) {
+	DefaultValues[tree.Path(path)] = transformer
 }
 
 // SetDefaultValues transforms a compose model to set default values to missing attributes
@@ -40,7 +47,7 @@ func SetDefaultValues(yaml map[string]any) (map[string]any, error) {
 }
 
 func setDefaults(data any, p tree.Path) (any, error) {
-	for pattern, transformer := range defaultValues {
+	for pattern, transformer := range DefaultValues {
 		if p.Matches(pattern) {
 			t, err := transformer(data, p, false)
 			if err != nil {

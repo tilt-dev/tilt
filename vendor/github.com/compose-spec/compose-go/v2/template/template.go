@@ -309,12 +309,12 @@ func withDefaultWhenPresence(substitution string, mapping Mapping, notEmpty bool
 		return "", false, nil
 	}
 	name, defaultValue := partition(substitution, sep)
-	defaultValue, err := Substitute(defaultValue, mapping)
-	if err != nil {
-		return "", false, err
-	}
 	value, ok := mapping(name)
 	if ok && (!notEmpty || (notEmpty && value != "")) {
+		defaultValue, err := Substitute(defaultValue, mapping)
+		if err != nil {
+			return "", false, err
+		}
 		return defaultValue, true, nil
 	}
 	return value, true, nil
@@ -329,12 +329,12 @@ func withDefaultWhenAbsence(substitution string, mapping Mapping, emptyOrUnset b
 		return "", false, nil
 	}
 	name, defaultValue := partition(substitution, sep)
-	defaultValue, err := Substitute(defaultValue, mapping)
-	if err != nil {
-		return "", false, err
-	}
 	value, ok := mapping(name)
 	if !ok || (emptyOrUnset && value == "") {
+		defaultValue, err := Substitute(defaultValue, mapping)
+		if err != nil {
+			return "", false, err
+		}
 		return defaultValue, true, nil
 	}
 	return value, true, nil
@@ -345,12 +345,12 @@ func withRequired(substitution string, mapping Mapping, sep string, valid func(s
 		return "", false, nil
 	}
 	name, errorMessage := partition(substitution, sep)
-	errorMessage, err := Substitute(errorMessage, mapping)
-	if err != nil {
-		return "", false, err
-	}
 	value, ok := mapping(name)
 	if !ok || !valid(value) {
+		errorMessage, err := Substitute(errorMessage, mapping)
+		if err != nil {
+			return "", false, err
+		}
 		return "", true, &MissingRequiredError{
 			Reason:   errorMessage,
 			Variable: name,

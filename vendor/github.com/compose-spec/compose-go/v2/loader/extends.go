@@ -27,7 +27,7 @@ import (
 	"github.com/compose-spec/compose-go/v2/types"
 )
 
-func ApplyExtends(ctx context.Context, dict map[string]any, opts *Options, tracker *cycleTracker, post ...PostProcessor) error {
+func ApplyExtends(ctx context.Context, dict map[string]any, opts *Options, tracker *cycleTracker, post PostProcessor) error {
 	a, ok := dict["services"]
 	if !ok {
 		return nil
@@ -37,7 +37,7 @@ func ApplyExtends(ctx context.Context, dict map[string]any, opts *Options, track
 		return fmt.Errorf("services must be a mapping")
 	}
 	for name := range services {
-		merged, err := applyServiceExtends(ctx, name, services, opts, tracker, post...)
+		merged, err := applyServiceExtends(ctx, name, services, opts, tracker, post)
 		if err != nil {
 			return err
 		}
@@ -47,7 +47,7 @@ func ApplyExtends(ctx context.Context, dict map[string]any, opts *Options, track
 	return nil
 }
 
-func applyServiceExtends(ctx context.Context, name string, services map[string]any, opts *Options, tracker *cycleTracker, post ...PostProcessor) (any, error) {
+func applyServiceExtends(ctx context.Context, name string, services map[string]any, opts *Options, tracker *cycleTracker, post PostProcessor) (any, error) {
 	s := services[name]
 	if s == nil {
 		return nil, nil
@@ -68,7 +68,10 @@ func applyServiceExtends(ctx context.Context, name string, services map[string]a
 	)
 	switch v := extends.(type) {
 	case map[string]any:
-		ref = v["service"].(string)
+		ref, ok = v["service"].(string)
+		if !ok {
+			return nil, fmt.Errorf("extends.%s.service is required", name)
+		}
 		file = v["file"]
 		opts.ProcessEvent("extends", v)
 	case string:
@@ -78,13 +81,12 @@ func applyServiceExtends(ctx context.Context, name string, services map[string]a
 
 	var (
 		base      any
-		processor PostProcessor
+		processor = post
 	)
 
 	if file != nil {
 		refFilename := file.(string)
 		services, processor, err = getExtendsBaseFromFile(ctx, name, ref, filename, refFilename, opts, tracker)
-		post = append(post, processor)
 		if err != nil {
 			return nil, err
 		}
@@ -102,7 +104,7 @@ func applyServiceExtends(ctx context.Context, name string, services map[string]a
 	}
 
 	// recursively apply `extends`
-	base, err = applyServiceExtends(ctx, ref, services, opts, tracker, post...)
+	base, err = applyServiceExtends(ctx, ref, services, opts, tracker, processor)
 	if err != nil {
 		return nil, err
 	}
@@ -112,16 +114,15 @@ func applyServiceExtends(ctx context.Context, name string, services map[string]a
 	}
 	source := deepClone(base).(map[string]any)
 
-	for _, processor := range post {
-		err = processor.Apply(map[string]any{
-			"services": map[string]any{
-				name: source,
-			},
-		})
-		if err != nil {
-			return nil, err
-		}
+	err = post.Apply(map[string]any{
+		"services": map[string]any{
+			name: source,
+		},
+	})
+	if err != nil {
+		return nil, err
 	}
+
 	merged, err := override.ExtendService(source, service)
 	if err != nil {
 		return nil, err
