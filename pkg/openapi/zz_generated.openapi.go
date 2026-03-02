@@ -4160,20 +4160,6 @@ func schema_pkg_apis_core_v1alpha1_KubernetesApplySpec(ref common.ReferenceCallb
 							Format:      "",
 						},
 					},
-					"forceConflicts": {
-						SchemaProps: spec.SchemaProps{
-							Description: "ForceConflicts enables server-side apply to force changes against conflicts.\n\nOnly applies when ServerSideApply is true. If there are conflicting fields, server-side apply will force the changes rather than returning an error.",
-							Type:        []string{"boolean"},
-							Format:      "",
-						},
-					},
-					"fieldManager": {
-						SchemaProps: spec.SchemaProps{
-							Description: "FieldManager specifies the name of the manager tracking field ownership for server-side apply.\n\nOnly applies when ServerSideApply is true. If not specified, defaults to \"tilt\".",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
 				},
 			},
 		},
