@@ -177,6 +177,36 @@ func TestRepoAlwaysSyncHead(t *testing.T) {
 	f.assertSteadyState(&repo)
 }
 
+func TestNestedGitLabWeb(t *testing.T) {
+	f := newFixture(t)
+	key := types.NamespacedName{Name: "nested-gitlab"}
+	repo := v1alpha1.ExtensionRepo{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: key.Name,
+		},
+		Spec: v1alpha1.ExtensionRepoSpec{
+			URL: "https://gitlab.com/doubleverify/architecture/local-dev-env/infra",
+		},
+	}
+	f.Create(&repo)
+	f.MustGet(key, &repo)
+	require.Equal(t, "", repo.Status.Error)
+	require.True(t, strings.HasSuffix(repo.Status.Path, "infra"))
+	require.Equal(t, "fake-head", repo.Status.CheckoutRef)
+
+	info, err := os.Stat(repo.Status.Path)
+	require.NoError(t, err)
+	require.True(t, info.IsDir())
+	assert.Equal(t, 1, f.dlr.downloadCount)
+
+	f.MustReconcile(key)
+	assert.Equal(t, 1, f.dlr.downloadCount)
+
+	f.Delete(&repo)
+	_, err = os.Stat(repo.Status.Path)
+	require.True(t, os.IsNotExist(err))
+}
+
 func TestStale(t *testing.T) {
 	f := newFixture(t)
 
