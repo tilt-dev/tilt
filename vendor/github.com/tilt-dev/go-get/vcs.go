@@ -825,7 +825,7 @@ var vcsPaths = []*vcsPath{
 	// Gitlab
 	{
 		prefix: "gitlab.com/",
-		regexp: regexp.MustCompile(`^(?P<root>gitlab\.com/[A-Za-z0-9_.\-]+/[A-Za-z0-9_.\-]+)(/[\p{L}0-9_.\-]+)*$`),
+		regexp: regexp.MustCompile(`^(?P<root>gitlab\.com/[A-Za-z0-9_.\-]+/[A-Za-z0-9_.\-]+(/[A-Za-z0-9_.\-]+)*)$`),
 		vcs:    "git",
 		repo:   "https://{root}",
 		check:  noVCSSuffix,
