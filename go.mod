@@ -48,7 +48,7 @@ require (
 	github.com/tilt-dev/clusterid v0.1.6
 	github.com/tilt-dev/dockerignore v0.1.1
 	github.com/tilt-dev/fsnotify v1.4.8-0.20220602155310-fff9c274a375
-	github.com/tilt-dev/go-get v0.2.3
+	github.com/tilt-dev/go-get v0.2.4
 	github.com/tilt-dev/localregistry-go v0.0.0-20201021185044-ffc4c827f097
 	github.com/tilt-dev/probe v0.3.1
 	github.com/tilt-dev/starlark-lsp v0.0.0-20230210155543-84c13fe0ff94
