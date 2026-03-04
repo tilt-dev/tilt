@@ -443,10 +443,12 @@ func (r *Reconciler) forceApplyHelper(
 // Update the status on the apiserver if necessary.
 func (r *Reconciler) maybeUpdateStatus(ctx context.Context, nn types.NamespacedName, obj *v1alpha1.DockerComposeService) error {
 	newStatus := v1alpha1.DockerComposeServiceStatus{}
+	r.mu.Lock()
 	existing, ok := r.results[nn]
 	if ok {
 		newStatus = existing.Status
 	}
+	r.mu.Unlock()
 
 	if apicmp.DeepEqual(obj.Status, newStatus) {
 		return nil

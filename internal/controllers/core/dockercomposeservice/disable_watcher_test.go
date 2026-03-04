@@ -37,8 +37,11 @@ Going to remove servantes_fortune_1
 	f.clock.Advance(20 * disableDebounceDelay)
 	f.startTime = f.clock.Now()
 
-	f.log.AssertEventuallyContains(t, "Stopping servantes", time.Second)
 	expectedOutput := strings.Replace(f.dcClient.RmOutput, "Going to remove servantes_fortune_1\n", "", -1)
+	// Wait for the last expected line to ensure all output has been written to the log.
+	// filteredWriter writes each line individually, so checking for an early line
+	// (e.g. "Stopping servantes") can race with later lines not yet being written.
+	f.log.AssertEventuallyContains(t, "Removing servantes_fortune_1 ... done", time.Second)
 	require.Equal(t, expectedOutput, f.log.String())
 }
 
