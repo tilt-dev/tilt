@@ -55,7 +55,9 @@ Tilt watches your files for edits, automatically builds your container images,
 and applies any changes to bring your environment
 up-to-date in real-time. Think 'docker build && kubectl apply' or 'docker-compose up'.
 `,
+		Version: buildStamp(),
 	}
+	rootCmd.SetVersionTemplate(`{{.Version}}` + "\n")
 	streams := genericclioptions.IOStreams{Out: os.Stdout, ErrOut: os.Stderr, In: os.Stdin}
 
 	addCommand(rootCmd, &ciCmd{})
