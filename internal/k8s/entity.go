@@ -31,6 +31,10 @@ func NewK8sEntity(obj runtime.Object) K8sEntity {
 
 type entityList []K8sEntity
 
+func (l entityList) TypeOrder(i int) int {
+	return kustomize.TypeOrders[l[i].GVK().Kind]
+}
+
 func (l entityList) Len() int { return len(l) }
 func (l entityList) Less(i, j int) bool {
 	// Sort entities by the priority of their Kind
@@ -42,6 +46,30 @@ func (l entityList) Less(i, j int) bool {
 	return i < j
 }
 func (l entityList) Swap(i, j int) { l[i], l[j] = l[j], l[i] }
+
+// Split a list of entities into batches.
+//
+// Returns a list of batches. Each batch is a list of entities that can be
+// applied in parallel.
+//
+// Assumes the entities have already been sorted in the order that they should
+// be applied.
+func (l entityList) toParallelizableBatches() [][]K8sEntity {
+	result := make([][]K8sEntity, 0)
+	batch := []K8sEntity{}
+	for i, e := range l {
+		if i == 0 || l.TypeOrder(i-1) == l.TypeOrder(i) {
+			batch = append(batch, e)
+		} else {
+			result = append(result, batch)
+			batch = []K8sEntity{e}
+		}
+	}
+	if len(batch) > 0 {
+		result = append(result, batch)
+	}
+	return result
+}
 
 func SortedEntities(entities []K8sEntity) []K8sEntity {
 	entList := entityList(CopyEntities(entities))

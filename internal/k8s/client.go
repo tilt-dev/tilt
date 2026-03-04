@@ -44,7 +44,6 @@ import (
 
 	"github.com/tilt-dev/clusterid"
 	"github.com/tilt-dev/tilt/internal/container"
-	"github.com/tilt-dev/tilt/internal/kustomize"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
 )
@@ -366,15 +365,12 @@ func (k *K8sClient) upsertParallel(ctx context.Context, entities []K8sEntity, ti
 	g, wgCtx := errgroup.WithContext(ctx)
 	defer wgCtx.Done()
 	g.SetLimit(maxUpsertWorkers)
-	results := make([]K8sEntity, len(entities))
+	results := make([][]K8sEntity, len(entities))
 	for i, e := range entities {
 		entity := e
 		g.Go(func() error {
-			select {
-			case <-wgCtx.Done():
-				// errgroup will cancel the outer context when a task returns an error
+			if wgCtx.Err() != nil {
 				return wgCtx.Err()
-			default:
 			}
 
 			innerCtx, cancel := context.WithTimeout(wgCtx, timeout)
@@ -387,49 +383,31 @@ func (k *K8sClient) upsertParallel(ctx context.Context, entities []K8sEntity, ti
 				}
 				return err
 			}
-			if len(newEntityList) > 1 {
-				logger.Get(ctx).Warnf("expected exactly 1 entity to be returned from upsert, but got %d", len(newEntityList))
-			}
-			results[i] = newEntityList[0]
+			results[i] = newEntityList
 			return nil
 		})
 	}
-	return results, g.Wait()
+
+	err := g.Wait()
+
+	flatResults := make([]K8sEntity, 0, len(entities))
+	for _, r := range results {
+		flatResults = append(flatResults, r...)
+	}
+
+	return flatResults, err
 }
 
 func (k *K8sClient) Upsert(ctx context.Context, entities []K8sEntity, timeout time.Duration, ssa SSAOptions) ([]K8sEntity, error) {
-	results := make([]K8sEntity, 0, len(entities))
-	if len(entities) == 0 {
-		return results, nil
-	}
-	previousTypeOrder := kustomize.TypeOrders[entities[0].GVK().Kind]
-	var entityBatch []K8sEntity
-	var batchResults []K8sEntity
-	var err error
-	for _, e := range entities {
-		thisTypeOrder := kustomize.TypeOrders[e.GVK().Kind]
-		if thisTypeOrder > previousTypeOrder {
-			logger.Get(ctx).Infof("Upserting batch of %d entities of type %s", len(entityBatch), entityBatch[0].GVK())
-			batchResults, err = k.upsertParallel(ctx, entityBatch, timeout, ssa)
-			if err != nil {
-				return nil, err
-			}
-			results = append(results, batchResults...)
-			entityBatch = []K8sEntity{e}
-		} else {
-			entityBatch = append(entityBatch, e)
-		}
-		previousTypeOrder = thisTypeOrder
-	}
-	if len(entityBatch) > 0 {
-		batchResults, err = k.upsertParallel(ctx, entityBatch, timeout, ssa)
-		logger.Get(ctx).Infof("Upserting batch of %d entities of type %s", len(entityBatch), entityBatch[0].GVK())
+	results := []K8sEntity{}
+	batches := entityList(entities).toParallelizableBatches()
+	for _, b := range batches {
+		batchResults, err := k.upsertParallel(ctx, b, timeout, ssa)
 		if err != nil {
 			return nil, err
 		}
 		results = append(results, batchResults...)
 	}
-
 	return results, nil
 }
 

@@ -9,7 +9,9 @@ import (
 	"math/rand/v2"
 	"net/http"
 	"strings"
+	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/stretchr/testify/assert"
@@ -178,26 +180,38 @@ func TestUpsertToTerminatingNamespaceForbidden(t *testing.T) {
 }
 
 func TestUpsertIsParallelized(t *testing.T) {
-	f := newClientTestFixture(t)
-	entities := MustParseYAMLFromString(t, testyaml.SanchoYAML)
-	entities = append(entities, MustParseYAMLFromString(t, testyaml.SanchoTwinYAML)...)
-	entities = append(entities, MustParseYAMLFromString(t, testyaml.SanchoTwoContainersOneImageYAML)...)
-	entities = append(entities, MustParseYAMLFromString(t, testyaml.PodYAML)...)
-	entities = append(entities, MustParseYAMLFromString(t, testyaml.LonelyPodYAML)...)
-	// Entities will be passed sorted
-	entities = SortedEntities(entities)
-	// Override the apply function to sleep for 100ms
-	sleepyApply := func(target kube.ResourceList, ssa SSAOptions) (*kube.Result, error) {
-		time.Sleep(50 * time.Millisecond)
-		return &kube.Result{Updated: target}, nil
-	}
-	f.resourceClient.applyFn = &sleepyApply
-	start := time.Now()
-	_, err := f.k8sUpsert(f.ctx, entities)
-	duration := time.Since(start)
-	assert.Nil(t, err)
-	assert.Greater(t, duration, 100*time.Millisecond, "Upsert didn't take long enough, were all requests were run properly?")
-	assert.Less(t, duration, 200*time.Millisecond, "Upsert took too long, it may not be parallelized")
+	synctest.Test(t, func(t *testing.T) {
+		f := newClientTestFixture(t)
+		entities := MustParseYAMLFromString(t, testyaml.SanchoYAML)
+		entities = append(entities, MustParseYAMLFromString(t, testyaml.SanchoTwinYAML)...)
+		entities = append(entities, MustParseYAMLFromString(t, testyaml.SanchoTwoContainersOneImageYAML)...)
+		entities = append(entities, MustParseYAMLFromString(t, testyaml.PodYAML)...)
+		entities = append(entities, MustParseYAMLFromString(t, testyaml.LonelyPodYAML)...)
+		// Entities will be passed sorted
+		entities = SortedEntities(entities)
+
+		var mu sync.Mutex
+		var maxConcurrent, current int
+		sleepyApply := func(target kube.ResourceList, ssa SSAOptions) (*kube.Result, error) {
+			mu.Lock()
+			current++
+			if current > maxConcurrent {
+				maxConcurrent = current
+			}
+			mu.Unlock()
+
+			time.Sleep(50 * time.Millisecond)
+
+			mu.Lock()
+			current--
+			mu.Unlock()
+			return &kube.Result{Updated: target}, nil
+		}
+		f.resourceClient.applyFn = &sleepyApply
+		_, err := f.k8sUpsert(f.ctx, entities)
+		assert.Nil(t, err)
+		assert.Greater(t, maxConcurrent, 1, "Upsert was not parallelized")
+	})
 }
 
 // Even within resource types, objects should be returned in the same order they were provided.

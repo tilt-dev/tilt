@@ -312,6 +312,59 @@ func mustParseYAML(t *testing.T, yaml string) []K8sEntity {
 	return entities
 }
 
+func TestToParallelizableBatches(t *testing.T) {
+	for _, test := range []struct {
+		name            string
+		inputKinds      []string
+		expectedBatches [][]string
+	}{
+		{
+			name:            "empty",
+			inputKinds:      []string{},
+			expectedBatches: [][]string{},
+		},
+		{
+			name:            "single entity",
+			inputKinds:      []string{"Namespace"},
+			expectedBatches: [][]string{{"Namespace"}},
+		},
+		{
+			name:            "same type grouped into one batch",
+			inputKinds:      []string{"Deployment", "Deployment", "Deployment"},
+			expectedBatches: [][]string{{"Deployment", "Deployment", "Deployment"}},
+		},
+		{
+			name:            "different types split into separate batches",
+			inputKinds:      []string{"Namespace", "ConfigMap", "Deployment"},
+			expectedBatches: [][]string{{"Namespace"}, {"ConfigMap"}, {"Deployment"}},
+		},
+		{
+			name:            "unknown types share a batch",
+			inputKinds:      []string{"Pod", "Job"},
+			expectedBatches: [][]string{{"Pod", "Job"}},
+		},
+		{
+			name:            "known types followed by unknown types",
+			inputKinds:      []string{"Namespace", "ConfigMap", "Pod", "Job"},
+			expectedBatches: [][]string{{"Namespace"}, {"ConfigMap"}, {"Pod", "Job"}},
+		},
+		{
+			name:            "multiple of same known type then different type",
+			inputKinds:      []string{"Service", "Service", "Deployment"},
+			expectedBatches: [][]string{{"Service", "Service"}, {"Deployment"}},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			input := entityList(entitiesWithKinds(test.inputKinds))
+			batches := input.toParallelizableBatches()
+			require.Len(t, batches, len(test.expectedBatches), "number of batches")
+			for i, batch := range batches {
+				assertKindOrder(t, test.expectedBatches[i], batch, fmt.Sprintf("batch %d", i))
+			}
+		})
+	}
+}
+
 // TestFilterByMatchesPodTemplateSpecNamespace tests that Services are only matched
 // to Deployments in the same namespace. This is a regression test for:
 // https://github.com/tilt-dev/tilt/issues/6311
