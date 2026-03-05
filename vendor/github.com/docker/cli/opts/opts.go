@@ -1,6 +1,7 @@
 package opts
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -9,8 +10,8 @@ import (
 	"strings"
 
 	"github.com/docker/cli/internal/lazyregexp"
-	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/go-units"
+	"github.com/moby/moby/client"
 )
 
 var (
@@ -60,6 +61,8 @@ func (opts *ListOpts) Set(value string) error {
 }
 
 // Delete removes the specified element from the slice.
+//
+// Deprecated: this method is no longer used and will be removed in the next release.
 func (opts *ListOpts) Delete(key string) {
 	for i, k := range *opts.values {
 		if k == key {
@@ -77,13 +80,6 @@ func (opts *ListOpts) GetMap() map[string]struct{} {
 		ret[k] = struct{}{}
 	}
 	return ret
-}
-
-// GetAll returns the values of slice.
-//
-// Deprecated: use [ListOpts.GetSlice] instead. This method will be removed in a future release.
-func (opts *ListOpts) GetAll() []string {
-	return *opts.values
 }
 
 // GetSlice returns the values of slice.
@@ -132,43 +128,6 @@ func (opts *ListOpts) WithValidator(validator ValidatorFctType) *ListOpts {
 	return opts
 }
 
-// NamedOption is an interface that list and map options
-// with names implement.
-//
-// Deprecated: NamedOption is no longer used and will be removed in the next release.
-type NamedOption interface {
-	Name() string
-}
-
-// NamedListOpts is a ListOpts with a configuration name.
-// This struct is useful to keep reference to the assigned
-// field name in the internal configuration struct.
-//
-// Deprecated: NamedListOpts is no longer used and will be removed in the next release.
-type NamedListOpts struct {
-	name string
-	ListOpts
-}
-
-var _ NamedOption = &NamedListOpts{}
-
-// NewNamedListOptsRef creates a reference to a new NamedListOpts struct.
-//
-// Deprecated: NewNamedListOptsRef is no longer used and will be removed in the next release.
-func NewNamedListOptsRef(name string, values *[]string, validator ValidatorFctType) *NamedListOpts {
-	return &NamedListOpts{
-		name:     name,
-		ListOpts: *NewListOptsRef(values, validator),
-	}
-}
-
-// Name returns the name of the NamedListOpts in the configuration.
-//
-// Deprecated: NamedListOpts is no longer used and will be removed in the next release.
-func (o *NamedListOpts) Name() string {
-	return o.name
-}
-
 // MapOpts holds a map of values and a validation function.
 type MapOpts struct {
 	values    map[string]string
@@ -215,35 +174,6 @@ func NewMapOpts(values map[string]string, validator ValidatorFctType) *MapOpts {
 	}
 }
 
-// NamedMapOpts is a MapOpts struct with a configuration name.
-// This struct is useful to keep reference to the assigned
-// field name in the internal configuration struct.
-//
-// Deprecated: NamedMapOpts is no longer used and will be removed in the next release.
-type NamedMapOpts struct {
-	name string
-	MapOpts
-}
-
-var _ NamedOption = &NamedMapOpts{}
-
-// NewNamedMapOpts creates a reference to a new NamedMapOpts struct.
-//
-// Deprecated: NamedMapOpts is no longer used and will be removed in the next release.
-func NewNamedMapOpts(name string, values map[string]string, validator ValidatorFctType) *NamedMapOpts {
-	return &NamedMapOpts{
-		name:    name,
-		MapOpts: *NewMapOpts(values, validator),
-	}
-}
-
-// Name returns the name of the NamedMapOpts in the configuration.
-//
-// Deprecated: NamedMapOpts is no longer used and will be removed in the next release.
-func (o *NamedMapOpts) Name() string {
-	return o.name
-}
-
 // ValidatorFctType defines a validator function that returns a validated string and/or an error.
 type ValidatorFctType func(val string) (string, error)
 
@@ -264,6 +194,8 @@ func ValidateIPAddress(val string) (string, error) {
 }
 
 // ValidateMACAddress validates a MAC address.
+//
+// Deprecated: use [net.ParseMAC]. This function will be removed in the next release.
 func ValidateMACAddress(val string) (string, error) {
 	_, err := net.ParseMAC(strings.TrimSpace(val))
 	if err != nil {
@@ -350,20 +282,23 @@ func ValidateSysctl(val string) (string, error) {
 
 // FilterOpt is a flag type for validating filters
 type FilterOpt struct {
-	filter filters.Args
+	filter client.Filters
 }
 
 // NewFilterOpt returns a new FilterOpt
 func NewFilterOpt() FilterOpt {
-	return FilterOpt{filter: filters.NewArgs()}
+	return FilterOpt{filter: make(client.Filters)}
 }
 
 func (o *FilterOpt) String() string {
-	repr, err := filters.ToJSON(o.filter)
+	if o == nil || len(o.filter) == 0 {
+		return ""
+	}
+	repr, err := json.Marshal(o.filter)
 	if err != nil {
 		return "invalid filters"
 	}
-	return repr
+	return string(repr)
 }
 
 // Set sets the value of the opt by parsing the command line value
@@ -389,7 +324,7 @@ func (*FilterOpt) Type() string {
 }
 
 // Value returns the value of this option
-func (o *FilterOpt) Value() filters.Args {
+func (o *FilterOpt) Value() client.Filters {
 	return o.filter
 }
 
