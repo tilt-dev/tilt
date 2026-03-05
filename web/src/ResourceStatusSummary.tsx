@@ -1,4 +1,4 @@
-import React, { useEffect } from "react"
+import React, { useCallback, useEffect, useRef, useState } from "react"
 import { Link } from "react-router-dom"
 import styled from "styled-components"
 import { ReactComponent as CheckmarkSmallSvg } from "./assets/svg/checkmark-small.svg"
@@ -352,11 +352,86 @@ function ResourceMetadata(props: {
   return <></>
 }
 
+type NotificationSpec = { tag: string } & (
+  | { action: "show"; body: string }
+  | { action: "close" }
+)
+
+export function ResourceNotification(props: {
+  counts: StatusCounts
+  isSocketConnected?: boolean
+}) {
+  const { pending, unhealthy } = props.counts
+  const [allowed, setAllowed] = useState<boolean>(false)
+  const firstRun = useRef(true)
+  const [notification, setNotification] = useState<Notification | undefined>()
+
+  useEffect(() => {
+    try {
+      Notification.requestPermission().then((result) =>
+        setAllowed(result === "granted")
+      )
+    } catch (e) {
+      console.error("failed to request notification permissions", e)
+    }
+  })
+
+  const buildSpec: () => NotificationSpec = useCallback(() => {
+    if (unhealthy > 0) {
+      return {
+        tag: "unhealthy",
+        action: "show",
+        body: `Unhealthy resources: ${unhealthy}`,
+      }
+    } else if (pending == 0) {
+      return {
+        tag: "ready",
+        action: "show",
+        body: "Ready",
+      }
+    } else {
+      // close existing 'ready' so later changes renotify
+      return {
+        tag: "ready",
+        action: "close",
+      }
+    }
+  }, [allowed, pending, unhealthy])
+
+  useEffect(() => {
+    if (allowed) {
+      if (firstRun.current) {
+        firstRun.current = false
+        return
+      }
+
+      const spec = buildSpec()
+      if (notification) {
+        if (notification.tag !== spec.tag || spec.action === "close") {
+          notification.close()
+        }
+      }
+
+      if (spec.action === "show") {
+        setNotification(
+          new Notification("Tilt", {
+            body: spec.body,
+            tag: spec.tag,
+          })
+        )
+      }
+    }
+  }, [allowed, buildSpec])
+
+  return <></>
+}
+
 type ResourceStatusSummaryOptions = {
   displayText?: string
   labelText?: string
   updateMetadata?: boolean
   linkToLogFilters?: boolean
+  showNotifications?: boolean
 }
 
 type ResourceStatusSummaryProps = {
@@ -369,6 +444,7 @@ function ResourceStatusSummary(props: ResourceStatusSummaryProps) {
   const updateMetadata = props.updateMetadata ?? true
   const linkToLogFilters = props.linkToLogFilters ?? true
   const labelText = props.labelText ?? "Resource status summary"
+  const showNotifications = props.showNotifications ?? true
 
   return (
     <ResourceStatusSummaryRoot aria-label={labelText}>
@@ -377,6 +453,9 @@ function ResourceStatusSummary(props: ResourceStatusSummaryProps) {
           counts={statusCounts(props.statuses)}
           isSocketConnected={props.isSocketConnected}
         />
+      )}
+      {showNotifications && (
+        <ResourceNotification counts={statusCounts(props.statuses)} />
       )}
       <ResourceGroupStatus
         counts={statusCounts(props.statuses)}
@@ -412,6 +491,7 @@ export function SidebarGroupStatusSummary(
       statuses={allStatuses}
       linkToLogFilters={false}
       updateMetadata={false}
+      showNotifications={false}
       {...props}
     />
   )
@@ -427,6 +507,7 @@ export function TableGroupStatusSummary(props: StatusSummaryProps<RowValues>) {
       statuses={allStatuses}
       linkToLogFilters={false}
       updateMetadata={false}
+      showNotifications={false}
       {...props}
     />
   )
