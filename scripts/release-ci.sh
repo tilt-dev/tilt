@@ -34,7 +34,7 @@ mkdir -p ~/.windmill
 echo "$TILT_CLOUD_TOKEN" > ~/.windmill/token
 
 git fetch --tags
-git config --global user.email "it@tilt.dev"
+git config --global user.email "tilt-team@docker.com"
 git config --global user.name "Tilt Dev"
 
 VERSION=$(git describe --abbrev=0 --tags)
