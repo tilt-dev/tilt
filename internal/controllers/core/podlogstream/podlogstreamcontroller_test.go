@@ -6,6 +6,7 @@ import (
 	"io"
 	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/jonboulle/clockwork"
@@ -257,60 +258,64 @@ func TestTerminatedContainerLogs(t *testing.T) {
 
 // https://github.com/tilt-dev/tilt/issues/3908
 func TestLogReconnection(t *testing.T) {
-	f := newPLMFixture(t)
-	cName := container.Name("cName")
-	pb := newPodBuilder(podID).addRunningContainer(cName, "cID")
-	f.kClient.UpsertPod(pb.toPod())
+	synctest.Test(t, func(t *testing.T) {
+		f := newPLMFixture(t)
+		cName := container.Name("cName")
+		pb := newPodBuilder(podID).addRunningContainer(cName, "cID")
+		f.kClient.UpsertPod(pb.toPod())
 
-	reader, writer := io.Pipe()
-	defer func() {
+		reader, writer := io.Pipe()
+		defer func() {
+			require.NoError(t, writer.Close())
+		}()
+		f.kClient.SetLogReaderForPodContainer(podID, cName, reader)
+
+		// Set up fake time
+		startTime := f.clock.Now()
+		f.Create(plsFromPod("server", pb, startTime))
+
+		_, err := writer.Write([]byte("hello world!"))
+		require.NoError(t, err)
+		f.AssertOutputContains("hello world!")
+		f.AssertLogStartTime(startTime)
+
+		synctest.Wait()
+		f.clock.Advance(20 * time.Second)
+		lastRead := f.clock.Now()
+		_, _ = writer.Write([]byte("hello world2!"))
+		f.AssertOutputContains("hello world2!")
+
+		// Simulate Kubernetes rotating the logs by creating a new pipe.
+		reader2, writer2 := io.Pipe()
+		defer func() {
+			require.NoError(t, writer2.Close())
+		}()
+		f.kClient.SetLogReaderForPodContainer(podID, cName, reader2)
+		go func() {
+			_, _ = writer2.Write([]byte("goodbye world!"))
+		}()
+		f.AssertOutputDoesNotContain("goodbye world!")
+
+		f.clock.Advance(5 * time.Second)
+		f.AssertOutputDoesNotContain("goodbye world!")
+
+		f.clock.Advance(5 * time.Second)
+		f.AssertOutputDoesNotContain("goodbye world!")
+		f.AssertLogStartTime(startTime)
+
+		// simulate 15s since we last read a log; this triggers a reconnect
+		synctest.Wait()
+		f.clock.Advance(15 * time.Second)
+		assert.Eventually(t, func() bool {
+			return f.kClient.LastPodLogContext.Err() != nil
+		}, time.Second, time.Millisecond)
 		require.NoError(t, writer.Close())
-	}()
-	f.kClient.SetLogReaderForPodContainer(podID, cName, reader)
 
-	// Set up fake time
-	startTime := f.clock.Now()
-	f.Create(plsFromPod("server", pb, startTime))
+		f.AssertOutputContains("goodbye world!")
 
-	_, err := writer.Write([]byte("hello world!"))
-	require.NoError(t, err)
-	f.AssertOutputContains("hello world!")
-	f.AssertLogStartTime(startTime)
-
-	f.clock.Advance(20 * time.Second)
-	lastRead := f.clock.Now()
-	_, _ = writer.Write([]byte("hello world2!"))
-	f.AssertOutputContains("hello world2!")
-
-	// Simulate Kubernetes rotating the logs by creating a new pipe.
-	reader2, writer2 := io.Pipe()
-	defer func() {
-		require.NoError(t, writer2.Close())
-	}()
-	f.kClient.SetLogReaderForPodContainer(podID, cName, reader2)
-	go func() {
-		_, _ = writer2.Write([]byte("goodbye world!"))
-	}()
-	f.AssertOutputDoesNotContain("goodbye world!")
-
-	f.clock.Advance(5 * time.Second)
-	f.AssertOutputDoesNotContain("goodbye world!")
-
-	f.clock.Advance(5 * time.Second)
-	f.AssertOutputDoesNotContain("goodbye world!")
-	f.AssertLogStartTime(startTime)
-
-	// simulate 15s since we last read a log; this triggers a reconnect
-	f.clock.Advance(15 * time.Second)
-	assert.Eventually(t, func() bool {
-		return f.kClient.LastPodLogContext.Err() != nil
-	}, time.Second, time.Millisecond)
-	require.NoError(t, writer.Close())
-
-	f.AssertOutputContains("goodbye world!")
-
-	// Make sure the start time was adjusted for when the last read happened.
-	f.AssertLogStartTime(lastRead.Add(podLogReconnectGap))
+		// Make sure the start time was adjusted for when the last read happened.
+		f.AssertLogStartTime(lastRead.Add(podLogReconnectGap))
+	})
 }
 
 func TestInitContainerLogs(t *testing.T) {

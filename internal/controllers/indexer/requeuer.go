@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"testing"
 	"time"
 
 	"k8s.io/apimachinery/pkg/types"
@@ -53,6 +54,7 @@ type RequeueForTestResult struct {
 }
 
 func StartSourceForTesting(
+	t testing.TB,
 	ctx context.Context,
 	s source.Source,
 	reconciler reconcile.Reconciler,
@@ -62,6 +64,8 @@ func StartSourceForTesting(
 		workqueue.NewTypedItemExponentialFailureRateLimiter[reconcile.Request](
 			time.Millisecond, time.Millisecond))
 	_ = s.Start(ctx, q)
+
+	t.Cleanup(q.ShutDown)
 
 	go func() {
 		for ctx.Err() == nil {
