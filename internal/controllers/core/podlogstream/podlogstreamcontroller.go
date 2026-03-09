@@ -273,6 +273,12 @@ func (c *Controller) addOrUpdateContainerWatches(ctx context.Context, streamName
 		}
 		c.watches[key] = w
 
+		// Tell the status api that we've started streaming this container logs.
+		c.mutateContainerStatus(streamName, container.Name(co.Name), func(cs *ContainerLogStreamStatus) {
+			cs.Active = true
+			cs.Error = ""
+		})
+
 		go c.consumeLogs(w, c.st)
 	}
 
@@ -310,19 +316,17 @@ func (c *Controller) consumeLogs(watch *podLogWatch, st store.RStore) {
 	var exitError error
 
 	defer func() {
-		// When the log streaming ends, log it and report the status change to the
-		// apiserver.
+		// When the log streaming ends, update all our bookkeeping on podLogWatch
+		// and report the status change to the apiserver.
+		//
+		// Do this all in the same mutex lock, so that we don't have inconsistencies on
+		// the watch status.
 		c.mu.Lock()
-		c.mutateContainerStatus(watch.streamName, containerName, func(cs *ContainerLogStreamStatus) {
-			cs.Active = false
-			if exitError == nil {
-				cs.Error = ""
-			} else {
-				cs.Error = exitError.Error()
-			}
-		})
-		c.mu.Unlock()
-		c.podSource.requeueStream(watch.streamName)
+		defer c.mu.Unlock()
+
+		watch.doneWatchTime = c.clock.Now()
+		close(watch.doneCh)
+		watch.cancel()
 
 		if exitError != nil {
 			// TODO(nick): Should this be Warnf/Errorf?
@@ -335,9 +339,16 @@ func (c *Controller) consumeLogs(watch *podLogWatch, st store.RStore) {
 			watch.debounce = time.Second
 		}
 
-		watch.doneWatchTime = c.clock.Now()
-		close(watch.doneCh)
-		watch.cancel()
+		c.mutateContainerStatus(watch.streamName, containerName, func(cs *ContainerLogStreamStatus) {
+			cs.Active = false
+			if exitError == nil {
+				cs.Error = ""
+			} else {
+				cs.Error = exitError.Error()
+			}
+		})
+
+		c.podSource.requeueStream(watch.streamName)
 	}()
 
 	ns := watch.namespace
@@ -397,14 +408,6 @@ func (c *Controller) consumeLogs(watch *podLogWatch, st store.RStore) {
 				}
 			}
 		}()
-
-		c.mu.Lock()
-		c.mutateContainerStatus(watch.streamName, containerName, func(cs *ContainerLogStreamStatus) {
-			cs.Active = true
-			cs.Error = ""
-		})
-		c.mu.Unlock()
-		c.podSource.requeueStream(watch.streamName)
 
 		writer := &errorCapturingWriter{underlying: logger.Get(ctx).Writer(logger.InfoLvl)}
 		_, err = io.Copy(writer, reader)

@@ -121,7 +121,7 @@ func (b *ControllerFixtureBuilder) Build(c controller) *ControllerFixture {
 	// the background.  So instead, we wrap the Reconcile() call in mutex.
 	lc := NewLockedController(c)
 	if b.requeuer != nil {
-		indexer.StartSourceForTesting(b.Context(), b.requeuer, lc, b.requeuerResultChan)
+		indexer.StartSourceForTesting(b.t, b.Context(), b.requeuer, lc, b.requeuerResultChan)
 	}
 
 	return &ControllerFixture{
