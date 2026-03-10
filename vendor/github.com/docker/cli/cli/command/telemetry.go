@@ -11,11 +11,12 @@ import (
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/metric"
+	otelsdk "go.opentelemetry.io/otel/sdk"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -146,7 +147,7 @@ func defaultResourceOptions() []resource.Option {
 			semconv.ServiceInstanceID(uuid.NewString()),
 		),
 		resource.WithFromEnv(),
-		resource.WithTelemetrySDK(),
+		resource.WithDetectors(telemetrySDK{}),
 	}
 }
 
@@ -157,7 +158,10 @@ func (r *telemetryResource) AppendOptions(opts ...resource.Option) {
 	r.opts = append(r.opts, opts...)
 }
 
-type serviceNameDetector struct{}
+type (
+	serviceNameDetector struct{}
+	telemetrySDK        struct{}
+)
 
 func (serviceNameDetector) Detect(ctx context.Context) (*resource.Resource, error) {
 	return resource.StringDetector(
@@ -167,6 +171,16 @@ func (serviceNameDetector) Detect(ctx context.Context) (*resource.Resource, erro
 			return filepath.Base(os.Args[0]), nil
 		},
 	).Detect(ctx)
+}
+
+// Detect returns a *Resource that describes the OpenTelemetry SDK used.
+func (telemetrySDK) Detect(context.Context) (*resource.Resource, error) {
+	return resource.NewWithAttributes(
+		semconv.SchemaURL,
+		semconv.TelemetrySDKName("opentelemetry"),
+		semconv.TelemetrySDKLanguageGo,
+		semconv.TelemetrySDKVersion(otelsdk.Version()),
+	), nil
 }
 
 // cliReader is an implementation of Reader that will automatically

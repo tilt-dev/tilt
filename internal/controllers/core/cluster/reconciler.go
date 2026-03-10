@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/docker/docker/client"
 	"github.com/jonboulle/clockwork"
+	"github.com/moby/moby/client"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"

@@ -1,5 +1,5 @@
 // FIXME(thaJeztah): remove once we are a module; the go:build directive prevents go from downgrading language version to go1.16:
-//go:build go1.23
+//go:build go1.24
 
 package command
 
@@ -14,7 +14,6 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -48,7 +47,7 @@ func dockerExporterOTLPEndpoint(cli Cli) (endpoint string, secure bool) {
 	if otelCfg != nil {
 		otelMap, ok := otelCfg.(map[string]any)
 		if !ok {
-			otel.Handle(errors.Errorf(
+			otel.Handle(fmt.Errorf(
 				"unexpected type for field %q: %T (expected: %T)",
 				otelContextFieldName,
 				otelCfg,
@@ -76,7 +75,7 @@ func dockerExporterOTLPEndpoint(cli Cli) (endpoint string, secure bool) {
 	// We pretend we're the same as the environment reader.
 	u, err := url.Parse(endpoint)
 	if err != nil {
-		otel.Handle(errors.Errorf("docker otel endpoint is invalid: %s", err))
+		otel.Handle(fmt.Errorf("docker otel endpoint is invalid: %s", err))
 		return "", false
 	}
 

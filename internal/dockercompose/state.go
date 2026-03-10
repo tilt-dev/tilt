@@ -6,9 +6,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/docker/docker/api/types"
-	typescontainer "github.com/docker/docker/api/types/container"
-	"github.com/docker/go-connections/nat"
+	typescontainer "github.com/moby/moby/api/types/container"
+	typesnetwork "github.com/moby/moby/api/types/network"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/tilt-dev/tilt/internal/container"
@@ -126,11 +125,11 @@ func ToContainerState(state *typescontainer.State) *v1alpha1.DockerContainerStat
 	health := state.Health
 	healthStatus := ""
 	if health != nil {
-		healthStatus = health.Status
+		healthStatus = string(health.Status)
 	}
 
 	return &v1alpha1.DockerContainerState{
-		Status:       state.Status,
+		Status:       string(state.Status),
 		Running:      state.Running,
 		Error:        state.Error,
 		ExitCode:     int32(state.ExitCode),
@@ -148,8 +147,8 @@ func ToHealthcheckOutput(state *typescontainer.State) string {
 		return ""
 	}
 
-	healthStatus = health.Status
-	if healthStatus != types.Unhealthy || len(health.Log) == 0 {
+	healthStatus = string(health.Status)
+	if healthStatus != string(typescontainer.Unhealthy) || len(health.Log) == 0 {
 		return ""
 	}
 
@@ -157,7 +156,7 @@ func ToHealthcheckOutput(state *typescontainer.State) string {
 }
 
 // Convert a full into an apiserver-compatible status model.
-func ToServiceStatus(id container.ID, name string, state *typescontainer.State, ports nat.PortMap) v1alpha1.DockerComposeServiceStatus {
+func ToServiceStatus(id container.ID, name string, state *typescontainer.State, ports typesnetwork.PortMap) v1alpha1.DockerComposeServiceStatus {
 	status := v1alpha1.DockerComposeServiceStatus{}
 	status.ContainerID = string(id)
 	status.ContainerName = name
@@ -170,8 +169,8 @@ func ToServiceStatus(id container.ID, name string, state *typescontainer.State, 
 				continue
 			}
 			status.PortBindings = append(status.PortBindings, v1alpha1.DockerPortBinding{
-				ContainerPort: int32(containerPort.Int()),
-				HostIP:        binding.HostIP,
+				ContainerPort: int32(containerPort.Num()),
+				HostIP:        binding.HostIP.String(),
 				HostPort:      int32(p),
 			})
 		}

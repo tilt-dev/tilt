@@ -1,5 +1,5 @@
 // FIXME(thaJeztah): remove once we are a module; the go:build directive prevents go from downgrading language version to go1.16:
-//go:build go1.23
+//go:build go1.24
 
 package store
 
@@ -18,13 +18,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/docker/cli/internal/lazyregexp"
 	"github.com/opencontainers/go-digest"
 )
-
-const restrictedNamePattern = "^[a-zA-Z0-9][a-zA-Z0-9_.+-]+$"
-
-var restrictedNameRegEx = lazyregexp.New(restrictedNamePattern)
 
 // Store provides a context store for easily remembering endpoints configuration
 type Store interface {
@@ -225,10 +220,41 @@ func ValidateContextName(name string) error {
 	if name == "default" {
 		return errors.New(`"default" is a reserved context name`)
 	}
-	if !restrictedNameRegEx.MatchString(name) {
-		return fmt.Errorf("context name %q is invalid, names are validated against regexp %q", name, restrictedNamePattern)
+	if !isValidName(name) {
+		return fmt.Errorf("context name %q is invalid, names are validated against regexp %q", name, validNameFormat)
 	}
 	return nil
+}
+
+// validNameFormat is used as part of errors for invalid context-names.
+// We should consider making this less technical ("must start with "a-z",
+// and only consist of alphanumeric characters and separators").
+const validNameFormat = `^[a-zA-Z0-9][a-zA-Z0-9_.+-]+$`
+
+// isValidName checks if the context-name is valid ("^[a-zA-Z0-9][a-zA-Z0-9_.+-]+$").
+//
+// Names must start with an alphanumeric character (a-zA-Z0-9), followed by
+// alphanumeric or separators ("_", ".", "+", "-").
+func isValidName(s string) bool {
+	if len(s) < 2 || !isAlphaNum(s[0]) {
+		return false
+	}
+
+	for i := 1; i < len(s); i++ {
+		c := s[i]
+		if isAlphaNum(c) || c == '_' || c == '.' || c == '+' || c == '-' {
+			continue
+		}
+		return false
+	}
+
+	return true
+}
+
+func isAlphaNum(c byte) bool {
+	return (c >= 'a' && c <= 'z') ||
+		(c >= 'A' && c <= 'Z') ||
+		(c >= '0' && c <= '9')
 }
 
 // Export exports an existing namespace into an opaque data stream

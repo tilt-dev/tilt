@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	typescontainer "github.com/docker/docker/api/types/container"
+	typescontainer "github.com/moby/moby/api/types/container"
 	"github.com/jonboulle/clockwork"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -236,7 +236,7 @@ func TestContainerUnhealthy(t *testing.T) {
 	require.Eventually(t, func() bool {
 		f.MustReconcile(nn)
 		f.MustGet(nn, &obj)
-		return obj.Status.ContainerState.HealthStatus == typescontainer.Unhealthy
+		return obj.Status.ContainerState.HealthStatus == string(typescontainer.Unhealthy)
 	}, time.Second, 10*time.Millisecond, "container unhealthy")
 
 	assert.Equal(t, containerID, obj.Status.ContainerID)
@@ -254,7 +254,7 @@ func TestContainerUnhealthy(t *testing.T) {
 		}
 	}
 
-	assert.Equal(t, typescontainer.Unhealthy,
+	assert.Equal(t, string(typescontainer.Unhealthy),
 		s.ManifestTargets["fe"].State.DCRuntimeState().ContainerState.HealthStatus)
 
 	assert.Contains(t, f.Stdout(), "healthcheck failed")

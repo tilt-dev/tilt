@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	typesbuild "github.com/docker/docker/api/types/build"
+	typesbuild "github.com/moby/moby/api/types/build"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 

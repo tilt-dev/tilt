@@ -13,10 +13,11 @@ import (
 
 	cerrdefs "github.com/containerd/errdefs"
 	"github.com/distribution/reference"
-	typesbuild "github.com/docker/docker/api/types/build"
-	"github.com/docker/docker/pkg/jsonmessage"
 	controlapi "github.com/moby/buildkit/api/services/control"
 	"github.com/moby/buildkit/session/filesync"
+	typesbuild "github.com/moby/moby/api/types/build"
+	"github.com/moby/moby/api/types/jsonstream"
+	"github.com/moby/moby/client/pkg/jsonmessage"
 	"github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"
 	"github.com/tonistiigi/fsutil"
@@ -377,7 +378,7 @@ func readDockerOutput(ctx context.Context, reader io.Reader) (dockerOutput, []v1
 	b := newBuildkitPrinter(logger.Get(ctx))
 
 	for decoder.More() {
-		message := jsonmessage.JSONMessage{}
+		message := jsonstream.Message{}
 		err := decoder.Decode(&message)
 		if err != nil {
 			return dockerOutput{}, b.toStageStatuses(), errors.Wrap(err, "decoding docker output")
@@ -418,7 +419,8 @@ func readDockerOutput(ctx context.Context, reader io.Reader) (dockerOutput, []v1
 					fields[logger.FieldNameProgressMustPrint] = "1"
 				}
 				logger.Get(ctx).WithFields(fields).
-					Infof("%s: %s %s", id, message.Status, message.Progress.String())
+					Infof("%s: %s %s", id, message.Status,
+						jsonmessage.RenderTUIProgress(*message.Progress, 200))
 				progressLastPrinted[id] = time.Now()
 			}
 		}
@@ -497,7 +499,7 @@ func toVertexes(resp *controlapi.StatusResponse) ([]*vertex, []*vertexLog, []*ve
 	return vertexes, logs, statuses
 }
 
-func messageIsFromBuildkit(msg jsonmessage.JSONMessage) bool {
+func messageIsFromBuildkit(msg jsonstream.Message) bool {
 	return msg.ID == "moby.buildkit.trace"
 }
 

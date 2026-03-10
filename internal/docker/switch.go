@@ -6,12 +6,10 @@ import (
 	"sync"
 
 	"github.com/distribution/reference"
-	"github.com/docker/docker/api/types"
-	typesbuild "github.com/docker/docker/api/types/build"
-	typescontainer "github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/filters"
-	typesimage "github.com/docker/docker/api/types/image"
-	"github.com/docker/docker/client"
+	typesbuild "github.com/moby/moby/api/types/build"
+	typescontainer "github.com/moby/moby/api/types/container"
+	typesimage "github.com/moby/moby/api/types/image"
+	"github.com/moby/moby/client"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/tilt-dev/tilt/internal/container"
@@ -78,16 +76,16 @@ func (c *switchCli) Env() Env {
 func (c *switchCli) BuilderVersion(ctx context.Context) (typesbuild.BuilderVersion, error) {
 	return c.client(ctx).BuilderVersion(ctx)
 }
-func (c *switchCli) ServerVersion(ctx context.Context) (types.Version, error) {
+func (c *switchCli) ServerVersion(ctx context.Context) (client.ServerVersionResult, error) {
 	return c.client(ctx).ServerVersion(ctx)
 }
-func (c *switchCli) ContainerLogs(ctx context.Context, containerID string, options typescontainer.LogsOptions) (io.ReadCloser, error) {
+func (c *switchCli) ContainerLogs(ctx context.Context, containerID string, options client.ContainerLogsOptions) (io.ReadCloser, error) {
 	return c.client(ctx).ContainerLogs(ctx, containerID, options)
 }
 func (c *switchCli) ContainerInspect(ctx context.Context, containerID string) (typescontainer.InspectResponse, error) {
 	return c.client(ctx).ContainerInspect(ctx, containerID)
 }
-func (c *switchCli) ContainerList(ctx context.Context, options typescontainer.ListOptions) ([]typescontainer.Summary, error) {
+func (c *switchCli) ContainerList(ctx context.Context, options client.ContainerListOptions) ([]typescontainer.Summary, error) {
 	return c.client(ctx).ContainerList(ctx, options)
 }
 func (c *switchCli) ContainerRestartNoWait(ctx context.Context, containerID string) error {
@@ -105,7 +103,7 @@ func (c *switchCli) ImagePull(ctx context.Context, ref reference.Named) (referen
 func (c *switchCli) ImagePush(ctx context.Context, ref reference.NamedTagged) (io.ReadCloser, error) {
 	return c.client(ctx).ImagePush(ctx, ref)
 }
-func (c *switchCli) ImageBuild(ctx context.Context, g *errgroup.Group, buildContext io.Reader, options BuildOptions) (typesbuild.ImageBuildResponse, error) {
+func (c *switchCli) ImageBuild(ctx context.Context, g *errgroup.Group, buildContext io.Reader, options BuildOptions) (client.ImageBuildResult, error) {
 	return c.client(ctx).ImageBuild(ctx, g, buildContext, options)
 }
 func (c *switchCli) ImageTag(ctx context.Context, source, target string) error {
@@ -114,19 +112,19 @@ func (c *switchCli) ImageTag(ctx context.Context, source, target string) error {
 func (c *switchCli) ImageInspect(ctx context.Context, imageID string, inspectOpts ...client.ImageInspectOption) (typesimage.InspectResponse, error) {
 	return c.client(ctx).ImageInspect(ctx, imageID, inspectOpts...)
 }
-func (c *switchCli) ImageList(ctx context.Context, options typesimage.ListOptions) ([]typesimage.Summary, error) {
+func (c *switchCli) ImageList(ctx context.Context, options client.ImageListOptions) ([]typesimage.Summary, error) {
 	return c.client(ctx).ImageList(ctx, options)
 }
-func (c *switchCli) ImageRemove(ctx context.Context, imageID string, options typesimage.RemoveOptions) ([]typesimage.DeleteResponse, error) {
+func (c *switchCli) ImageRemove(ctx context.Context, imageID string, options client.ImageRemoveOptions) ([]typesimage.DeleteResponse, error) {
 	return c.client(ctx).ImageRemove(ctx, imageID, options)
 }
 func (c *switchCli) NewVersionError(ctx context.Context, apiRequired, feature string) error {
 	return c.client(context.Background()).NewVersionError(ctx, apiRequired, feature)
 }
-func (c *switchCli) BuildCachePrune(ctx context.Context, opts typesbuild.CachePruneOptions) (*typesbuild.CachePruneReport, error) {
+func (c *switchCli) BuildCachePrune(ctx context.Context, opts client.BuildCachePruneOptions) (*typesbuild.CachePruneReport, error) {
 	return c.client(ctx).BuildCachePrune(ctx, opts)
 }
-func (c *switchCli) ContainersPrune(ctx context.Context, pruneFilters filters.Args) (typescontainer.PruneReport, error) {
+func (c *switchCli) ContainersPrune(ctx context.Context, pruneFilters client.Filters) (typescontainer.PruneReport, error) {
 	return c.client(ctx).ContainersPrune(ctx, pruneFilters)
 }
 

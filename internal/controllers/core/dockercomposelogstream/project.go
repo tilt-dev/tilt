@@ -118,12 +118,11 @@ func (r *Reconciler) getContainerInfo(ctx context.Context, id string) (*Containe
 	}
 
 	if containerJSON.Config == nil ||
-		containerJSON.ContainerJSONBase == nil ||
-		containerJSON.ContainerJSONBase.State == nil {
+		containerJSON.State == nil {
 		return nil, fmt.Errorf("no state found")
 	}
 
-	cState := containerJSON.ContainerJSONBase.State
+	cState := containerJSON.State
 	return &ContainerInfo{
 		ID:    id,
 		State: dockercompose.ToContainerState(cState),

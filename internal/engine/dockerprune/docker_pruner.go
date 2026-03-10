@@ -9,10 +9,10 @@ import (
 
 	"github.com/docker/go-units"
 
-	typesbuild "github.com/docker/docker/api/types/build"
-	typescontainer "github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/filters"
-	typesimage "github.com/docker/docker/api/types/image"
+	typesbuild "github.com/moby/moby/api/types/build"
+	typescontainer "github.com/moby/moby/api/types/container"
+	typesimage "github.com/moby/moby/api/types/image"
+	mobyclient "github.com/moby/moby/client"
 
 	"github.com/tilt-dev/tilt/internal/container"
 
@@ -145,10 +145,9 @@ func (dp *DockerPruner) prune(ctx context.Context, maxAge time.Duration, keepRec
 		return nil
 	}
 
-	f := filters.NewArgs(
-		filters.Arg("label", gcEnabledSelector),
-		filters.Arg("until", maxAge.String()),
-	)
+	f := make(mobyclient.Filters).
+		Add("label", gcEnabledSelector).
+		Add("until", maxAge.String())
 
 	// PRUNE CONTAINERS
 	containerReport, err := dp.dCli.ContainersPrune(ctx, f)
@@ -165,7 +164,7 @@ func (dp *DockerPruner) prune(ctx context.Context, maxAge time.Duration, keepRec
 	prettyPrintImagesPruneReport(imageReport, l)
 
 	// PRUNE BUILD CACHE
-	opts := typesbuild.CachePruneOptions{Filters: f}
+	opts := mobyclient.BuildCachePruneOptions{Filters: f}
 	cacheReport, err := dp.dCli.BuildCachePrune(ctx, opts)
 	if err != nil {
 		if !strings.Contains(err.Error(), `"build prune" requires API version`) {
@@ -264,10 +263,8 @@ func (dp *DockerPruner) filterOutMostRecentInspects(ctx context.Context, inspect
 }
 
 func (dp *DockerPruner) deleteOldImages(ctx context.Context, maxAge time.Duration, keepRecent int, selectors []container.RefSelector) (typesimage.PruneReport, error) {
-	opts := typesimage.ListOptions{
-		Filters: filters.NewArgs(
-			filters.Arg("label", gcEnabledSelector),
-		),
+	opts := mobyclient.ImageListOptions{
+		Filters: make(mobyclient.Filters).Add("label", gcEnabledSelector),
 	}
 	imgs, err := dp.dCli.ImageList(ctx, opts)
 	if err != nil {
@@ -278,7 +275,7 @@ func (dp *DockerPruner) deleteOldImages(ctx context.Context, maxAge time.Duratio
 	inspects = dp.filterImageInspectsByMaxAge(ctx, inspects, maxAge, selectors)
 	toDelete := dp.filterOutMostRecentInspects(ctx, inspects, keepRecent, selectors)
 
-	rmOpts := typesimage.RemoveOptions{PruneChildren: true}
+	rmOpts := mobyclient.ImageRemoveOptions{PruneChildren: true}
 	var responseItems []typesimage.DeleteResponse
 	var reclaimedBytes uint64
 
@@ -357,3 +354,4 @@ func prettyPrintContainersPruneReport(report typescontainer.PruneReport, l logge
 func humanSize(bytes uint64) string {
 	return units.HumanSize(float64(bytes))
 }
+

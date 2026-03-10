@@ -13,23 +13,22 @@ import (
 	"time"
 
 	"github.com/blang/semver"
+	"github.com/containerd/platforms"
 	"github.com/distribution/reference"
 	"github.com/docker/cli/cli/command"
 	"github.com/docker/cli/cli/config"
-	"github.com/docker/docker/api/types"
-	typesbuild "github.com/docker/docker/api/types/build"
-	typescontainer "github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/filters"
-	typesimage "github.com/docker/docker/api/types/image"
-	typesregistry "github.com/docker/docker/api/types/registry"
-	"github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/stdcopy"
-	"github.com/docker/docker/registry"
 	"github.com/docker/go-connections/tlsconfig"
 	"github.com/moby/buildkit/identity"
 	"github.com/moby/buildkit/session"
 	"github.com/moby/buildkit/session/auth/authprovider"
 	"github.com/moby/buildkit/session/filesync"
+	"github.com/moby/moby/api/pkg/stdcopy"
+	typesbuild "github.com/moby/moby/api/types/build"
+	typescontainer "github.com/moby/moby/api/types/container"
+	typesimage "github.com/moby/moby/api/types/image"
+	typesregistry "github.com/moby/moby/api/types/registry"
+	"github.com/moby/moby/client"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 
@@ -82,7 +81,7 @@ type Client interface {
 	// is the default builder version you want (buildkit or legacy)
 	BuilderVersion(ctx context.Context) (typesbuild.BuilderVersion, error)
 
-	ServerVersion(ctx context.Context) (types.Version, error)
+	ServerVersion(ctx context.Context) (client.ServerVersionResult, error)
 
 	// Set the orchestrator we're talking to. This is only relevant to switchClient,
 	// which can talk to either the Local or in-cluster docker daemon.
@@ -91,9 +90,9 @@ type Client interface {
 	// relevant for the switchClient which has clients for both types.
 	ForOrchestrator(orc model.Orchestrator) Client
 
-	ContainerLogs(ctx context.Context, container string, options typescontainer.LogsOptions) (io.ReadCloser, error)
+	ContainerLogs(ctx context.Context, container string, options client.ContainerLogsOptions) (io.ReadCloser, error)
 	ContainerInspect(ctx context.Context, containerID string) (typescontainer.InspectResponse, error)
-	ContainerList(ctx context.Context, options typescontainer.ListOptions) ([]typescontainer.Summary, error)
+	ContainerList(ctx context.Context, options client.ContainerListOptions) ([]typescontainer.Summary, error)
 	ContainerRestartNoWait(ctx context.Context, containerID string) error
 
 	Run(ctx context.Context, opts RunConfig) (RunResult, error)
@@ -104,15 +103,15 @@ type Client interface {
 
 	ImagePull(ctx context.Context, ref reference.Named) (reference.Canonical, error)
 	ImagePush(ctx context.Context, image reference.NamedTagged) (io.ReadCloser, error)
-	ImageBuild(ctx context.Context, g *errgroup.Group, buildContext io.Reader, options BuildOptions) (typesbuild.ImageBuildResponse, error)
+	ImageBuild(ctx context.Context, g *errgroup.Group, buildContext io.Reader, options BuildOptions) (client.ImageBuildResult, error)
 	ImageTag(ctx context.Context, source, target string) error
 	ImageInspect(ctx context.Context, imageID string, inspectOpts ...client.ImageInspectOption) (typesimage.InspectResponse, error)
-	ImageList(ctx context.Context, options typesimage.ListOptions) ([]typesimage.Summary, error)
-	ImageRemove(ctx context.Context, imageID string, options typesimage.RemoveOptions) ([]typesimage.DeleteResponse, error)
+	ImageList(ctx context.Context, options client.ImageListOptions) ([]typesimage.Summary, error)
+	ImageRemove(ctx context.Context, imageID string, options client.ImageRemoveOptions) ([]typesimage.DeleteResponse, error)
 
 	NewVersionError(ctx context.Context, APIrequired, feature string) error
-	BuildCachePrune(ctx context.Context, opts typesbuild.CachePruneOptions) (*typesbuild.CachePruneReport, error)
-	ContainersPrune(ctx context.Context, pruneFilters filters.Args) (typescontainer.PruneReport, error)
+	BuildCachePrune(ctx context.Context, opts client.BuildCachePruneOptions) (*typesbuild.CachePruneReport, error)
+	ContainersPrune(ctx context.Context, pruneFilters client.Filters) (typescontainer.PruneReport, error)
 }
 
 // Add-on interface for a client that manages multiple clients transparently.
@@ -149,7 +148,7 @@ type Cli struct {
 
 	versionsOnce   sync.Once
 	builderVersion typesbuild.BuilderVersion
-	serverVersion  types.Version
+	serverVersion  client.ServerVersionResult
 	versionError   error
 }
 
@@ -167,7 +166,7 @@ func NewDockerClient(ctx context.Context, env Env) Client {
 	}
 }
 
-func SupportedVersion(v types.Version) bool {
+func SupportedVersion(v client.ServerVersionResult) bool {
 	version, err := semver.ParseTolerant(v.APIVersion)
 	if err != nil {
 		// If the server version doesn't parse, we shouldn't even start
@@ -177,7 +176,7 @@ func SupportedVersion(v types.Version) bool {
 	return version.GTE(minDockerVersion)
 }
 
-func getDockerBuilderVersion(v types.Version, env Env) (typesbuild.BuilderVersion, error) {
+func getDockerBuilderVersion(v client.ServerVersionResult, env Env) (typesbuild.BuilderVersion, error) {
 	// If the user has explicitly chosen to enable/disable buildkit, respect that.
 	buildkitEnv := os.Getenv("DOCKER_BUILDKIT")
 	if buildkitEnv != "" {
@@ -204,7 +203,7 @@ func getDockerBuilderVersion(v types.Version, env Env) (typesbuild.BuilderVersio
 //
 // Inferred from release notes
 // https://docs.docker.com/engine/release-notes/
-func SupportsBuildkit(v types.Version, env Env) bool {
+func SupportsBuildkit(v client.ServerVersionResult, env Env) bool {
 	if env.IsOldMinikube {
 		// Buildkit for Minikube is busted on some versions. See
 		// https://github.com/kubernetes/minikube/issues/4143
@@ -280,7 +279,7 @@ func (c *Cli) initVersion(ctx context.Context) {
 		ctx, cancel := context.WithTimeout(ctx, versionTimeout)
 		defer cancel()
 
-		serverVersion, err := c.Client.ServerVersion(ctx)
+		serverVersion, err := c.Client.ServerVersion(ctx, client.ServerVersionOptions{})
 		if err != nil {
 			c.versionError = err
 			return
@@ -373,7 +372,14 @@ func authConfigs() map[string]typesregistry.AuthConfig {
 	credentials, _ := configFile.GetAllCredentials()
 	authConfigs := make(map[string]typesregistry.AuthConfig, len(credentials))
 	for k, auth := range credentials {
-		authConfigs[k] = typesregistry.AuthConfig(auth)
+		authConfigs[k] = typesregistry.AuthConfig{
+			Username:      auth.Username,
+			Password:      auth.Password,
+			Auth:          auth.Auth,
+			ServerAddress: auth.ServerAddress,
+			IdentityToken: auth.IdentityToken,
+			RegistryToken: auth.RegistryToken,
+		}
 	}
 	return authConfigs
 }
@@ -392,39 +398,33 @@ func (c *Cli) BuilderVersion(ctx context.Context) (typesbuild.BuilderVersion, er
 	return c.builderVersion, c.versionError
 }
 
-func (c *Cli) ServerVersion(ctx context.Context) (types.Version, error) {
+func (c *Cli) ServerVersion(ctx context.Context) (client.ServerVersionResult, error) {
 	c.initVersion(ctx)
 	return c.serverVersion, c.versionError
 }
 
 type encodedAuth string
 
-func (c *Cli) authInfo(ctx context.Context, repoInfo *registry.RepositoryInfo, cmdName string) (encodedAuth, error) {
+func (c *Cli) authInfo(ctx context.Context, ref reference.Reference) (encodedAuth, error) {
 	cli, err := newDockerCli(ctx)
 	if err != nil {
 		return "", errors.Wrap(err, "authInfo")
 	}
-	authConfig := command.ResolveAuthConfig(cli.ConfigFile(), repoInfo.Index)
-	auth, err := typesregistry.EncodeAuthConfig(authConfig)
+	auth, err := command.RetrieveAuthTokenFromImage(cli.ConfigFile(), ref.String())
 	if err != nil {
-		return "", errors.Wrap(err, "authInfo#EncodeAuthConfig")
+		return "", errors.Wrap(err, "authInfo#RetrieveAuthTokenFromImage")
 	}
 	return encodedAuth(auth), nil
 }
 
 func (c *Cli) ImagePull(ctx context.Context, ref reference.Named) (reference.Canonical, error) {
-	repoInfo, err := registry.ParseRepositoryInfo(ref)
-	if err != nil {
-		return nil, fmt.Errorf("could not parse registry for %q: %v", ref.String(), err)
-	}
-
-	encodedAuth, err := c.authInfo(ctx, repoInfo, "push")
+	encodedAuth, err := c.authInfo(ctx, ref)
 	if err != nil {
 		return nil, fmt.Errorf("could not authenticate: %v", err)
 	}
 
 	image := ref.String()
-	pullResp, err := c.Client.ImagePull(ctx, image, typesimage.PullOptions{
+	pullResp, err := c.Client.ImagePull(ctx, image, client.ImagePullOptions{
 		RegistryAuth: string(encodedAuth),
 	})
 	if err != nil {
@@ -447,14 +447,14 @@ func (c *Cli) ImagePull(ctx context.Context, ref reference.Named) (reference.Can
 		return nil, fmt.Errorf("connection error while pulling image %q: %v", image, err)
 	}
 
-	imgInspect, err := c.Client.ImageInspect(ctx, image)
+	imgInspectResult, err := c.Client.ImageInspect(ctx, image)
 	if err != nil {
 		return nil, fmt.Errorf("failed to inspect after pull for image %q: %v", image, err)
 	}
 
-	pulledRef, err := reference.ParseNormalizedNamed(imgInspect.RepoDigests[0])
+	pulledRef, err := reference.ParseNormalizedNamed(imgInspectResult.RepoDigests[0])
 	if err != nil {
-		return nil, fmt.Errorf("invalid reference %q for image %q: %v", imgInspect.RepoDigests[0], image, err)
+		return nil, fmt.Errorf("invalid reference %q for image %q: %v", imgInspectResult.RepoDigests[0], image, err)
 	}
 	cRef, ok := pulledRef.(reference.Canonical)
 	if !ok {
@@ -473,18 +473,13 @@ func (c *Cli) ImagePull(ctx context.Context, ref reference.Named) (reference.Can
 }
 
 func (c *Cli) ImagePush(ctx context.Context, ref reference.NamedTagged) (io.ReadCloser, error) {
-	repoInfo, err := registry.ParseRepositoryInfo(ref)
-	if err != nil {
-		return nil, errors.Wrap(err, "ImagePush#ParseRepositoryInfo")
-	}
-
-	logger.Get(ctx).Infof("Authenticating to image repo: %s", repoInfo.Index.Name)
-	encodedAuth, err := c.authInfo(ctx, repoInfo, "push")
+	logger.Get(ctx).Infof("Authenticating to image repo: %s", ref.Name())
+	encodedAuth, err := c.authInfo(ctx, ref)
 	if err != nil {
 		return nil, errors.Wrap(err, "ImagePush: authenticate")
 	}
 
-	options := typesimage.PushOptions{
+	options := client.ImagePushOptions{
 		RegistryAuth: string(encodedAuth),
 	}
 
@@ -495,7 +490,7 @@ func (c *Cli) ImagePush(ctx context.Context, ref reference.NamedTagged) (io.Read
 	return c.Client.ImagePush(ctx, ref.String(), options)
 }
 
-func (c *Cli) ImageBuild(ctx context.Context, g *errgroup.Group, buildContext io.Reader, options BuildOptions) (typesbuild.ImageBuildResponse, error) {
+func (c *Cli) ImageBuild(ctx context.Context, g *errgroup.Group, buildContext io.Reader, options BuildOptions) (client.ImageBuildResult, error) {
 	// Always use a one-time session when using buildkit, since credential
 	// passing is fast and we want to get the latest creds.
 	// https://github.com/tilt-dev/tilt/issues/4043
@@ -505,7 +500,7 @@ func (c *Cli) ImageBuild(ctx context.Context, g *errgroup.Group, buildContext io
 	mustUseBuildkit := len(options.SSHSpecs) > 0 || len(options.SecretSpecs) > 0 || options.DirSource != nil
 	builderVersion, err := c.BuilderVersion(ctx)
 	if err != nil {
-		return typesbuild.ImageBuildResponse{}, err
+		return client.ImageBuildResult{}, err
 	}
 	if options.ForceLegacyBuilder {
 		builderVersion = typesbuild.BuilderV1
@@ -516,15 +511,15 @@ func (c *Cli) ImageBuild(ctx context.Context, g *errgroup.Group, buildContext io
 		var err error
 		oneTimeSession, err = c.startBuildkitSession(ctx, g, identity.NewID(), options.DirSource, options.SSHSpecs, options.SecretSpecs)
 		if err != nil {
-			return typesbuild.ImageBuildResponse{}, errors.Wrapf(err, "ImageBuild")
+			return client.ImageBuildResult{}, errors.Wrapf(err, "ImageBuild")
 		}
 		sessionID = oneTimeSession.ID()
 	} else if mustUseBuildkit {
-		return typesbuild.ImageBuildResponse{},
+		return client.ImageBuildResult{},
 			fmt.Errorf("Docker SSH secrets only work on Buildkit, but Buildkit has been disabled")
 	}
 
-	opts := typesbuild.ImageBuildOptions{}
+	opts := client.ImageBuildOptions{}
 	opts.Version = builderVersion
 
 	if isUsingBuildkit {
@@ -542,8 +537,15 @@ func (c *Cli) ImageBuild(ctx context.Context, g *errgroup.Group, buildContext io
 	opts.NetworkMode = options.Network
 	opts.CacheFrom = options.CacheFrom
 	opts.PullParent = options.PullParent
-	opts.Platform = options.Platform
 	opts.ExtraHosts = append([]string{}, options.ExtraHosts...)
+
+	if options.Platform != "" {
+		p, err := platforms.Parse(options.Platform)
+		if err != nil {
+			return client.ImageBuildResult{}, errors.Wrapf(err, "invalid platform %q", options.Platform)
+		}
+		opts.Platforms = []ocispec.Platform{p}
+	}
 
 	if options.DirSource != nil {
 		opts.RemoteContext = clientSessionRemote
@@ -570,25 +572,26 @@ func (c *Cli) ContainerRestartNoWait(ctx context.Context, containerID string) er
 	// Don't wait on the container to fully start.
 	dur := 0
 
-	return c.ContainerRestart(ctx, containerID, typescontainer.StopOptions{
+	_, err := c.Client.ContainerRestart(ctx, containerID, client.ContainerRestartOptions{
 		Timeout: &dur,
 	})
+	return err
 }
 
 func (c *Cli) ExecInContainer(ctx context.Context, cID container.ID, cmd model.Cmd, in io.Reader, out io.Writer) error {
 	attachStdin := in != nil
-	cfg := typescontainer.ExecOptions{
+	cfg := client.ExecCreateOptions{
 		Cmd:          cmd.Argv,
 		AttachStdout: true,
 		AttachStderr: true,
 		AttachStdin:  attachStdin,
-		Tty:          !attachStdin,
+		TTY:          !attachStdin,
 	}
 
-	// ContainerExecCreate error-handling is awful, so before we Create
+	// ExecCreate error-handling is awful, so before we Create
 	// we do a dummy inspect, to get more reasonable error messages. See:
 	// https://github.com/docker/cli/blob/ae1618713f83e7da07317d579d0675f578de22fa/cli/command/container/exec.go#L77
-	if _, err := c.ContainerInspect(ctx, cID.String()); err != nil {
+	if _, err := c.Client.ContainerInspect(ctx, cID.String(), client.ContainerInspectOptions{}); err != nil {
 		return errors.Wrap(err, "ExecInContainer")
 	}
 
@@ -598,18 +601,19 @@ func (c *Cli) ExecInContainer(ctx context.Context, cID container.ID, cmd model.C
 	// https://github.com/tilt-dev/tilt/issues/6521
 	createCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	execId, err := c.ContainerExecCreate(createCtx, cID.String(), cfg)
+	execResult, err := c.Client.ExecCreate(createCtx, cID.String(), cfg)
 	if err != nil {
 		return errors.Wrap(err, "ExecInContainer#create")
 	}
 
-	connection, err := c.ContainerExecAttach(createCtx, execId.ID, typescontainer.ExecAttachOptions{Tty: true})
+	attachResult, err := c.Client.ExecAttach(createCtx, execResult.ID, client.ExecAttachOptions{TTY: true})
 	if err != nil {
 		return errors.Wrap(err, "ExecInContainer#attach")
 	}
+	connection := attachResult.HijackedResponse
 	defer connection.Close()
 
-	err = c.ContainerExecStart(createCtx, execId.ID, typescontainer.ExecStartOptions{})
+	_, err = c.Client.ExecStart(createCtx, execResult.ID, client.ExecStartOptions{})
 	if err != nil {
 		return errors.Wrap(err, "ExecInContainer#start")
 	}
@@ -644,7 +648,7 @@ func (c *Cli) ExecInContainer(ctx context.Context, cID container.ID, cmd model.C
 	<-inputDone
 
 	for {
-		inspected, err := c.ContainerExecInspect(ctx, execId.ID)
+		inspected, err := c.Client.ExecInspect(ctx, execResult.ID, client.ExecInspectOptions{})
 		if err != nil {
 			return errors.Wrap(err, "ExecInContainer#inspect")
 		}
@@ -684,19 +688,20 @@ func (c *Cli) Run(ctx context.Context, opts RunConfig) (RunResult, error) {
 		Mounts: opts.Mounts,
 	}
 
-	createResp, err := c.Client.ContainerCreate(ctx,
-		cc,
-		hc,
-		nil,
-		nil,
-		opts.ContainerName,
-	)
+	createResult, err := c.Client.ContainerCreate(ctx, client.ContainerCreateOptions{
+		Config:     cc,
+		HostConfig: hc,
+		Name:       opts.ContainerName,
+	})
 	if err != nil {
 		return RunResult{}, fmt.Errorf("could not create container: %v", err)
 	}
+	// Wrap result in a compatible struct shape
+	createResp := createResult
 
 	tearDown := func(containerID string) error {
-		return c.Client.ContainerRemove(ctx, createResp.ID, typescontainer.RemoveOptions{Force: true})
+		_, err := c.Client.ContainerRemove(ctx, createResp.ID, client.ContainerRemoveOptions{Force: true})
+		return err
 	}
 
 	var containerStarted bool
@@ -710,7 +715,11 @@ func (c *Cli) Run(ctx context.Context, opts RunConfig) (RunResult, error) {
 		}
 	}(createResp.ID)
 
-	statusCh, statusErrCh := c.Client.ContainerWait(ctx, createResp.ID, typescontainer.WaitConditionNextExit)
+	waitResult := c.Client.ContainerWait(ctx, createResp.ID, client.ContainerWaitOptions{
+		Condition: typescontainer.WaitConditionNextExit,
+	})
+	statusCh := waitResult.Result
+	statusErrCh := waitResult.Error
 	// ContainerWait() can immediately write to the error channel before returning if it can't start the API request,
 	// so catch these errors early (it _also_ can write to that channel later, so it's still passed to the RunResult)
 	select {
@@ -719,7 +728,7 @@ func (c *Cli) Run(ctx context.Context, opts RunConfig) (RunResult, error) {
 	default:
 	}
 
-	err = c.Client.ContainerStart(ctx, createResp.ID, typescontainer.StartOptions{})
+	_, err = c.Client.ContainerStart(ctx, createResp.ID, client.ContainerStartOptions{})
 	if err != nil {
 		return RunResult{}, fmt.Errorf("could not start container (id=%s): %v", createResp.ID, err)
 	}
@@ -729,7 +738,7 @@ func (c *Cli) Run(ctx context.Context, opts RunConfig) (RunResult, error) {
 	if opts.Stdout != nil || opts.Stderr != nil {
 		var logsResp io.ReadCloser
 		logsResp, err = c.Client.ContainerLogs(
-			ctx, createResp.ID, typescontainer.LogsOptions{
+			ctx, createResp.ID, client.ContainerLogsOptions{
 				ShowStdout: opts.Stdout != nil,
 				ShowStderr: opts.Stderr != nil,
 				Follow:     true,
@@ -767,4 +776,95 @@ func (c *Cli) Run(ctx context.Context, opts RunConfig) (RunResult, error) {
 	}
 
 	return result, nil
+}
+
+// ImageTag wraps the new moby client ImageTag to match the Client interface.
+func (c *Cli) ImageTag(ctx context.Context, source, target string) error {
+	_, err := c.Client.ImageTag(ctx, client.ImageTagOptions{Source: source, Target: target})
+	return err
+}
+
+// ContainerLogs wraps the new moby client ContainerLogs to match the Client interface.
+func (c *Cli) ContainerLogs(ctx context.Context, containerID string, options client.ContainerLogsOptions) (io.ReadCloser, error) {
+	return c.Client.ContainerLogs(ctx, containerID, options)
+}
+
+// ContainerInspect wraps the new moby client ContainerInspect to match the Client interface.
+func (c *Cli) ContainerInspect(ctx context.Context, containerID string) (typescontainer.InspectResponse, error) {
+	result, err := c.Client.ContainerInspect(ctx, containerID, client.ContainerInspectOptions{})
+	return result.Container, err
+}
+
+// ContainerList wraps the new moby client ContainerList to match the Client interface.
+func (c *Cli) ContainerList(ctx context.Context, options client.ContainerListOptions) ([]typescontainer.Summary, error) {
+	result, err := c.Client.ContainerList(ctx, options)
+	if err != nil {
+		return nil, err
+	}
+	return result.Items, nil
+}
+
+// ImageInspect wraps the new moby client ImageInspect to match the Client interface.
+func (c *Cli) ImageInspect(ctx context.Context, imageID string, inspectOpts ...client.ImageInspectOption) (typesimage.InspectResponse, error) {
+	result, err := c.Client.ImageInspect(ctx, imageID, inspectOpts...)
+	return result.InspectResponse, err
+}
+
+// ImageList wraps the new moby client ImageList to match the Client interface.
+func (c *Cli) ImageList(ctx context.Context, options client.ImageListOptions) ([]typesimage.Summary, error) {
+	result, err := c.Client.ImageList(ctx, options)
+	if err != nil {
+		return nil, err
+	}
+	return result.Items, nil
+}
+
+// ImageRemove wraps the new moby client ImageRemove to match the Client interface.
+func (c *Cli) ImageRemove(ctx context.Context, imageID string, options client.ImageRemoveOptions) ([]typesimage.DeleteResponse, error) {
+	result, err := c.Client.ImageRemove(ctx, imageID, options)
+	if err != nil {
+		return nil, err
+	}
+	return result.Items, nil
+}
+
+// BuildCachePrune wraps the new moby client BuildCachePrune to match the Client interface.
+func (c *Cli) BuildCachePrune(ctx context.Context, opts client.BuildCachePruneOptions) (*typesbuild.CachePruneReport, error) {
+	result, err := c.Client.BuildCachePrune(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+	report := result.Report
+	return &report, nil
+}
+
+// ContainersPrune wraps the new moby client ContainerPrune to match the Client interface.
+func (c *Cli) ContainersPrune(ctx context.Context, pruneFilters client.Filters) (typescontainer.PruneReport, error) {
+	result, err := c.Client.ContainerPrune(ctx, client.ContainerPruneOptions{
+		Filters: pruneFilters,
+	})
+	if err != nil {
+		return typescontainer.PruneReport{}, err
+	}
+	return result.Report, nil
+}
+
+// NewVersionError returns an error if the Docker API version is insufficient.
+func (c *Cli) NewVersionError(ctx context.Context, APIrequired, feature string) error {
+	serverVersion, err := c.ServerVersion(ctx)
+	if err != nil {
+		return err
+	}
+	version, err := semver.ParseTolerant(serverVersion.APIVersion)
+	if err != nil {
+		return nil
+	}
+	required, err := semver.ParseTolerant(APIrequired)
+	if err != nil {
+		return nil
+	}
+	if version.LT(required) {
+		return fmt.Errorf("%q requires API version %s, but the Docker daemon API version is %s", feature, APIrequired, serverVersion.APIVersion)
+	}
+	return nil
 }

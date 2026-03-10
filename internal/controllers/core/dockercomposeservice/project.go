@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	typescontainer "github.com/docker/docker/api/types/container"
+	typescontainer "github.com/moby/moby/api/types/container"
 
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
@@ -89,7 +89,7 @@ func (r *Reconciler) runProjectWatch(pw *ProjectWatch) {
 				continue
 			}
 
-			if containerJSON.ContainerJSONBase == nil || containerJSON.ContainerJSONBase.State == nil {
+			if containerJSON.State == nil {
 				logger.Get(ctx).Debugf("[dcwatch] inspecting container: no state found")
 				continue
 			}
@@ -104,7 +104,7 @@ func (r *Reconciler) runProjectWatch(pw *ProjectWatch) {
 
 // Record the container event and re-reconcile the dockercompose service.
 func (r *Reconciler) recordContainerEvent(ctx context.Context, evt dockercompose.Event, containerJSON typescontainer.InspectResponse) {
-	cState := containerJSON.ContainerJSONBase.State
+	cState := containerJSON.State
 	state := dockercompose.ToContainerState(cState)
 	healthcheckOutput := dockercompose.ToHealthcheckOutput(cState)
 

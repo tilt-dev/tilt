@@ -7,8 +7,7 @@ import (
 
 	cerrdefs "github.com/containerd/errdefs"
 	"github.com/distribution/reference"
-	"github.com/docker/docker/api/types/filters"
-	typesimage "github.com/docker/docker/api/types/image"
+	mobyclient "github.com/moby/moby/client"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 
@@ -20,16 +19,16 @@ type ImageReaper struct {
 	docker docker.Client
 }
 
-func FilterByLabel(label dockerfile.Label) filters.KeyValuePair {
-	return filters.Arg("label", string(label))
+func FilterByLabel(label dockerfile.Label) mobyclient.Filters {
+	return make(mobyclient.Filters).Add("label", string(label))
 }
 
-func FilterByLabelValue(label dockerfile.Label, val dockerfile.LabelValue) filters.KeyValuePair {
-	return filters.Arg("label", fmt.Sprintf("%s=%s", label, val))
+func FilterByLabelValue(label dockerfile.Label, val dockerfile.LabelValue) mobyclient.Filters {
+	return make(mobyclient.Filters).Add("label", fmt.Sprintf("%s=%s", label, val))
 }
 
-func FilterByRefName(ref reference.Named) filters.KeyValuePair {
-	return filters.Arg("reference", fmt.Sprintf("%s:*", ref.Name()))
+func FilterByRefName(ref reference.Named) mobyclient.Filters {
+	return make(mobyclient.Filters).Add("reference", fmt.Sprintf("%s:*", ref.Name()))
 }
 
 func NewImageReaper(docker docker.Client) ImageReaper {
@@ -42,11 +41,17 @@ func NewImageReaper(docker docker.Client) ImageReaper {
 //
 // For safety reasons, we only delete images with the tilt.buildMode label,
 // but we let the caller set additional filters.
-func (r ImageReaper) RemoveTiltImages(ctx context.Context, createdBefore time.Time, force bool, extraFilters ...filters.KeyValuePair) error {
-	defaultFilter := FilterByLabel(BuildMode)
-	filterList := append([]filters.KeyValuePair{defaultFilter}, extraFilters...)
-	listOptions := typesimage.ListOptions{
-		Filters: filters.NewArgs(filterList...),
+func (r ImageReaper) RemoveTiltImages(ctx context.Context, createdBefore time.Time, force bool, extraFilters ...mobyclient.Filters) error {
+	f := FilterByLabel(BuildMode)
+	for _, ef := range extraFilters {
+		for k, vals := range ef {
+			for v := range vals {
+				f.Add(k, v)
+			}
+		}
+	}
+	listOptions := mobyclient.ImageListOptions{
+		Filters: f,
 	}
 
 	summaries, err := r.docker.ImageList(ctx, listOptions)
@@ -55,7 +60,7 @@ func (r ImageReaper) RemoveTiltImages(ctx context.Context, createdBefore time.Ti
 	}
 
 	g, ctx := errgroup.WithContext(ctx)
-	rmOptions := typesimage.RemoveOptions{
+	rmOptions := mobyclient.ImageRemoveOptions{
 		PruneChildren: true,
 		Force:         force,
 	}

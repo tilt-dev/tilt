@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/distribution/reference"
-	typesimage "github.com/docker/docker/api/types/image"
+	typesimage "github.com/moby/moby/api/types/image"
 	"github.com/jonboulle/clockwork"
 	"github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/assert"

@@ -16,12 +16,10 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/distribution/reference"
-	"github.com/docker/docker/api/types"
-	typesbuild "github.com/docker/docker/api/types/build"
-	typescontainer "github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/filters"
-	typesimage "github.com/docker/docker/api/types/image"
-	"github.com/docker/docker/client"
+	typesbuild "github.com/moby/moby/api/types/build"
+	typescontainer "github.com/moby/moby/api/types/container"
+	typesimage "github.com/moby/moby/api/types/image"
+	"github.com/moby/moby/client"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -93,7 +91,7 @@ type FakeClient struct {
 
 	PushCount   int
 	PushImage   string
-	PushOptions typesimage.PushOptions
+	PushOptions client.ImagePushOptions
 	PushOutput  string
 
 	BuildCount        int
@@ -103,7 +101,7 @@ type FakeClient struct {
 	BuildErrorToThrow error // next call to Build will throw this err (after which we clear the error)
 
 	ImageListCount int
-	ImageListOpts  []typesimage.ListOptions
+	ImageListOpts  []client.ImageListOptions
 
 	TagCount  int
 	TagSource string
@@ -137,10 +135,10 @@ type FakeClient struct {
 
 	ThrowNewVersionError   bool
 	BuildCachePruneErr     error
-	BuildCachePruneOpts    typesbuild.CachePruneOptions
+	BuildCachePruneOpts    client.BuildCachePruneOptions
 	BuildCachesPruned      []string
 	ContainersPruneErr     error
-	ContainersPruneFilters filters.Args
+	ContainersPruneFilters client.Filters
 	ContainersPruned       []string
 }
 
@@ -173,8 +171,8 @@ func (c *FakeClient) Env() Env {
 func (c *FakeClient) BuilderVersion(ctx context.Context) (typesbuild.BuilderVersion, error) {
 	return typesbuild.BuilderV1, nil
 }
-func (c *FakeClient) ServerVersion(ctx context.Context) (types.Version, error) {
-	return types.Version{
+func (c *FakeClient) ServerVersion(ctx context.Context) (client.ServerVersionResult, error) {
+	return client.ServerVersionResult{
 		Arch:    "amd64",
 		Version: "20.10.11",
 	}, nil
@@ -184,7 +182,7 @@ func (c *FakeClient) SetExecError(err error) {
 	c.ExecErrorsToThrow = []error{err}
 }
 
-func (c *FakeClient) ContainerLogs(ctx context.Context, containerID string, options typescontainer.LogsOptions) (io.ReadCloser, error) {
+func (c *FakeClient) ContainerLogs(ctx context.Context, containerID string, options client.ContainerLogsOptions) (io.ReadCloser, error) {
 	output := c.ContainerLogChans[containerID]
 	reader, writer := io.Pipe()
 	go func() {
@@ -216,19 +214,15 @@ func (c *FakeClient) ContainerInspect(ctx context.Context, containerID string) (
 	if ok {
 		return typescontainer.InspectResponse{
 			Config: &typescontainer.Config{Tty: true},
-			ContainerJSONBase: &typescontainer.ContainerJSONBase{
-				ID:    containerID,
-				State: &container,
-			},
+			ID:     containerID,
+			State:  &container,
 		}, nil
 	}
 	state := NewRunningContainerState()
 	return typescontainer.InspectResponse{
 		Config: &typescontainer.Config{Tty: true},
-		ContainerJSONBase: &typescontainer.ContainerJSONBase{
-			ID:    containerID,
-			State: &state,
-		},
+		ID:     containerID,
+		State:  &state,
 	}, nil
 }
 
@@ -240,8 +234,8 @@ func (c *FakeClient) SetDefaultContainerListOutput() {
 	c.SetContainerListOutput(DefaultContainerListOutput)
 }
 
-func (c *FakeClient) ContainerList(ctx context.Context, options typescontainer.ListOptions) ([]typescontainer.Summary, error) {
-	nameFilter := options.Filters.Get("name")
+func (c *FakeClient) ContainerList(ctx context.Context, options client.ContainerListOptions) ([]typescontainer.Summary, error) {
+	nameFilter := clientFiltersGet(options.Filters, "name")
 	if len(nameFilter) != 1 {
 		return nil, fmt.Errorf("expected one filter for 'name', got: %v", nameFilter)
 	}
@@ -303,13 +297,13 @@ func (c *FakeClient) ImagePush(ctx context.Context, ref reference.NamedTagged) (
 	return NewFakeDockerResponse(c.PushOutput), nil
 }
 
-func (c *FakeClient) ImageBuild(ctx context.Context, g *errgroup.Group, buildContext io.Reader, options BuildOptions) (typesbuild.ImageBuildResponse, error) {
+func (c *FakeClient) ImageBuild(ctx context.Context, g *errgroup.Group, buildContext io.Reader, options BuildOptions) (client.ImageBuildResult, error) {
 	c.BuildCount++
 	c.BuildOptions = options
 
 	data, err := io.ReadAll(buildContext)
 	if err != nil {
-		return typesbuild.ImageBuildResponse{}, errors.Wrap(err, "ImageBuild")
+		return client.ImageBuildResult{}, errors.Wrap(err, "ImageBuild")
 	}
 
 	c.BuildContext = bytes.NewBuffer(data)
@@ -318,10 +312,10 @@ func (c *FakeClient) ImageBuild(ctx context.Context, g *errgroup.Group, buildCon
 	err = c.BuildErrorToThrow
 	if err != nil {
 		c.BuildErrorToThrow = nil
-		return typesbuild.ImageBuildResponse{}, err
+		return client.ImageBuildResult{}, err
 	}
 
-	return typesbuild.ImageBuildResponse{Body: NewFakeDockerResponse(c.BuildOutput)}, nil
+	return client.ImageBuildResult{Body: NewFakeDockerResponse(c.BuildOutput)}, nil
 }
 
 func (c *FakeClient) ImageTag(ctx context.Context, source, target string) error {
@@ -344,7 +338,7 @@ func (c *FakeClient) ImageInspect(ctx context.Context, imageID string, inspectOp
 	return typesimage.InspectResponse{}, newNotFoundErrorf("fakeClient.Images key: %s", imageID)
 }
 
-func (c *FakeClient) ImageList(ctx context.Context, options typesimage.ListOptions) ([]typesimage.Summary, error) {
+func (c *FakeClient) ImageList(ctx context.Context, options client.ImageListOptions) ([]typesimage.Summary, error) {
 	c.ImageListOpts = append(c.ImageListOpts, options)
 	summaries := make([]typesimage.Summary, c.ImageListCount)
 	for i := range summaries {
@@ -356,7 +350,7 @@ func (c *FakeClient) ImageList(ctx context.Context, options typesimage.ListOptio
 	return summaries, nil
 }
 
-func (c *FakeClient) ImageRemove(ctx context.Context, imageID string, options typesimage.RemoveOptions) ([]typesimage.DeleteResponse, error) {
+func (c *FakeClient) ImageRemove(ctx context.Context, imageID string, options client.ImageRemoveOptions) ([]typesimage.DeleteResponse, error) {
 	c.RemovedImageIDs = append(c.RemovedImageIDs, imageID)
 	sort.Strings(c.RemovedImageIDs)
 	return []typesimage.DeleteResponse{
@@ -376,17 +370,13 @@ func (c *FakeClient) VersionError(apiRequired, feature string) error {
 	return fmt.Errorf("%q requires API version %s, but the Docker daemon API version is... something else", feature, apiRequired)
 }
 
-func (c *FakeClient) BuildCachePrune(ctx context.Context, opts typesbuild.CachePruneOptions) (*typesbuild.CachePruneReport, error) {
+func (c *FakeClient) BuildCachePrune(ctx context.Context, opts client.BuildCachePruneOptions) (*typesbuild.CachePruneReport, error) {
 	if err := c.BuildCachePruneErr; err != nil {
 		c.BuildCachePruneErr = nil
 		return nil, err
 	}
 
-	c.BuildCachePruneOpts = typesbuild.CachePruneOptions{
-		All:         opts.All,
-		KeepStorage: opts.KeepStorage,
-		Filters:     opts.Filters.Clone(),
-	}
+	c.BuildCachePruneOpts = opts
 	report := &typesbuild.CachePruneReport{
 		CachesDeleted:  c.BuildCachesPruned,
 		SpaceReclaimed: uint64(units.MB * len(c.BuildCachesPruned)), // 1MB per cache pruned
@@ -395,13 +385,13 @@ func (c *FakeClient) BuildCachePrune(ctx context.Context, opts typesbuild.CacheP
 	return report, nil
 }
 
-func (c *FakeClient) ContainersPrune(ctx context.Context, pruneFilters filters.Args) (typescontainer.PruneReport, error) {
+func (c *FakeClient) ContainersPrune(ctx context.Context, pruneFilters client.Filters) (typescontainer.PruneReport, error) {
 	if err := c.ContainersPruneErr; err != nil {
 		c.ContainersPruneErr = nil
 		return typescontainer.PruneReport{}, err
 	}
 
-	c.ContainersPruneFilters = pruneFilters.Clone()
+	c.ContainersPruneFilters = pruneFilters
 	report := typescontainer.PruneReport{
 		ContainersDeleted: c.ContainersPruned,
 		SpaceReclaimed:    uint64(units.MB * len(c.ContainersPruned)), // 1MB per container pruned
@@ -438,4 +428,14 @@ func (e notFoundError) NotFound() bool {
 
 func (e notFoundError) Error() string {
 	return fmt.Sprintf("fake docker client error: object not found (%s)", e.details)
+}
+
+// clientFiltersGet returns the list of values for a filter key from client.Filters.
+func clientFiltersGet(f client.Filters, key string) []string {
+	vals := f[key]
+	result := make([]string, 0, len(vals))
+	for v := range vals {
+		result = append(result, v)
+	}
+	return result
 }

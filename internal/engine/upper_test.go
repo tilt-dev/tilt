@@ -19,7 +19,7 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/distribution/reference"
-	typescontainer "github.com/docker/docker/api/types/container"
+	typescontainer "github.com/moby/moby/api/types/container"
 	"github.com/google/uuid"
 	"github.com/jonboulle/clockwork"
 	"github.com/spf13/afero"
