@@ -5,8 +5,8 @@ import (
 	"io"
 
 	"github.com/distribution/reference"
-	mobycontainer "github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/mount"
+	mobycontainer "github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/mount"
 )
 
 // RunConfig defines the container to create and start.

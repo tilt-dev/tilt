@@ -5,7 +5,8 @@ import (
 	"strings"
 	"sync"
 
-	dtypescontainer "github.com/docker/docker/api/types/container"
+	dtypescontainer "github.com/moby/moby/api/types/container"
+	dockerclient "github.com/moby/moby/client"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -17,7 +18,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"github.com/docker/go-connections/nat"
+	typesnetwork "github.com/moby/moby/api/types/network"
 
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/configmap"
@@ -414,24 +415,25 @@ func (r *Reconciler) forceApplyHelper(
 		return r.recordApplyError(nn, spec, imageMaps, err, startTime)
 	}
 
-	containerJSON, err := r.dc.ContainerInspect(ctx, string(cid))
+	inspectResult, err := r.dc.ContainerInspect(ctx, string(cid), dockerclient.ContainerInspectOptions{})
 	if err != nil {
 		logger.Get(ctx).Debugf("Error inspecting container %s: %v", cid, err)
 	}
+	containerJSON := inspectResult.Container
 
 	name := ""
 	var containerState *dtypescontainer.State
-	if containerJSON.ContainerJSONBase != nil && containerJSON.ContainerJSONBase.State != nil {
-		containerState = containerJSON.ContainerJSONBase.State
+	if containerJSON.State != nil {
+		containerState = containerJSON.State
 
 		// NOTE(nick): For some reason, docker container names start with "/"
 		// but are printed to the user without it.
-		name = strings.TrimPrefix(containerJSON.ContainerJSONBase.Name, "/")
+		name = strings.TrimPrefix(containerJSON.Name, "/")
 	}
 
-	var ports nat.PortMap
+	var ports typesnetwork.PortMap
 	if containerJSON.NetworkSettings != nil {
-		ports = containerJSON.NetworkSettings.NetworkSettingsBase.Ports
+		ports = containerJSON.NetworkSettings.Ports
 	}
 
 	status := dockercompose.ToServiceStatus(cid, name, containerState, ports)

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/distribution/reference"
+	dockerclient "github.com/moby/moby/client"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -74,7 +75,7 @@ func tagWithExpected(
 		}
 	}
 
-	err = dCli.ImageTag(ctx, ref.String(), tagAs.String())
+	_, err = dCli.ImageTag(ctx, dockerclient.ImageTagOptions{Source: ref.String(), Target: tagAs.String()})
 	return tagAs, err
 }
 

@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/distribution/reference"
-	typescontainer "github.com/docker/docker/api/types/container"
-	typesimage "github.com/docker/docker/api/types/image"
+	typescontainer "github.com/moby/moby/api/types/container"
+	typesimage "github.com/moby/moby/api/types/image"
 	"github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"

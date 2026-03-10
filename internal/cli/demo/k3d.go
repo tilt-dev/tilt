@@ -10,7 +10,7 @@ import (
 	"sync"
 
 	"github.com/distribution/reference"
-	"github.com/docker/docker/api/types/mount"
+	"github.com/moby/moby/api/types/mount"
 
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/pkg/logger"

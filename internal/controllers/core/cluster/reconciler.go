@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/docker/docker/client"
 	"github.com/jonboulle/clockwork"
+	"github.com/moby/moby/client"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -200,7 +200,7 @@ func (r *Reconciler) createDockerClient(obj *v1alpha1.DockerClusterConnection) (
 	// If no Host is specified, use the default Env from environment variables.
 	env := docker.Env(r.localDockerEnv)
 	if obj.Host != "" {
-		d, err := client.NewClientWithOpts(client.WithHost(obj.Host))
+		d, err := client.New(client.WithHost(obj.Host))
 		env.Client = d
 		if err != nil {
 			env.Error = err

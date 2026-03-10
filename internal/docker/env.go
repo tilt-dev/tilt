@@ -11,7 +11,7 @@ import (
 	"github.com/docker/cli/cli/command"
 	cliflags "github.com/docker/cli/cli/flags"
 	"github.com/docker/cli/opts"
-	"github.com/docker/docker/client"
+	"github.com/moby/moby/client"
 	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
 
@@ -101,7 +101,7 @@ func (RealClientCreator) FromEnvMap(envMap map[string]string) (DaemonClient, err
 	if err != nil {
 		return nil, fmt.Errorf("configuring docker client: %v", err)
 	}
-	return client.NewClientWithOpts(opts...)
+	return client.New(opts...)
 }
 
 func (RealClientCreator) FromCLI(ctx context.Context) (DaemonClient, error) {

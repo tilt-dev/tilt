@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	cerrdefs "github.com/containerd/errdefs"
+	dockerclient "github.com/moby/moby/client"
 
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
@@ -112,18 +113,18 @@ func (r *Reconciler) runProjectWatch(pw *ProjectWatch) {
 
 // Fetch the state of the given container and convert it into our internal model.
 func (r *Reconciler) getContainerInfo(ctx context.Context, id string) (*ContainerInfo, error) {
-	containerJSON, err := r.dc.ContainerInspect(ctx, id)
+	inspectResult, err := r.dc.ContainerInspect(ctx, id, dockerclient.ContainerInspectOptions{})
 	if err != nil {
 		return nil, err
 	}
+	containerJSON := inspectResult.Container
 
 	if containerJSON.Config == nil ||
-		containerJSON.ContainerJSONBase == nil ||
-		containerJSON.ContainerJSONBase.State == nil {
+		containerJSON.State == nil {
 		return nil, fmt.Errorf("no state found")
 	}
 
-	cState := containerJSON.ContainerJSONBase.State
+	cState := containerJSON.State
 	return &ContainerInfo{
 		ID:    id,
 		State: dockercompose.ToContainerState(cState),

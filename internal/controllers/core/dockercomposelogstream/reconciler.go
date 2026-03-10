@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	typescontainer "github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/pkg/stdcopy"
+	"github.com/moby/moby/api/pkg/stdcopy"
+	mobyclient "github.com/moby/moby/client"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -199,7 +199,7 @@ func (r *Reconciler) consumeLogs(watch *watch) {
 	startTime := watch.startWatchTime
 
 	for {
-		readCloser, err := r.dc.ContainerLogs(ctx, watch.containerID, typescontainer.LogsOptions{
+		readCloser, err := r.dc.ContainerLogs(ctx, watch.containerID, mobyclient.ContainerLogsOptions{
 			ShowStdout: true,
 			ShowStderr: true,
 			Follow:     true,

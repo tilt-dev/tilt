@@ -1,10 +1,11 @@
 // FIXME(thaJeztah): remove once we are a module; the go:build directive prevents go from downgrading language version to go1.16:
-//go:build go1.23
+//go:build go1.24
 
 package command
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -23,11 +24,8 @@ import (
 	"github.com/docker/cli/cli/streams"
 	"github.com/docker/cli/cli/version"
 	dopts "github.com/docker/cli/opts"
-	"github.com/docker/docker/api"
-	"github.com/docker/docker/api/types/build"
-	"github.com/docker/docker/api/types/swarm"
-	"github.com/docker/docker/client"
-	"github.com/pkg/errors"
+	"github.com/moby/moby/api/types/build"
+	"github.com/moby/moby/client"
 	"github.com/spf13/cobra"
 )
 
@@ -45,7 +43,6 @@ type Cli interface {
 	Client() client.APIClient
 	Streams
 	SetIn(in *streams.In)
-	Apply(ops ...CLIOption) error
 	config.Provider
 	ServerInfo() ServerInfo
 	CurrentVersion() string
@@ -63,12 +60,12 @@ type Cli interface {
 type DockerCli struct {
 	configFile         *configfile.ConfigFile
 	options            *cliflags.ClientOptions
+	clientOpts         []client.Opt
 	in                 *streams.In
 	out                *streams.Out
 	err                *streams.Out
 	client             client.APIClient
 	serverInfo         ServerInfo
-	contentTrust       bool
 	contextStore       store.Store
 	currentContext     string
 	init               sync.Once
@@ -76,7 +73,6 @@ type DockerCli struct {
 	dockerEndpoint     docker.Endpoint
 	contextStoreConfig *store.Config
 	initTimeout        time.Duration
-	userAgent          string
 	res                telemetryResource
 
 	// baseCtx is the base context used for internal operations. In the future
@@ -87,19 +83,12 @@ type DockerCli struct {
 	enableGlobalMeter, enableGlobalTracer bool
 }
 
-// DefaultVersion returns [api.DefaultVersion].
-//
-// Deprecated: this function is no longer used and will be removed in the next release.
-func (*DockerCli) DefaultVersion() string {
-	return api.DefaultVersion
-}
-
 // CurrentVersion returns the API version currently negotiated, or the default
 // version otherwise.
 func (cli *DockerCli) CurrentVersion() string {
 	_ = cli.initialize()
 	if cli.client == nil {
-		return api.DefaultVersion
+		return client.MaxAPIVersion
 	}
 	return cli.client.ClientVersion()
 }
@@ -158,21 +147,13 @@ func (cli *DockerCli) ServerInfo() ServerInfo {
 	return cli.serverInfo
 }
 
-// ContentTrustEnabled returns whether content trust has been enabled by an
-// environment variable.
-//
-// Deprecated: check the value of the DOCKER_CONTENT_TRUST environment variable to detect whether content-trust is enabled.
-func (cli *DockerCli) ContentTrustEnabled() bool {
-	return cli.contentTrust
-}
-
 // BuildKitEnabled returns buildkit is enabled or not.
 func (cli *DockerCli) BuildKitEnabled() (bool, error) {
 	// use DOCKER_BUILDKIT env var value if set and not empty
 	if v := os.Getenv("DOCKER_BUILDKIT"); v != "" {
 		enabled, err := strconv.ParseBool(v)
 		if err != nil {
-			return false, errors.Wrap(err, "DOCKER_BUILDKIT environment variable expects boolean value")
+			return false, fmt.Errorf("DOCKER_BUILDKIT environment variable expects boolean value: %w", err)
 		}
 		return enabled, nil
 	}
@@ -314,7 +295,7 @@ func NewAPIClientFromFlags(opts *cliflags.ClientOptions, configFile *configfile.
 	}
 	endpoint, err := resolveDockerEndpoint(contextStore, resolveContextName(opts, configFile))
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to resolve docker endpoint")
+		return nil, fmt.Errorf("unable to resolve docker endpoint: %w", err)
 	}
 	return newAPIClientFromEndpoint(endpoint, configFile, client.WithUserAgent(UserAgent()))
 }
@@ -335,7 +316,7 @@ func newAPIClientFromEndpoint(ep docker.Endpoint, configFile *configfile.ConfigF
 		opts = append(opts, withCustomHeaders)
 	}
 	opts = append(opts, extraOpts...)
-	return client.NewClientWithOpts(opts...)
+	return client.New(opts...)
 }
 
 func resolveDockerEndpoint(s store.Reader, contextName string) (docker.Endpoint, error) {
@@ -396,24 +377,21 @@ func (cli *DockerCli) initializeFromClient() {
 	ctx, cancel := context.WithTimeout(cli.baseCtx, cli.getInitTimeout())
 	defer cancel()
 
-	ping, err := cli.client.Ping(ctx)
+	ping, err := cli.client.Ping(ctx, client.PingOptions{
+		NegotiateAPIVersion: true,
+		ForceNegotiate:      true,
+	})
 	if err != nil {
 		// Default to true if we fail to connect to daemon
 		cli.serverInfo = ServerInfo{HasExperimental: true}
-
-		if ping.APIVersion != "" {
-			cli.client.NegotiateAPIVersionPing(ping)
-		}
 		return
 	}
-
 	cli.serverInfo = ServerInfo{
 		HasExperimental: ping.Experimental,
 		OSType:          ping.OSType,
 		BuildkitVersion: ping.BuilderVersion,
 		SwarmStatus:     ping.SwarmStatus,
 	}
-	cli.client.NegotiateAPIVersionPing(ping)
 }
 
 // ContextStore returns the ContextStore
@@ -551,12 +529,11 @@ func (cli *DockerCli) initialize() error {
 	cli.init.Do(func() {
 		cli.dockerEndpoint, cli.initErr = cli.getDockerEndPoint()
 		if cli.initErr != nil {
-			cli.initErr = errors.Wrap(cli.initErr, "unable to resolve docker endpoint")
+			cli.initErr = fmt.Errorf("unable to resolve docker endpoint: %w", cli.initErr)
 			return
 		}
 		if cli.client == nil {
-			ops := []client.Opt{client.WithUserAgent(cli.userAgent)}
-			if cli.client, cli.initErr = newAPIClientFromEndpoint(cli.dockerEndpoint, cli.configFile, ops...); cli.initErr != nil {
+			if cli.client, cli.initErr = newAPIClientFromEndpoint(cli.dockerEndpoint, cli.configFile, cli.clientOpts...); cli.initErr != nil {
 				return
 			}
 		}
@@ -566,18 +543,6 @@ func (cli *DockerCli) initialize() error {
 		cli.initializeFromClient()
 	})
 	return cli.initErr
-}
-
-// Apply all the operation on the cli
-//
-// Deprecated: this method is no longer used and will be removed in the next release if there are no remaining users.
-func (cli *DockerCli) Apply(ops ...CLIOption) error {
-	for _, op := range ops {
-		if err := op(cli); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // ServerInfo stores details about the supported features and platform of the
@@ -594,7 +559,7 @@ type ServerInfo struct {
 	// in the ping response, or if an error occurred, in which case the client
 	// should use other ways to get the current swarm status, such as the /swarm
 	// endpoint.
-	SwarmStatus *swarm.Status
+	SwarmStatus *client.SwarmStatus
 }
 
 // NewDockerCli returns a DockerCli instance with all operators applied on it.
@@ -602,7 +567,6 @@ type ServerInfo struct {
 // environment.
 func NewDockerCli(ops ...CLIOption) (*DockerCli, error) {
 	defaultOps := []CLIOption{
-		withContentTrustFromEnv(),
 		WithDefaultContextStoreConfig(),
 		WithStandardStreams(),
 		WithUserAgent(UserAgent()),
@@ -625,7 +589,7 @@ func getServerHost(hosts []string, defaultToTLS bool) (string, error) {
 	case 1:
 		return dopts.ParseHost(defaultToTLS, hosts[0])
 	default:
-		return "", errors.New("Specify only one -H")
+		return "", errors.New("specify only one -H")
 	}
 }
 

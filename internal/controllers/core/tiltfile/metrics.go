@@ -3,13 +3,13 @@ package tiltfile
 import (
 	"context"
 
-	dockertypes "github.com/docker/docker/api/types"
+	mobyclient "github.com/moby/moby/client"
 
 	"github.com/tilt-dev/tilt/internal/analytics"
 )
 
 // reportDockerConnectionEvent records a metric about Docker connectivity.
-func (r *Reconciler) reportDockerConnectionEvent(ctx context.Context, success bool, serverVersion dockertypes.Version) {
+func (r *Reconciler) reportDockerConnectionEvent(ctx context.Context, success bool, serverVersion mobyclient.ServerVersionResult) {
 	r.dockerConnectMetricReporter.Do(func() {
 		var status string
 		if success {

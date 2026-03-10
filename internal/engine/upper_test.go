@@ -19,9 +19,9 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/distribution/reference"
-	typescontainer "github.com/docker/docker/api/types/container"
 	"github.com/google/uuid"
 	"github.com/jonboulle/clockwork"
+	typescontainer "github.com/moby/moby/api/types/container"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

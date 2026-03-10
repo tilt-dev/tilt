@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/distribution/reference"
-	"github.com/docker/docker/api/types/filters"
-	typesimage "github.com/docker/docker/api/types/image"
 	"github.com/docker/go-units"
+	typesimage "github.com/moby/moby/api/types/image"
+	mobyclient "github.com/moby/moby/client"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -44,13 +44,8 @@ func TestPruneFilters(t *testing.T) {
 	err := f.dp.prune(f.ctx, maxAge, keep0, imgSelectors)
 	require.NoError(t, err)
 
-	expectedFilters := filters.NewArgs(
-		filters.Arg("label", gcEnabledSelector),
-		filters.Arg("until", maxAge.String()),
-	)
-	expectedImageFilters := filters.NewArgs(
-		filters.Arg("label", gcEnabledSelector),
-	)
+	expectedFilters := make(mobyclient.Filters).Add("label", gcEnabledSelector).Add("until", maxAge.String())
+	expectedImageFilters := make(mobyclient.Filters).Add("label", gcEnabledSelector)
 
 	assert.Equal(t, expectedFilters, f.dCli.BuildCachePruneOpts.Filters, "build cache prune filters")
 	assert.Equal(t, expectedFilters, f.dCli.ContainersPruneFilters, "container prune filters")
@@ -135,7 +130,7 @@ func TestDeleteOldImages(t *testing.T) {
 	expectedDeleted := []string{id}
 	assert.Equal(t, expectedDeleted, f.dCli.RemovedImageIDs)
 
-	expectedFilters := filters.NewArgs(filters.Arg("label", gcEnabledSelector))
+	expectedFilters := make(mobyclient.Filters).Add("label", gcEnabledSelector)
 	if assert.Len(t, f.dCli.ImageListOpts, 1, "expected exactly one call to ImageList") {
 		assert.Equal(t, expectedFilters, f.dCli.ImageListOpts[0].Filters,
 			"expected ImageList to called with label=builtby:tilt filter")
@@ -377,9 +372,9 @@ func TestDockerPrunerMaxAgeFromSettings(t *testing.T) {
 	_ = f.dp.OnChange(f.ctx, f.st, store.LegacyChangeSummary())
 
 	f.assertPrune()
-	untilVals := f.dCli.ContainersPruneFilters.Get("until")
-	require.Len(t, untilVals, 1, "unexpected number of filters for \"until\"")
-	assert.Equal(t, untilVals[0], maxAge.String())
+	untilFilter := f.dCli.ContainersPruneFilters["until"]
+	require.Len(t, untilFilter, 1, "unexpected number of filters for \"until\"")
+	assert.True(t, untilFilter[maxAge.String()])
 }
 
 type dockerPruneFixture struct {
@@ -498,7 +493,7 @@ func (dpf *dockerPruneFixture) withDockerPruneSettings(enabled bool, maxAge time
 
 func (dpf *dockerPruneFixture) pruneCalled() bool {
 	// ContainerPrune was called -- we use this as a proxy for dp.Prune having been called.
-	return dpf.dCli.ContainersPruneFilters.Len() > 0
+	return len(dpf.dCli.ContainersPruneFilters) > 0
 }
 
 func (dpf *dockerPruneFixture) assertPrune() {

@@ -4,7 +4,8 @@ import (
 	"context"
 	"strings"
 
-	typescontainer "github.com/docker/docker/api/types/container"
+	typescontainer "github.com/moby/moby/api/types/container"
+	dockerclient "github.com/moby/moby/client"
 
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
@@ -83,18 +84,18 @@ func (r *Reconciler) runProjectWatch(pw *ProjectWatch) {
 				continue
 			}
 
-			containerJSON, err := r.dc.ContainerInspect(ctx, evt.ID)
+			inspectResult, err := r.dc.ContainerInspect(ctx, evt.ID, dockerclient.ContainerInspectOptions{})
 			if err != nil {
 				logger.Get(ctx).Debugf("[dcwatch] inspecting container: %v", err)
 				continue
 			}
 
-			if containerJSON.ContainerJSONBase == nil || containerJSON.ContainerJSONBase.State == nil {
+			if inspectResult.Container.State == nil {
 				logger.Get(ctx).Debugf("[dcwatch] inspecting container: no state found")
 				continue
 			}
 
-			r.recordContainerEvent(ctx, evt, containerJSON)
+			r.recordContainerEvent(ctx, evt, inspectResult.Container)
 
 		case <-ctx.Done():
 			return
@@ -104,7 +105,7 @@ func (r *Reconciler) runProjectWatch(pw *ProjectWatch) {
 
 // Record the container event and re-reconcile the dockercompose service.
 func (r *Reconciler) recordContainerEvent(ctx context.Context, evt dockercompose.Event, containerJSON typescontainer.InspectResponse) {
-	cState := containerJSON.ContainerJSONBase.State
+	cState := containerJSON.State
 	state := dockercompose.ToContainerState(cState)
 	healthcheckOutput := dockercompose.ToHealthcheckOutput(cState)
 
