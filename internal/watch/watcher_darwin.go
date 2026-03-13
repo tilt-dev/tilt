@@ -51,6 +51,13 @@ func (d *darwinNotify) loop() {
 					continue
 				}
 
+				// Overflow events (MustScanSubDirs) arrive on the watched root path
+				// without ItemIsDir set — skip those too
+				if isPathWereWatching && (e.Flags&fsevents.MustScanSubDirs != 0) {
+				    d.logger.Debugf("Ignoring FSEvents overflow event on watched path %q (flags: %d)", e.Path, e.Flags)
+				    continue
+				}
+
 				ignore, err := d.ignore.Matches(e.Path)
 				if err != nil {
 					d.logger.Infof("Error matching path %q: %v", e.Path, err)
