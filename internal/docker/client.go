@@ -220,7 +220,7 @@ func SupportsBuildkit(v client.ServerVersionResult, env Env) bool {
 		return true
 	}
 
-	if minDockerVersionExperimentalBuildkit.LTE(version) && v.Experimental {
+	if minDockerVersionExperimentalBuildkit.LTE(version) {
 		return true
 	}
 
@@ -264,11 +264,7 @@ func CreateClientOpts(envMap map[string]string) ([]client.Opt, error) {
 
 	apiVersion := envMap["DOCKER_API_VERSION"]
 	if apiVersion != "" {
-		result = append(result, client.WithVersion(apiVersion))
-	} else {
-		// WithAPIVersionNegotiation makes the Docker client negotiate down to a lower
-		// version if Docker's current API version is newer than the server version.
-		result = append(result, client.WithAPIVersionNegotiation())
+		result = append(result, client.WithAPIVersion(apiVersion))
 	}
 
 	return result, nil

@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	typescontainer "github.com/moby/moby/api/types/container"
 	"github.com/jonboulle/clockwork"
+	typescontainer "github.com/moby/moby/api/types/container"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

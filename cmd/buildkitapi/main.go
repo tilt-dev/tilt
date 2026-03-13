@@ -43,7 +43,7 @@ func main() {
 
 func run() error {
 	ctx := context.Background()
-	d, err := client.NewClientWithOpts(client.FromEnv)
+	d, err := client.New(client.FromEnv)
 	if err != nil {
 		return err
 	}

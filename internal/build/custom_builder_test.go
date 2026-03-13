@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	typesimage "github.com/moby/moby/api/types/image"
 	"github.com/jonboulle/clockwork"
+	typesimage "github.com/moby/moby/api/types/image"
 	"github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

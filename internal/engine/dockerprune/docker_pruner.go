@@ -354,4 +354,3 @@ func prettyPrintContainersPruneReport(report typescontainer.PruneReport, l logge
 func humanSize(bytes uint64) string {
 	return units.HumanSize(float64(bytes))
 }
-

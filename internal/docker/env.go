@@ -101,7 +101,7 @@ func (RealClientCreator) FromEnvMap(envMap map[string]string) (DaemonClient, err
 	if err != nil {
 		return nil, fmt.Errorf("configuring docker client: %v", err)
 	}
-	return client.NewClientWithOpts(opts...)
+	return client.New(opts...)
 }
 
 func (RealClientCreator) FromCLI(ctx context.Context) (DaemonClient, error) {
