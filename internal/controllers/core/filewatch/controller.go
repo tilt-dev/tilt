@@ -14,7 +14,9 @@ package filewatch
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	goruntime "runtime"
 	"sync"
 	"time"
 
@@ -248,6 +250,18 @@ func (c *Controller) dispatchFileChangesLoop(ctx context.Context, w *watcher) {
 				return
 			}
 
+			// All OS filewatch implemenetations are designed with a buffer that
+			// can overflow if too many file events happen in a short period of time.
+			//
+			// If this happens, they send an event to the application to
+			// let it know that it should rescan the entire filesystem.
+			//
+			// A more complete buildsystem like Bazel might do this --
+			// create a checksum of all inputs, and rescan everything
+			// to see if the checksum changed and we need to rebuild.
+			//
+			// Tilt currently does not do this -- we report the error to the user
+			// and let them decide whether to trigger a rebuild.
 			if watch.IsWindowsShortReadError(err) {
 				w.recordError(fmt.Errorf("Windows I/O overflow.\n"+
 					"You may be able to fix this by setting the env var %s.\n"+
@@ -258,7 +272,11 @@ func (c *Controller) dispatchFileChangesLoop(ctx context.Context, w *watcher) {
 					watch.DesiredWindowsBufferSize(),
 					err))
 			} else if err.Error() == fsnotify.ErrEventOverflow.Error() {
-				w.recordError(fmt.Errorf("%s\nerror: %v", DetectedOverflowErrMsg, err))
+				if goruntime.GOOS == "darwin" {
+					w.recordError(errors.New(DetectedOverflowErrMsgDarwin))
+				} else {
+					w.recordError(errors.New(DetectedOverflowErrMsgInotify))
+				}
 			} else {
 				w.recordError(err)
 			}
