@@ -9,6 +9,7 @@ import (
 	"github.com/tilt-dev/tilt/pkg/logger"
 
 	"github.com/fsnotify/fsevents"
+	"github.com/fsnotify/fsnotify"
 )
 
 // A file watcher optimized for Darwin.
@@ -52,10 +53,10 @@ func (d *darwinNotify) loop() {
 				}
 
 				// Overflow events (MustScanSubDirs) arrive on the watched root path
-				// without ItemIsDir set — skip those too
+				// without ItemIsDir set.
 				if isPathWereWatching && (e.Flags&fsevents.MustScanSubDirs != 0) {
-				    d.logger.Debugf("Ignoring FSEvents overflow event on watched path %q (flags: %d)", e.Path, e.Flags)
-				    continue
+					d.errors <- fsnotify.ErrEventOverflow
+					continue
 				}
 
 				ignore, err := d.ignore.Matches(e.Path)

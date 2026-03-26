@@ -21,7 +21,9 @@ const MaxFileEventHistory = 20
 
 const maxRestartBackoff = 5 * time.Minute
 
-const DetectedOverflowErrMsg = `It looks like the inotify event queue has overflowed. Check these instructions for how to raise the queue limit: https://facebook.github.io/watchman/docs/install#system-specific-preparation`
+const DetectedOverflowErrMsgInotify = `The inotify event queue has overflowed. Check these instructions for how to raise the queue limit: https://facebook.github.io/watchman/docs/install#system-specific-preparation`
+
+const DetectedOverflowErrMsgDarwin = `MacOS file events have been dropped by the OS. Your changes may be out of date.`
 
 type watcher struct {
 	clock          clockwork.Clock
