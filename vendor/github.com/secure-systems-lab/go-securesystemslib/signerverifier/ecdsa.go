@@ -11,7 +11,10 @@ import (
 	"os"
 )
 
-const ECDSAKeyType = "ecdsa"
+const (
+	ECDSAKeyType   = "ecdsa"
+	ECDSAKeyScheme = "ecdsa-sha2-nistp256"
+)
 
 // ECDSASignerVerifier is a dsse.SignerVerifier compliant interface to sign and
 // verify signatures using ECDSA keys.
@@ -54,7 +57,7 @@ func NewECDSASignerVerifierFromSSLibKey(key *SSLibKey) (*ECDSASignerVerifier, er
 }
 
 // Sign creates a signature for `data`.
-func (sv *ECDSASignerVerifier) Sign(ctx context.Context, data []byte) ([]byte, error) {
+func (sv *ECDSASignerVerifier) Sign(_ context.Context, data []byte) ([]byte, error) {
 	if sv.private == nil {
 		return nil, ErrNotPrivateKey
 	}
@@ -65,7 +68,7 @@ func (sv *ECDSASignerVerifier) Sign(ctx context.Context, data []byte) ([]byte, e
 }
 
 // Verify verifies the `sig` value passed in against `data`.
-func (sv *ECDSASignerVerifier) Verify(ctx context.Context, data []byte, sig []byte) error {
+func (sv *ECDSASignerVerifier) Verify(_ context.Context, data []byte, sig []byte) error {
 	hashedData := getECDSAHashedData(data, sv.curveSize)
 
 	if ok := ecdsa.VerifyASN1(sv.public, hashedData, sig); !ok {
@@ -89,13 +92,17 @@ func (sv *ECDSASignerVerifier) Public() crypto.PublicKey {
 
 // LoadECDSAKeyFromFile returns an SSLibKey instance for an ECDSA key stored in
 // a file in the custom securesystemslib format.
+//
+// Deprecated: use LoadKey(). The custom serialization format is deprecated. Use
+// https://github.com/secure-systems-lab/securesystemslib/blob/main/docs/migrate_key.py
+// to convert your key.
 func LoadECDSAKeyFromFile(path string) (*SSLibKey, error) {
 	contents, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("unable to load ECDSA key from file: %w", err)
 	}
 
-	return loadKeyFromSSLibBytes(contents)
+	return LoadKeyFromSSLibBytes(contents)
 }
 
 func getECDSAHashedData(data []byte, curveSize int) []byte {
