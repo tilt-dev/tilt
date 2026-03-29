@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/distribution/reference"
+	dockerclient "github.com/moby/moby/client"
 	"github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"
 	ktypes "k8s.io/apimachinery/pkg/types"
@@ -164,7 +165,7 @@ func (b *CustomBuilder) Build(ctx context.Context, refs container.RefSet,
 	}
 
 	// Docker client only needs to care about the localImage
-	err = b.dCli.ImageTag(ctx, dig.String(), taggedWithDigest.LocalRef.String())
+	_, err = b.dCli.ImageTag(ctx, dockerclient.ImageTagOptions{Source: dig.String(), Target: taggedWithDigest.LocalRef.String()})
 	if err != nil {
 		return container.TaggedRefs{}, errors.Wrap(err, "custom_build")
 	}

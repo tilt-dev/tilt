@@ -6,8 +6,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/docker/docker/api/types"
-	typesbuild "github.com/docker/docker/api/types/build"
+	typesbuild "github.com/moby/moby/api/types/build"
+	mobyclient "github.com/moby/moby/client"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/tilt-dev/clusterid"
@@ -16,23 +16,19 @@ import (
 )
 
 type buildkitTestCase struct {
-	v        types.Version
+	v        mobyclient.ServerVersionResult
 	env      Env
 	expected bool
 }
 
 func TestSupportsBuildkit(t *testing.T) {
 	cases := []buildkitTestCase{
-		{types.Version{APIVersion: "1.37", Experimental: true}, Env{}, false},
-		{types.Version{APIVersion: "1.37", Experimental: false}, Env{}, false},
-		{types.Version{APIVersion: "1.38", Experimental: true}, Env{}, true},
-		{types.Version{APIVersion: "1.38", Experimental: false}, Env{}, false},
-		{types.Version{APIVersion: "1.39", Experimental: true}, Env{}, true},
-		{types.Version{APIVersion: "1.39", Experimental: false}, Env{}, true},
-		{types.Version{APIVersion: "1.40", Experimental: true}, Env{}, true},
-		{types.Version{APIVersion: "1.40", Experimental: false}, Env{}, true},
-		{types.Version{APIVersion: "garbage", Experimental: false}, Env{}, false},
-		{types.Version{APIVersion: "1.39", Experimental: true}, Env{IsOldMinikube: true}, false},
+		{mobyclient.ServerVersionResult{APIVersion: "1.37"}, Env{}, false},
+		{mobyclient.ServerVersionResult{APIVersion: "1.38"}, Env{}, false},
+		{mobyclient.ServerVersionResult{APIVersion: "1.39"}, Env{}, true},
+		{mobyclient.ServerVersionResult{APIVersion: "1.40"}, Env{}, true},
+		{mobyclient.ServerVersionResult{APIVersion: "garbage"}, Env{}, false},
+		{mobyclient.ServerVersionResult{APIVersion: "1.39"}, Env{IsOldMinikube: true}, false},
 	}
 
 	for i, c := range cases {
@@ -63,7 +59,7 @@ func TestProvideBuilderVersion(t *testing.T) {
 			t.Setenv("DOCKER_BUILDKIT", c.bkEnv)
 
 			v, err := getDockerBuilderVersion(
-				types.Version{APIVersion: c.v}, Env{})
+				mobyclient.ServerVersionResult{APIVersion: c.v}, Env{})
 			assert.NoError(t, err)
 			assert.Equal(t, c.expected, v)
 		})
@@ -71,17 +67,17 @@ func TestProvideBuilderVersion(t *testing.T) {
 }
 
 type versionTestCase struct {
-	v        types.Version
+	v        mobyclient.ServerVersionResult
 	expected bool
 }
 
 func TestSupported(t *testing.T) {
 	cases := []versionTestCase{
-		{types.Version{APIVersion: "1.22"}, false},
-		{types.Version{APIVersion: "1.23"}, true},
-		{types.Version{APIVersion: "1.39"}, true},
-		{types.Version{APIVersion: "1.40"}, true},
-		{types.Version{APIVersion: "garbage"}, false},
+		{mobyclient.ServerVersionResult{APIVersion: "1.22"}, false},
+		{mobyclient.ServerVersionResult{APIVersion: "1.23"}, true},
+		{mobyclient.ServerVersionResult{APIVersion: "1.39"}, true},
+		{mobyclient.ServerVersionResult{APIVersion: "1.40"}, true},
+		{mobyclient.ServerVersionResult{APIVersion: "garbage"}, false},
 	}
 
 	for i, c := range cases {

@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/distribution/reference"
-	"github.com/docker/docker/api/types/container"
-	typescontainer "github.com/docker/docker/api/types/container"
+	"github.com/moby/moby/api/types/container"
+	mobyclient "github.com/moby/moby/client"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/tilt-dev/clusterid"
@@ -104,7 +104,7 @@ func newFakeDockerBuildFixture(t testing.TB) *dockerBuildFixture {
 func (f *dockerBuildFixture) teardown() {
 	for _, cID := range f.containerIDs {
 		// ignore failures
-		_ = f.dCli.ContainerRemove(f.ctx, string(cID), typescontainer.RemoveOptions{
+		_, _ = f.dCli.ContainerRemove(f.ctx, string(cID), mobyclient.ContainerRemoveOptions{
 			Force: true,
 		})
 	}
@@ -165,7 +165,8 @@ func (f *dockerBuildFixture) assertFilesInImage(ref reference.NamedTagged, expec
 func (f *dockerBuildFixture) assertFilesInContainer(
 	ctx context.Context, cID wmcontainer.ID, expectedFiles []expectedFile) {
 	for _, expectedFile := range expectedFiles {
-		reader, _, err := f.dCli.CopyFromContainer(ctx, cID.String(), expectedFile.Path)
+		copyResult, err := f.dCli.CopyFromContainer(ctx, cID.String(), mobyclient.CopyFromContainerOptions{SourcePath: expectedFile.Path})
+		var reader = copyResult.Content
 		if expectedFile.Missing {
 			if err == nil {
 				f.t.Errorf("Expected path %q to not exist", expectedFile.Path)
@@ -190,13 +191,13 @@ func (f *dockerBuildFixture) assertFilesInContainer(
 
 // startContainer starts a container from the given config
 func (f *dockerBuildFixture) startContainer(ctx context.Context, config *container.Config) wmcontainer.ID {
-	resp, err := f.dCli.ContainerCreate(ctx, config, nil, nil, nil, "")
+	resp, err := f.dCli.ContainerCreate(ctx, mobyclient.ContainerCreateOptions{Config: config})
 	if err != nil {
 		f.t.Fatalf("startContainer: %v", err)
 	}
 	cID := resp.ID
 
-	err = f.dCli.ContainerStart(ctx, cID, typescontainer.StartOptions{})
+	_, err = f.dCli.ContainerStart(ctx, cID, mobyclient.ContainerStartOptions{})
 	if err != nil {
 		f.t.Fatalf("startContainer: %v", err)
 	}

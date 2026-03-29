@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	dockertypes "github.com/docker/docker/api/types"
+	mobyclient "github.com/moby/moby/client"
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -331,7 +331,7 @@ func (r *Reconciler) run(ctx context.Context, nn types.NamespacedName, tf *v1alp
 
 	if requiresDocker(tlr) {
 		dockerErr := r.dockerClient.CheckConnected()
-		var serverVersion dockertypes.Version
+		var serverVersion mobyclient.ServerVersionResult
 		if dockerErr == nil {
 			serverVersion, dockerErr = r.dockerClient.ServerVersion(ctx)
 		}

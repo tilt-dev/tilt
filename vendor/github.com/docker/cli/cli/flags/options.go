@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 
 	"github.com/docker/cli/cli/config"
-	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/tlsconfig"
+	"github.com/moby/moby/client"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 )
@@ -110,22 +110,20 @@ func (o *ClientOptions) InstallFlags(flags *pflag.FlagSet) {
 	if dockerCertPath == "" {
 		dockerCertPath = configDir
 	}
+	o.TLSOptions = &tlsconfig.Options{
+		CAFile:   filepath.Join(dockerCertPath, DefaultCaFile),
+		CertFile: filepath.Join(dockerCertPath, DefaultCertFile),
+		KeyFile:  filepath.Join(dockerCertPath, DefaultKeyFile),
+	}
 
 	flags.StringVar(&o.ConfigDir, "config", configDir, "Location of client config files")
 	flags.BoolVarP(&o.Debug, "debug", "D", false, "Enable debug mode")
 	flags.StringVarP(&o.LogLevel, "log-level", "l", "info", `Set the logging level ("debug", "info", "warn", "error", "fatal")`)
 	flags.BoolVar(&o.TLS, "tls", dockerTLS, "Use TLS; implied by --tlsverify")
 	flags.BoolVar(&o.TLSVerify, FlagTLSVerify, dockerTLSVerify, "Use TLS and verify the remote")
-
-	o.TLSOptions = &tlsconfig.Options{
-		CAFile:   filepath.Join(dockerCertPath, DefaultCaFile),
-		CertFile: filepath.Join(dockerCertPath, DefaultCertFile),
-		KeyFile:  filepath.Join(dockerCertPath, DefaultKeyFile),
-	}
-	tlsOptions := o.TLSOptions
-	flags.Var(&quotedString{&tlsOptions.CAFile}, "tlscacert", "Trust certs signed only by this CA")
-	flags.Var(&quotedString{&tlsOptions.CertFile}, "tlscert", "Path to TLS certificate file")
-	flags.Var(&quotedString{&tlsOptions.KeyFile}, "tlskey", "Path to TLS key file")
+	flags.StringVar(&o.TLSOptions.CAFile, "tlscacert", o.TLSOptions.CAFile, "Trust certs signed only by this CA")
+	flags.StringVar(&o.TLSOptions.CertFile, "tlscert", o.TLSOptions.CertFile, "Path to TLS certificate file")
+	flags.StringVar(&o.TLSOptions.KeyFile, "tlskey", o.TLSOptions.KeyFile, "Path to TLS key file")
 
 	// TODO(thaJeztah): show the default host.
 	// TODO(thaJeztah): this should be a string, not an "array" as we only allow a single host.
@@ -178,34 +176,4 @@ func SetLogLevel(logLevel string) {
 	} else {
 		logrus.SetLevel(logrus.InfoLevel)
 	}
-}
-
-type quotedString struct {
-	value *string
-}
-
-func (s *quotedString) Set(val string) error {
-	*s.value = trimQuotes(val)
-	return nil
-}
-
-func (*quotedString) Type() string {
-	return "string"
-}
-
-func (s *quotedString) String() string {
-	return *s.value
-}
-
-func trimQuotes(value string) string {
-	if len(value) < 2 {
-		return value
-	}
-	lastIndex := len(value) - 1
-	for _, char := range []byte{'\'', '"'} {
-		if value[0] == char && value[lastIndex] == char {
-			return value[1:lastIndex]
-		}
-	}
-	return value
 }

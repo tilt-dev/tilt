@@ -10,13 +10,13 @@ import (
 	"os"
 	"path/filepath"
 
-	typesbuild "github.com/docker/docker/api/types/build"
-	"github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/jsonmessage"
 	controlapi "github.com/moby/buildkit/api/services/control"
 	"github.com/moby/buildkit/identity"
 	"github.com/moby/buildkit/session"
 	"github.com/moby/buildkit/session/filesync"
+	typesbuild "github.com/moby/moby/api/types/build"
+	"github.com/moby/moby/api/types/jsonstream"
+	"github.com/moby/moby/client"
 	"github.com/pkg/errors"
 	"github.com/tonistiigi/fsutil"
 	fsutiltypes "github.com/tonistiigi/fsutil/types"
@@ -43,12 +43,10 @@ func main() {
 
 func run() error {
 	ctx := context.Background()
-	d, err := client.NewClientWithOpts(client.FromEnv)
+	d, err := client.New(client.FromEnv)
 	if err != nil {
 		return err
 	}
-
-	d.NegotiateAPIVersion(ctx)
 
 	session, err := session.NewSession(ctx, identity.NewID())
 	if err != nil {
@@ -103,7 +101,7 @@ func run() error {
 		_ = session.Run(ctx, dialSession)
 	}()
 
-	opts := typesbuild.ImageBuildOptions{}
+	opts := client.ImageBuildOptions{}
 	opts.Version = typesbuild.BuilderBuildKit
 	opts.Dockerfile = "Dockerfile"
 	opts.RemoteContext = "client-session"
@@ -128,7 +126,7 @@ func readDockerOutput(ctx context.Context, reader io.Reader) error {
 	decoder := json.NewDecoder(reader)
 
 	for decoder.More() {
-		message := jsonmessage.JSONMessage{}
+		message := jsonstream.Message{}
 		err := decoder.Decode(&message)
 		if err != nil {
 			return errors.Wrap(err, "decoding docker output")
@@ -163,6 +161,6 @@ func writeBuildkitStatus(aux *json.RawMessage) error {
 	return json.NewEncoder(os.Stdout).Encode(&resp)
 }
 
-func messageIsFromBuildkit(msg jsonmessage.JSONMessage) bool {
+func messageIsFromBuildkit(msg jsonstream.Message) bool {
 	return msg.ID == "moby.buildkit.trace"
 }

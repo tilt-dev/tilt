@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	typescontainer "github.com/docker/docker/api/types/container"
+	typescontainer "github.com/moby/moby/api/types/container"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 

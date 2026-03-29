@@ -1,11 +1,12 @@
 // FIXME(thaJeztah): remove once we are a module; the go:build directive prevents go from downgrading language version to go1.16:
-//go:build go1.23
+//go:build go1.24
 
 package command
 
 import (
 	"encoding/json"
 	"errors"
+	"maps"
 
 	"github.com/docker/cli/cli/context/store"
 )
@@ -23,9 +24,7 @@ func (dc DockerContext) MarshalJSON() ([]byte, error) {
 		s["Description"] = dc.Description
 	}
 	if dc.AdditionalFields != nil {
-		for k, v := range dc.AdditionalFields {
-			s[k] = v
-		}
+		maps.Copy(s, dc.AdditionalFields)
 	}
 	return json.Marshal(s)
 }

@@ -1,5 +1,5 @@
 // FIXME(thaJeztah): remove once we are a module; the go:build directive prevents go from downgrading language version to go1.16:
-//go:build go1.23
+//go:build go1.24
 
 package tui
 
@@ -28,7 +28,7 @@ func withHeader(header Str) noteOptions {
 }
 
 func (o Output) printNoteWithOptions(format string, args []any, opts ...noteOptions) {
-	if o.isTerminal {
+	if !o.noColor {
 		// TODO: Handle all flags
 		format = strings.ReplaceAll(format, "--platform", ColorFlag.Apply("--platform"))
 	}
@@ -51,7 +51,7 @@ func (o Output) printNoteWithOptions(format string, args []any, opts ...noteOpti
 		}
 
 		l := line
-		if o.isTerminal {
+		if !o.noColor {
 			l = aec.Italic.Apply(l)
 		}
 		_, _ = fmt.Fprintln(o, l)

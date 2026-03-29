@@ -3,7 +3,7 @@ package docker
 import (
 	"time"
 
-	typescontainer "github.com/docker/docker/api/types/container"
+	typescontainer "github.com/moby/moby/api/types/container"
 )
 
 // Helper functions for generating container states.

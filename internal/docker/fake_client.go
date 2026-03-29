@@ -5,6 +5,8 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"maps"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -16,12 +18,10 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/distribution/reference"
-	"github.com/docker/docker/api/types"
-	typesbuild "github.com/docker/docker/api/types/build"
-	typescontainer "github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/filters"
-	typesimage "github.com/docker/docker/api/types/image"
-	"github.com/docker/docker/client"
+	typesbuild "github.com/moby/moby/api/types/build"
+	typescontainer "github.com/moby/moby/api/types/container"
+	typesimage "github.com/moby/moby/api/types/image"
+	"github.com/moby/moby/client"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -93,7 +93,7 @@ type FakeClient struct {
 
 	PushCount   int
 	PushImage   string
-	PushOptions typesimage.PushOptions
+	PushOptions client.ImagePushOptions
 	PushOutput  string
 
 	BuildCount        int
@@ -103,7 +103,7 @@ type FakeClient struct {
 	BuildErrorToThrow error // next call to Build will throw this err (after which we clear the error)
 
 	ImageListCount int
-	ImageListOpts  []typesimage.ListOptions
+	ImageListOpts  []client.ImageListOptions
 
 	TagCount  int
 	TagSource string
@@ -137,10 +137,10 @@ type FakeClient struct {
 
 	ThrowNewVersionError   bool
 	BuildCachePruneErr     error
-	BuildCachePruneOpts    typesbuild.CachePruneOptions
+	BuildCachePruneOpts    client.BuildCachePruneOptions
 	BuildCachesPruned      []string
 	ContainersPruneErr     error
-	ContainersPruneFilters filters.Args
+	ContainersPruneFilters client.Filters
 	ContainersPruned       []string
 }
 
@@ -173,8 +173,8 @@ func (c *FakeClient) Env() Env {
 func (c *FakeClient) BuilderVersion(ctx context.Context) (typesbuild.BuilderVersion, error) {
 	return typesbuild.BuilderV1, nil
 }
-func (c *FakeClient) ServerVersion(ctx context.Context) (types.Version, error) {
-	return types.Version{
+func (c *FakeClient) ServerVersion(ctx context.Context) (client.ServerVersionResult, error) {
+	return client.ServerVersionResult{
 		Arch:    "amd64",
 		Version: "20.10.11",
 	}, nil
@@ -184,7 +184,7 @@ func (c *FakeClient) SetExecError(err error) {
 	c.ExecErrorsToThrow = []error{err}
 }
 
-func (c *FakeClient) ContainerLogs(ctx context.Context, containerID string, options typescontainer.LogsOptions) (io.ReadCloser, error) {
+func (c *FakeClient) ContainerLogs(ctx context.Context, containerID string, options client.ContainerLogsOptions) (client.ContainerLogsResult, error) {
 	output := c.ContainerLogChans[containerID]
 	reader, writer := io.Pipe()
 	go func() {
@@ -211,25 +211,21 @@ func (c *FakeClient) ContainerLogs(ctx context.Context, containerID string, opti
 	return reader, nil
 }
 
-func (c *FakeClient) ContainerInspect(ctx context.Context, containerID string) (typescontainer.InspectResponse, error) {
+func (c *FakeClient) ContainerInspect(ctx context.Context, containerID string, options client.ContainerInspectOptions) (client.ContainerInspectResult, error) {
 	container, ok := c.Containers[containerID]
 	if ok {
-		return typescontainer.InspectResponse{
+		return client.ContainerInspectResult{Container: typescontainer.InspectResponse{
 			Config: &typescontainer.Config{Tty: true},
-			ContainerJSONBase: &typescontainer.ContainerJSONBase{
-				ID:    containerID,
-				State: &container,
-			},
-		}, nil
+			ID:     containerID,
+			State:  &container,
+		}}, nil
 	}
 	state := NewRunningContainerState()
-	return typescontainer.InspectResponse{
+	return client.ContainerInspectResult{Container: typescontainer.InspectResponse{
 		Config: &typescontainer.Config{Tty: true},
-		ContainerJSONBase: &typescontainer.ContainerJSONBase{
-			ID:    containerID,
-			State: &state,
-		},
-	}, nil
+		ID:     containerID,
+		State:  &state,
+	}}, nil
 }
 
 func (c *FakeClient) SetContainerListOutput(output map[string][]typescontainer.Summary) {
@@ -240,21 +236,21 @@ func (c *FakeClient) SetDefaultContainerListOutput() {
 	c.SetContainerListOutput(DefaultContainerListOutput)
 }
 
-func (c *FakeClient) ContainerList(ctx context.Context, options typescontainer.ListOptions) ([]typescontainer.Summary, error) {
-	nameFilter := options.Filters.Get("name")
+func (c *FakeClient) ContainerList(ctx context.Context, options client.ContainerListOptions) (client.ContainerListResult, error) {
+	nameFilter := slices.Collect(maps.Keys(options.Filters["name"]))
 	if len(nameFilter) != 1 {
-		return nil, fmt.Errorf("expected one filter for 'name', got: %v", nameFilter)
+		return client.ContainerListResult{}, fmt.Errorf("expected one filter for 'name', got: %v", nameFilter)
 	}
 
 	if len(c.ContainerListOutput) == 0 {
-		return nil, fmt.Errorf("FakeClient ContainerListOutput not set (use `SetContainerListOutput`)")
+		return client.ContainerListResult{}, fmt.Errorf("FakeClient ContainerListOutput not set (use `SetContainerListOutput`)")
 	}
 	res := c.ContainerListOutput[nameFilter[0]]
 
 	// unset containerListOutput
 	c.ContainerListOutput = nil
 
-	return res, nil
+	return client.ContainerListResult{Items: res}, nil
 }
 
 func (c *FakeClient) ContainerRestartNoWait(ctx context.Context, containerID string) error {
@@ -303,13 +299,13 @@ func (c *FakeClient) ImagePush(ctx context.Context, ref reference.NamedTagged) (
 	return NewFakeDockerResponse(c.PushOutput), nil
 }
 
-func (c *FakeClient) ImageBuild(ctx context.Context, g *errgroup.Group, buildContext io.Reader, options BuildOptions) (typesbuild.ImageBuildResponse, error) {
+func (c *FakeClient) ImageBuild(ctx context.Context, g *errgroup.Group, buildContext io.Reader, options BuildOptions) (client.ImageBuildResult, error) {
 	c.BuildCount++
 	c.BuildOptions = options
 
 	data, err := io.ReadAll(buildContext)
 	if err != nil {
-		return typesbuild.ImageBuildResponse{}, errors.Wrap(err, "ImageBuild")
+		return client.ImageBuildResult{}, errors.Wrap(err, "ImageBuild")
 	}
 
 	c.BuildContext = bytes.NewBuffer(data)
@@ -318,33 +314,33 @@ func (c *FakeClient) ImageBuild(ctx context.Context, g *errgroup.Group, buildCon
 	err = c.BuildErrorToThrow
 	if err != nil {
 		c.BuildErrorToThrow = nil
-		return typesbuild.ImageBuildResponse{}, err
+		return client.ImageBuildResult{}, err
 	}
 
-	return typesbuild.ImageBuildResponse{Body: NewFakeDockerResponse(c.BuildOutput)}, nil
+	return client.ImageBuildResult{Body: NewFakeDockerResponse(c.BuildOutput)}, nil
 }
 
-func (c *FakeClient) ImageTag(ctx context.Context, source, target string) error {
+func (c *FakeClient) ImageTag(ctx context.Context, options client.ImageTagOptions) (client.ImageTagResult, error) {
 	c.TagCount++
-	c.TagSource = source
-	c.TagTarget = target
-	return nil
+	c.TagSource = options.Source
+	c.TagTarget = options.Target
+	return client.ImageTagResult{}, nil
 }
 
-func (c *FakeClient) ImageInspect(ctx context.Context, imageID string, inspectOpts ...client.ImageInspectOption) (typesimage.InspectResponse, error) {
+func (c *FakeClient) ImageInspect(ctx context.Context, imageID string, inspectOpts ...client.ImageInspectOption) (client.ImageInspectResult, error) {
 	result, ok := c.Images[imageID]
 	if ok {
-		return result, nil
+		return client.ImageInspectResult{InspectResponse: result}, nil
 	}
 
 	if c.ImageAlwaysExists {
-		return typesimage.InspectResponse{}, nil
+		return client.ImageInspectResult{}, nil
 	}
 
-	return typesimage.InspectResponse{}, newNotFoundErrorf("fakeClient.Images key: %s", imageID)
+	return client.ImageInspectResult{}, newNotFoundErrorf("fakeClient.Images key: %s", imageID)
 }
 
-func (c *FakeClient) ImageList(ctx context.Context, options typesimage.ListOptions) ([]typesimage.Summary, error) {
+func (c *FakeClient) ImageList(ctx context.Context, options client.ImageListOptions) (client.ImageListResult, error) {
 	c.ImageListOpts = append(c.ImageListOpts, options)
 	summaries := make([]typesimage.Summary, c.ImageListCount)
 	for i := range summaries {
@@ -353,15 +349,15 @@ func (c *FakeClient) ImageList(ctx context.Context, options typesimage.ListOptio
 			Created: time.Now().Add(-time.Second).Unix(),
 		}
 	}
-	return summaries, nil
+	return client.ImageListResult{Items: summaries}, nil
 }
 
-func (c *FakeClient) ImageRemove(ctx context.Context, imageID string, options typesimage.RemoveOptions) ([]typesimage.DeleteResponse, error) {
+func (c *FakeClient) ImageRemove(ctx context.Context, imageID string, options client.ImageRemoveOptions) (client.ImageRemoveResult, error) {
 	c.RemovedImageIDs = append(c.RemovedImageIDs, imageID)
 	sort.Strings(c.RemovedImageIDs)
-	return []typesimage.DeleteResponse{
-		typesimage.DeleteResponse{Deleted: imageID},
-	}, nil
+	return client.ImageRemoveResult{Items: []typesimage.DeleteResponse{
+		{Deleted: imageID},
+	}}, nil
 }
 
 func (c *FakeClient) NewVersionError(ctx context.Context, apiRequired, feature string) error {
@@ -376,38 +372,34 @@ func (c *FakeClient) VersionError(apiRequired, feature string) error {
 	return fmt.Errorf("%q requires API version %s, but the Docker daemon API version is... something else", feature, apiRequired)
 }
 
-func (c *FakeClient) BuildCachePrune(ctx context.Context, opts typesbuild.CachePruneOptions) (*typesbuild.CachePruneReport, error) {
+func (c *FakeClient) BuildCachePrune(ctx context.Context, opts client.BuildCachePruneOptions) (client.BuildCachePruneResult, error) {
 	if err := c.BuildCachePruneErr; err != nil {
 		c.BuildCachePruneErr = nil
-		return nil, err
+		return client.BuildCachePruneResult{}, err
 	}
 
-	c.BuildCachePruneOpts = typesbuild.CachePruneOptions{
-		All:         opts.All,
-		KeepStorage: opts.KeepStorage,
-		Filters:     opts.Filters.Clone(),
-	}
-	report := &typesbuild.CachePruneReport{
+	c.BuildCachePruneOpts = opts
+	result := client.BuildCachePruneResult{Report: typesbuild.CachePruneReport{
 		CachesDeleted:  c.BuildCachesPruned,
 		SpaceReclaimed: uint64(units.MB * len(c.BuildCachesPruned)), // 1MB per cache pruned
-	}
+	}}
 	c.BuildCachesPruned = nil
-	return report, nil
+	return result, nil
 }
 
-func (c *FakeClient) ContainersPrune(ctx context.Context, pruneFilters filters.Args) (typescontainer.PruneReport, error) {
+func (c *FakeClient) ContainerPrune(ctx context.Context, opts client.ContainerPruneOptions) (client.ContainerPruneResult, error) {
 	if err := c.ContainersPruneErr; err != nil {
 		c.ContainersPruneErr = nil
-		return typescontainer.PruneReport{}, err
+		return client.ContainerPruneResult{}, err
 	}
 
-	c.ContainersPruneFilters = pruneFilters.Clone()
-	report := typescontainer.PruneReport{
+	c.ContainersPruneFilters = opts.Filters
+	result := client.ContainerPruneResult{Report: typescontainer.PruneReport{
 		ContainersDeleted: c.ContainersPruned,
 		SpaceReclaimed:    uint64(units.MB * len(c.ContainersPruned)), // 1MB per container pruned
-	}
+	}}
 	c.ContainersPruned = nil
-	return report, nil
+	return result, nil
 }
 
 var _ Client = &FakeClient{}
