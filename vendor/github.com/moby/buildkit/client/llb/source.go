@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"os"
 	"path"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -96,6 +97,123 @@ func (s *SourceOp) Inputs() []Output {
 	return nil
 }
 
+type ImageBlobInfo struct {
+	constraintsWrapper
+	fileinfoWrapper
+	sessionID string
+	storeID   string
+}
+
+type ImageBlobOption interface {
+	SetImageBlobOption(*ImageBlobInfo)
+}
+
+type FileInfoOption interface {
+	HTTPOption
+	ImageBlobOption
+}
+
+func ImageBlob(ref string, opts ...ImageBlobOption) State {
+	bi := &ImageBlobInfo{}
+	for _, o := range opts {
+		o.SetImageBlobOption(bi)
+	}
+	attrs := map[string]string{}
+
+	if bi.Filename != "" {
+		attrs[pb.AttrHTTPFilename] = bi.Filename
+	}
+	if bi.Perm != 0 {
+		attrs[pb.AttrHTTPPerm] = "0" + strconv.FormatInt(int64(bi.Perm), 8)
+	}
+	if bi.UID != 0 {
+		attrs[pb.AttrHTTPUID] = strconv.Itoa(bi.UID)
+	}
+	if bi.GID != 0 {
+		attrs[pb.AttrHTTPGID] = strconv.Itoa(bi.GID)
+	}
+
+	addCap(&bi.Constraints, pb.CapSourceImageBlob)
+
+	var digested reference.Digested
+
+	r, err := reference.ParseNormalizedNamed(ref)
+	if err == nil {
+		if _, tagged := r.(reference.Tagged); tagged {
+			err = errors.Errorf("tagged image reference not allowed for blob reference")
+		} else if ref, ok := r.(reference.Digested); !ok {
+			err = errors.Errorf("checksum required in blob reference")
+		} else {
+			digested = ref
+		}
+	}
+
+	repoName := "invalid"
+	if digested != nil {
+		repoName = digested.String()
+	}
+
+	source := NewSource("docker-image+blob://"+repoName, attrs, bi.Constraints)
+	if err != nil {
+		source.err = err
+	}
+	return NewState(source.Output())
+}
+
+// OCILayoutBlob returns a state that represents a single digest-addressed blob from an OCI layout store.
+func OCILayoutBlob(ref string, opts ...ImageBlobOption) State {
+	bi := &ImageBlobInfo{}
+	for _, o := range opts {
+		o.SetImageBlobOption(bi)
+	}
+	attrs := map[string]string{}
+
+	if bi.Filename != "" {
+		attrs[pb.AttrHTTPFilename] = bi.Filename
+	}
+	if bi.Perm != 0 {
+		attrs[pb.AttrHTTPPerm] = "0" + strconv.FormatInt(int64(bi.Perm), 8)
+	}
+	if bi.UID != 0 {
+		attrs[pb.AttrHTTPUID] = strconv.Itoa(bi.UID)
+	}
+	if bi.GID != 0 {
+		attrs[pb.AttrHTTPGID] = strconv.Itoa(bi.GID)
+	}
+	if bi.sessionID != "" {
+		attrs[pb.AttrOCILayoutSessionID] = bi.sessionID
+	}
+	if bi.storeID != "" {
+		attrs[pb.AttrOCILayoutStoreID] = bi.storeID
+	}
+
+	addCap(&bi.Constraints, pb.CapSourceImageBlob)
+
+	var digested reference.Digested
+
+	r, err := reference.ParseNormalizedNamed(ref)
+	if err == nil {
+		if _, tagged := r.(reference.Tagged); tagged {
+			err = errors.Errorf("tagged image reference not allowed for blob reference")
+		} else if ref, ok := r.(reference.Digested); !ok {
+			err = errors.Errorf("checksum required in blob reference")
+		} else {
+			digested = ref
+		}
+	}
+
+	repoName := "invalid"
+	if digested != nil {
+		repoName = digested.String()
+	}
+
+	source := NewSource("oci-layout+blob://"+repoName, attrs, bi.Constraints)
+	if err != nil {
+		source.err = err
+	}
+	return NewState(source.Output())
+}
+
 // Image returns a state that represents a docker image in a registry.
 // Example:
 //
@@ -146,8 +264,8 @@ func Image(ref string, opts ...ImageOption) State {
 					p = c.Platform
 				}
 				_, _, dt, err := info.metaResolver.ResolveImageConfig(ctx, ref, sourceresolver.Opt{
-					Platform: p,
 					ImageOpt: &sourceresolver.ResolveImageOpt{
+						Platform:    p,
 						ResolveMode: info.resolveMode.String(),
 					},
 				})
@@ -163,8 +281,8 @@ func Image(ref string, opts ...ImageOption) State {
 				p = c.Platform
 			}
 			ref, dgst, dt, err := info.metaResolver.ResolveImageConfig(context.TODO(), ref, sourceresolver.Opt{
-				Platform: p,
 				ImageOpt: &sourceresolver.ResolveImageOpt{
+					Platform:    p,
 					ResolveMode: info.resolveMode.String(),
 				},
 			})
@@ -195,6 +313,12 @@ type imageOptionFunc func(*ImageInfo)
 
 func (fn imageOptionFunc) SetImageOption(ii *ImageInfo) {
 	fn(ii)
+}
+
+type imageBlobOptionFunc func(*ImageBlobInfo)
+
+func (fn imageBlobOptionFunc) SetImageBlobOption(ib *ImageBlobInfo) {
+	fn(ib)
 }
 
 var MarkImageInternal = imageOptionFunc(func(ii *ImageInfo) {
@@ -274,6 +398,8 @@ func Git(url, fragment string, opts ...GitOption) State {
 		AuthTokenSecret:  GitAuthTokenKey,
 	}
 	ref, subdir, ok := strings.Cut(fragment, ":")
+	subdir = path.Join("/", subdir)
+	subdir = strings.TrimPrefix(subdir, "/")
 	if ref != "" {
 		GitRef(ref).SetGitOption(gi)
 	}
@@ -623,6 +749,14 @@ func OCIStore(sessionID string, storeID string) OCILayoutOption {
 	})
 }
 
+// ImageBlobOCIStore returns an [ImageBlobOption] that configures the OCI layout session/store used by [OCILayoutBlob].
+func ImageBlobOCIStore(sessionID string, storeID string) ImageBlobOption {
+	return imageBlobOptionFunc(func(ib *ImageBlobInfo) {
+		ib.sessionID = sessionID
+		ib.storeID = storeID
+	})
+}
+
 func OCILayerLimit(limit int) OCILayoutOption {
 	return ociLayoutOptionFunc(func(oi *OCILayoutInfo) {
 		oi.layerLimit = &limit
@@ -705,21 +839,58 @@ func HTTP(url string, opts ...HTTPOption) State {
 		hi.Header.setAttrs(attrs)
 		addCap(&hi.Constraints, pb.CapSourceHTTPHeader)
 	}
+	if hi.Signature != nil {
+		if len(hi.Signature.PubKey) > 0 {
+			attrs[pb.AttrHTTPSignatureVerifyPubKey] = string(hi.Signature.PubKey)
+		}
+		if len(hi.Signature.Signature) > 0 {
+			attrs[pb.AttrHTTPSignatureVerify] = string(hi.Signature.Signature)
+		}
+		addCap(&hi.Constraints, pb.CapSourceHTTPSignatureVerify)
+	}
 
 	addCap(&hi.Constraints, pb.CapSourceHTTP)
 	source := NewSource(url, attrs, hi.Constraints)
 	return NewState(source.Output())
 }
 
+type fileInfo struct {
+	Filename string
+	Perm     int
+	UID      int
+	GID      int
+}
+
+type fileinfoWrapper struct {
+	fileInfo
+}
+
+type fileInfoOptFunc func(f *fileInfo)
+
+func (fn fileInfoOptFunc) SetHTTPOption(hi *HTTPInfo) {
+	fn(&hi.fileInfo)
+}
+
+func (fn fileInfoOptFunc) SetImageBlobOption(ib *ImageBlobInfo) {
+	fn(&ib.fileInfo)
+}
+
+// HTTPSignatureInfo configures detached-signature verification for HTTP
+// sources. The current implementation uses inline armored signatures.
+type HTTPSignatureInfo struct {
+	PubKey []byte
+
+	// Signature is an inline detached armored OpenPGP signature.
+	Signature []byte
+}
+
 type HTTPInfo struct {
 	constraintsWrapper
+	fileinfoWrapper
 	Checksum         digest.Digest
-	Filename         string
-	Perm             int
-	UID              int
-	GID              int
 	AuthHeaderSecret string
 	Header           *HTTPHeader
+	Signature        *HTTPSignatureInfo
 }
 
 type HTTPOption interface {
@@ -738,22 +909,33 @@ func Checksum(dgst digest.Digest) HTTPOption {
 	})
 }
 
-func Chmod(perm os.FileMode) HTTPOption {
-	return httpOptionFunc(func(hi *HTTPInfo) {
-		hi.Perm = int(perm) & 0777
+func Chmod(perm os.FileMode) FileInfoOption {
+	return fileInfoOptFunc(func(fi *fileInfo) {
+		fi.Perm = int(perm) & 0777
 	})
 }
 
-func Filename(name string) HTTPOption {
-	return httpOptionFunc(func(hi *HTTPInfo) {
-		hi.Filename = name
+func Filename(name string) FileInfoOption {
+	return fileInfoOptFunc(func(fi *fileInfo) {
+		fi.Filename = name
 	})
 }
 
-func Chown(uid, gid int) HTTPOption {
+func Chown(uid, gid int) FileInfoOption {
+	return fileInfoOptFunc(func(fi *fileInfo) {
+		fi.UID = uid
+		fi.GID = gid
+	})
+}
+
+// VerifyPGPSignature returns an [HTTPOption] for detached OpenPGP signature
+// verification of the downloaded HTTP payload.
+func VerifyPGPSignature(info HTTPSignatureInfo) HTTPOption {
 	return httpOptionFunc(func(hi *HTTPInfo) {
-		hi.UID = uid
-		hi.GID = gid
+		hi.Signature = &HTTPSignatureInfo{
+			PubKey:    slices.Clone(info.PubKey),
+			Signature: slices.Clone(info.Signature),
+		}
 	})
 }
 

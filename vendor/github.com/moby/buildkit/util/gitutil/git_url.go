@@ -2,6 +2,7 @@ package gitutil
 
 import (
 	"net/url"
+	"path"
 	"regexp"
 	"strings"
 
@@ -30,7 +31,7 @@ var supportedProtos = map[string]struct{}{
 
 var protoRegexp = regexp.MustCompile(`^[a-zA-Z0-9]+://`)
 
-// URL is a custom URL type that points to a remote Git repository.
+// GitURL is a custom URL type that points to a remote Git repository.
 //
 // URLs can be parsed from both standard URLs (e.g.
 // "https://github.com/moby/buildkit.git"), as well as SCP-like URLs (e.g.
@@ -72,6 +73,8 @@ func parseOpts(fragment string) *GitURLOpts {
 		return nil
 	}
 	ref, subdir, _ := strings.Cut(fragment, ":")
+	subdir = path.Join("/", subdir)
+	subdir = strings.TrimPrefix(subdir, "/")
 	return &GitURLOpts{Ref: ref, Subdir: subdir}
 }
 
