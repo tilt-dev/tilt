@@ -15,6 +15,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/containerd/platforms"
 	"github.com/distribution/reference"
+	"github.com/docker/buildx/util/dockerutil/dockerconfig"
 	"github.com/docker/cli/cli/command"
 	"github.com/docker/cli/cli/config"
 	"github.com/docker/go-connections/tlsconfig"
@@ -302,10 +303,12 @@ func (c *Cli) startBuildkitSession(ctx context.Context, g *errgroup.Group, key s
 		session.Allow(filesync.NewFSSyncProvider(dirSource))
 	}
 
-	dockerConfig := config.LoadDefaultConfigFile(
-		logger.Get(ctx).Writer(logger.InfoLvl))
+	cli, err := newDockerCli(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "startBuildkitSession")
+	}
 	provider := authprovider.NewDockerAuthProvider(authprovider.DockerAuthProviderConfig{
-		ConfigFile: dockerConfig,
+		AuthConfigProvider: dockerconfig.LoadAuthConfig(cli),
 	})
 	session.Allow(provider)
 

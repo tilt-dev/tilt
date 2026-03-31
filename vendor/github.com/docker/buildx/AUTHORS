@@ -1,0 +1,112 @@
+# This file lists all individuals having contributed content to the repository.
+# For how it is generated, see hack/dockerfiles/authors.Dockerfile.
+
+accetto <34798830+accetto@users.noreply.github.com>
+Akihiro Suda <akihiro.suda.cz@hco.ntt.co.jp>
+Aleksa Sarai <cyphar@cyphar.com>
+Alex Couture-Beil <alex@earthly.dev>
+Andrew Haines <andrew.haines@zencargo.com>
+Andy Caldwell <andrew.caldwell@metaswitch.com>
+Andy MacKinlay <admackin@users.noreply.github.com>
+Anthony Poschen <zanven42@gmail.com>
+Arnold Sobanski <arnold@l4g.dev>
+Artur Klauser <Artur.Klauser@computer.org>
+Avi Deitcher <avi@deitcher.net>
+Batuhan Apaydın <batuhan.apaydin@trendyol.com>
+Ben Peachey <potherca@gmail.com>
+Bertrand Paquet <bertrand.paquet@gmail.com>
+Bin Du <bindu@microsoft.com>
+Brandon Philips <brandon@ifup.org>
+Brian Goff <cpuguy83@gmail.com>
+Bryce Lampe <bryce@pulumi.com>
+Cameron Adams <pnzreba@gmail.com>
+Christian Dupuis <cd@atomist.com>
+Cory Snider <csnider@mirantis.com>
+CrazyMax <github@crazymax.dev>
+David Gageot <david.gageot@docker.com>
+David Karlsson <david.karlsson@docker.com>
+David Scott <dave@recoil.org>
+dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+Devin Bayer <dev@doubly.so>
+Djordje Lukic <djordje.lukic@docker.com>
+Dmitry Makovey <dmakovey@gitlab.com>
+Dmytro Makovey <dmytro.makovey@docker.com>
+Donghui Wang <977675308@qq.com>
+Doug Borg <dougborg@apple.com>
+Edgar Lee <edgarl@netflix.com>
+Eli Treuherz <et@arenko.group>
+Eliott Wiener <eliottwiener@gmail.com>
+Elran Shefer <elran.shefer@velocity.tech>
+faust <faustin@fala.red>
+Felipe Santos <felipecassiors@gmail.com>
+Felix de Souza <fdesouza@palantir.com>
+Fernando Miguel <github@FernandoMiguel.net>
+gfrancesco <gfrancesco@users.noreply.github.com>
+gracenoah <gracenoahgh@gmail.com>
+Guillaume Lours <705411+glours@users.noreply.github.com>
+guoguangwu <guoguangwu@magic-shield.com>
+Hollow Man <hollowman@hollowman.ml>
+Ian King'ori <kingorim.ian@gmail.com>
+idnandre <andre@idntimes.com>
+Ilya Dmitrichenko <errordeveloper@gmail.com>
+Isaac Gaskin <isaac.gaskin@circle.com>
+Jack Laxson <jackjrabbit@gmail.com>
+jaihwan104 <jaihwan104@woowahan.com>
+Jean-Yves Gastaud <jygastaud@gmail.com>
+Jhan S. Álvarez <51450231+yastanotheruser@users.noreply.github.com>
+Jonathan A. Sternberg <jonathan.sternberg@docker.com>
+Jonathan Piché <jpiche@coveo.com>
+Justin Chadwell <me@jedevc.com>
+Kenyon Ralph <kenyon@kenyonralph.com>
+khs1994 <khs1994@khs1994.com>
+Kijima Daigo <norimaking777@gmail.com>
+Kohei Tokunaga <ktokunaga.mail@gmail.com>
+Kotaro Adachi <k33asby@gmail.com>
+Kushagra Mansingh <12158241+kushmansingh@users.noreply.github.com>
+l00397676 <lujingxiao@huawei.com>
+Laura Brehm <laurabrehm@hey.com>
+Laurent Goderre <laurent.goderre@docker.com>
+Mark Hildreth <113933455+markhildreth-gravity@users.noreply.github.com>
+Mayeul Blanzat <mayeul.blanzat@datadoghq.com>
+Michal Augustyn <michal.augustyn@mail.com>
+Milas Bowman <milas.bowman@docker.com>
+Mitsuru Kariya <mitsuru.kariya@nttdata.com>
+Moleus <fafufuburr@gmail.com>
+Nick Santos <nick.santos@docker.com>
+Nick Sieger <nick@nicksieger.com>
+Nicolas De Loof <nicolas.deloof@gmail.com>
+Niklas Gehlen <niklas@namespacelabs.com>
+Patrick Van Stee <patrick@vanstee.me>
+Paweł Gronowski <pawel.gronowski@docker.com>
+Phong Tran <tran.pho@northeastern.edu>
+Qasim Sarfraz <qasimsarfraz@microsoft.com>
+Rob Murray <rob.murray@docker.com>
+robertlestak <robert.lestak@umusic.com>
+Saul Shanabrook <s.shanabrook@gmail.com>
+Sean P. Kane <spkane00@gmail.com>
+Sebastiaan van Stijn <github@gone.nl>
+Shaun Thompson <shaun.thompson@docker.com>
+SHIMA Tatsuya <ts1s1andn@gmail.com>
+Silvin Lubecki <silvin.lubecki@docker.com>
+Simon A. Eugster <simon.eu@gmail.com>
+Solomon Hykes <sh.github.6811@hykes.org>
+Sumner Warren <sumner.warren@gmail.com>
+Sune Keller <absukl@almbrand.dk>
+Talon Bowler <talon.bowler@docker.com>
+Tianon Gravi <admwiggin@gmail.com>
+Tibor Vass <tibor@docker.com>
+Tim Smith <tismith@rvohealth.com>
+Timofey Kirillov <timofey.kirillov@flant.com>
+Tyler Smith <tylerlwsmith@gmail.com>
+Tõnis Tiigi <tonistiigi@gmail.com>
+Ulysses Souza <ulyssessouza@gmail.com>
+Usual Coder <34403413+Usual-Coder@users.noreply.github.com>
+Wang Jinglei <morlay.null@gmail.com>
+Wei <daviseago@gmail.com>
+Wojciech M <wmiedzybrodzki@outlook.com>
+Xiang Dai <764524258@qq.com>
+Zachary Povey <zachary.povey@autotrader.co.uk>
+zelahi <elahi.zuhayr@gmail.com>
+Zero <tobewhatwewant@gmail.com>
+zhyon404 <zhyong4@gmail.com>
+Zsolt <zsolt.szeberenyi@figured.com>

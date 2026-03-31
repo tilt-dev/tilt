@@ -57,7 +57,7 @@ func NewED25519SignerVerifierFromSSLibKey(key *SSLibKey) (*ED25519SignerVerifier
 }
 
 // Sign creates a signature for `data`.
-func (sv *ED25519SignerVerifier) Sign(ctx context.Context, data []byte) ([]byte, error) {
+func (sv *ED25519SignerVerifier) Sign(_ context.Context, data []byte) ([]byte, error) {
 	if len(sv.private) == 0 {
 		return nil, ErrNotPrivateKey
 	}
@@ -67,7 +67,7 @@ func (sv *ED25519SignerVerifier) Sign(ctx context.Context, data []byte) ([]byte,
 }
 
 // Verify verifies the `sig` value passed in against `data`.
-func (sv *ED25519SignerVerifier) Verify(ctx context.Context, data []byte, sig []byte) error {
+func (sv *ED25519SignerVerifier) Verify(_ context.Context, data []byte, sig []byte) error {
 	if ok := ed25519.Verify(sv.public, data, sig); ok {
 		return nil
 	}
@@ -88,11 +88,15 @@ func (sv *ED25519SignerVerifier) Public() crypto.PublicKey {
 
 // LoadED25519KeyFromFile returns an SSLibKey instance for an ED25519 key stored
 // in a file in the custom securesystemslib format.
+//
+// Deprecated: use LoadKey(). The custom serialization format is deprecated. Use
+// https://github.com/secure-systems-lab/securesystemslib/blob/main/docs/migrate_key.py
+// to convert your key.
 func LoadED25519KeyFromFile(path string) (*SSLibKey, error) {
 	contents, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("unable to load ED25519 key from file: %w", err)
 	}
 
-	return loadKeyFromSSLibBytes(contents)
+	return LoadKeyFromSSLibBytes(contents)
 }
