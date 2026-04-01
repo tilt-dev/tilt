@@ -109,14 +109,15 @@ func (f LogFilter) matchesSinceFilter(line logstore.LogLine) bool {
 // The implementation is identical to matchesFilter in web/src/OverviewLogPane.tsx.
 // except for term filtering as tools like grep can be used from the CLI.
 func (f LogFilter) Matches(line logstore.LogLine) bool {
-	if line.BuildEvent != "" {
-		// Always leave in build event logs.
-		// This makes it easier to see which logs belong to which builds.
-		return true
-	}
-
+	// Check resource filter first - build events should also respect resource filtering
 	if !f.resources.Matches(line.ManifestName) {
 		return false
+	}
+
+	if line.BuildEvent != "" {
+		// Include build event logs that match the resource filter.
+		// This makes it easier to see which logs belong to which builds.
+		return true
 	}
 
 	isBuild := isBuildSpanID(line.SpanID)
