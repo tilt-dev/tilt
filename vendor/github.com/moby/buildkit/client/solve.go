@@ -51,6 +51,7 @@ type SolveOpt struct {
 	SessionPreInitialized bool             // TODO: refactor to better session syncing
 	Internal              bool
 	SourcePolicy          *spb.Policy
+	SourcePolicyProvider  session.Attachable
 	Ref                   string
 }
 
@@ -219,6 +220,10 @@ func (c *Client) solve(ctx context.Context, def *llb.Definition, runGateway runG
 			s.Allow(filesync.NewFSSyncTarget(syncTargets...))
 		}
 
+		if opt.SourcePolicyProvider != nil {
+			s.Allow(opt.SourcePolicyProvider)
+		}
+
 		eg.Go(func() error {
 			sd := c.sessionDialer
 			if sd == nil {
@@ -231,6 +236,9 @@ func (c *Client) solve(ctx context.Context, def *llb.Definition, runGateway runG
 	frontendAttrs := maps.Clone(opt.FrontendAttrs)
 	maps.Copy(frontendAttrs, cacheOpt.frontendAttrs)
 
+	const statusInactivityTimeout = 5 * time.Second
+	statusActivity := make(chan struct{}, 1)
+
 	solveCtx, cancelSolve := context.WithCancelCause(ctx)
 	var res *SolveResponse
 	eg.Go(func() error {
@@ -239,8 +247,21 @@ func (c *Client) solve(ctx context.Context, def *llb.Definition, runGateway runG
 
 		defer func() { // make sure the Status ends cleanly on build errors
 			go func() {
-				<-time.After(3 * time.Second)
-				cancelStatus(errors.WithStack(context.Canceled))
+				// Start inactivity monitoring after solve completes
+				statusInactivityTimer := time.NewTimer(statusInactivityTimeout)
+				defer statusInactivityTimer.Stop()
+				for {
+					select {
+					case <-statusContext.Done():
+						return
+					case <-statusActivity:
+						// Reset timer on activity
+						statusInactivityTimer.Reset(statusInactivityTimeout)
+					case <-statusInactivityTimer.C:
+						cancelStatus(errors.WithStack(context.Canceled))
+						return
+					}
+				}
 			}()
 			if !opt.SessionPreInitialized {
 				bklog.G(ctx).Debugf("stopping session")
@@ -275,7 +296,7 @@ func (c *Client) solve(ctx context.Context, def *llb.Definition, runGateway runG
 			})
 		}
 
-		resp, err := c.ControlClient().Solve(ctx, &controlapi.SolveRequest{
+		sopt := &controlapi.SolveRequest{
 			Ref:                     ref,
 			Definition:              pbd,
 			Exporters:               exports,
@@ -290,7 +311,12 @@ func (c *Client) solve(ctx context.Context, def *llb.Definition, runGateway runG
 			Entitlements:            slices.Clone(opt.AllowedEntitlements),
 			Internal:                opt.Internal,
 			SourcePolicy:            opt.SourcePolicy,
-		})
+		}
+		if opt.SourcePolicyProvider != nil {
+			sopt.SourcePolicySession = s.ID()
+		}
+
+		resp, err := c.ControlClient().Solve(ctx, sopt)
 		if err != nil {
 			return errors.Wrap(err, "failed to solve")
 		}
@@ -335,7 +361,16 @@ func (c *Client) solve(ctx context.Context, def *llb.Definition, runGateway runG
 				if errors.Is(err, io.EOF) {
 					return nil
 				}
+				// Ignore context canceled, triggered after inactivity timeout
+				if errors.Is(err, context.Canceled) || statusContext.Err() != nil {
+					return nil
+				}
 				return errors.Wrap(err, "failed to receive status")
+			}
+			// Signal activity (non-blocking)
+			select {
+			case statusActivity <- struct{}{}:
+			default:
 			}
 			if statusChan != nil {
 				statusChan <- NewSolveStatus(resp)
