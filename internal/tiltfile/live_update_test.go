@@ -499,3 +499,155 @@ func newLiveUpdateFixture(t *testing.T) *liveUpdateFixture {
 
 	return f
 }
+
+func TestLiveUpdate_InitialSync_WithIgnore(t *testing.T) {
+	f := newFixture(t)
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
+docker_build('gcr.io/foo', 'foo',
+  live_update=[
+    initial_sync(ignore=['node_modules', '.git']),
+    sync('foo', '/app'),
+    run('npm install'),
+  ]
+)`)
+	f.load()
+
+	lu := v1alpha1.LiveUpdateSpec{
+		BasePath: f.Path(),
+		Syncs: []v1alpha1.LiveUpdateSync{
+			{LocalPath: "foo", ContainerPath: "/app"},
+		},
+		Execs: []v1alpha1.LiveUpdateExec{
+			{Args: []string{"sh", "-c", "npm install"}},
+		},
+		InitialSync: &v1alpha1.LiveUpdateInitialSync{
+			IgnorePaths: []string{"node_modules", ".git"},
+		},
+	}
+
+	f.assertNextManifest("foo", db(image("gcr.io/foo"), lu))
+}
+
+func TestLiveUpdate_InitialSync_NoArgs(t *testing.T) {
+	f := newFixture(t)
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
+docker_build('gcr.io/foo', 'foo',
+  live_update=[
+    initial_sync(),
+    sync('foo', '/app'),
+  ]
+)`)
+	f.load()
+
+	lu := v1alpha1.LiveUpdateSpec{
+		BasePath: f.Path(),
+		Syncs: []v1alpha1.LiveUpdateSync{
+			{LocalPath: "foo", ContainerPath: "/app"},
+		},
+		InitialSync: &v1alpha1.LiveUpdateInitialSync{},
+	}
+
+	f.assertNextManifest("foo", db(image("gcr.io/foo"), lu))
+}
+
+func TestLiveUpdate_InitialSync_AbsolutePathError(t *testing.T) {
+	f := newFixture(t)
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
+docker_build('gcr.io/foo', 'foo',
+  live_update=[
+    initial_sync(ignore=['/absolute/path']),
+    sync('foo', '/app'),
+  ]
+)`)
+	f.loadErrString("ignore paths must be relative to basePath")
+}
+
+func TestLiveUpdate_InitialSync_InvalidIgnoreType(t *testing.T) {
+	f := newFixture(t)
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
+docker_build('gcr.io/foo', 'foo',
+  live_update=[
+    initial_sync(ignore=[123, 456]),
+    sync('foo', '/app'),
+  ]
+)`)
+	f.loadErrString("initial_sync ignore paths must be strings")
+}
+
+func TestLiveUpdate_InitialSync_MustBeFirst(t *testing.T) {
+	f := newFixture(t)
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
+docker_build('gcr.io/foo', 'foo',
+  live_update=[
+    sync('foo', '/app'),
+    initial_sync(),
+  ]
+)`)
+	f.loadErrString("initial_sync must appear at most once, at the start of the list")
+}
+
+func TestLiveUpdate_InitialSync_DuplicateError(t *testing.T) {
+	f := newFixture(t)
+	f.setupFoo()
+
+	f.file("Tiltfile", `
+k8s_yaml('foo.yaml')
+docker_build('gcr.io/foo', 'foo',
+  live_update=[
+    initial_sync(),
+    initial_sync(),
+    sync('foo', '/app'),
+  ]
+)`)
+	f.loadErrString("initial_sync must appear at most once, at the start of the list")
+}
+
+func TestLiveUpdate_InitialSync_K8sCustomDeploy(t *testing.T) {
+	f := newFixture(t)
+
+	f.file("Tiltfile", `
+k8s_custom_deploy('foo', 'apply', 'delete', deps=['foo'], container_selector='foo',
+  live_update=[
+    initial_sync(ignore=['node_modules']),
+    sync('foo', '/app'),
+    run('npm install'),
+  ]
+)`)
+	f.load()
+
+	lu := v1alpha1.LiveUpdateSpec{
+		BasePath: f.Path(),
+		Syncs: []v1alpha1.LiveUpdateSync{
+			{LocalPath: "foo", ContainerPath: "/app"},
+		},
+		Execs: []v1alpha1.LiveUpdateExec{
+			{Args: []string{"sh", "-c", "npm install"}},
+		},
+		InitialSync: &v1alpha1.LiveUpdateInitialSync{
+			IgnorePaths: []string{"node_modules"},
+		},
+		Selector: v1alpha1.LiveUpdateSelector{
+			Kubernetes: &v1alpha1.LiveUpdateKubernetesSelector{
+				ContainerName: "foo",
+			},
+		},
+	}
+
+	m := f.assertNextManifest("foo", cb(image("k8s_custom_deploy:foo"), lu))
+	assert.True(t, m.ImageTargets[0].IsLiveUpdateOnly)
+}
