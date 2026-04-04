@@ -1142,3 +1142,519 @@ func (f *fixture) kdUpdateStatus(name string, status v1alpha1.KubernetesDiscover
 	update.Status = status
 	f.UpdateStatus(update)
 }
+
+func TestInitialSync_FirstContainerStart(t *testing.T) {
+	f := newFixture(t)
+
+	// Create temp directory with test files
+	tmpDir := t.TempDir()
+	srcDir := filepath.Join(tmpDir, "src")
+	require.NoError(t, os.MkdirAll(srcDir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "file1.txt"), []byte("content1"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "file2.txt"), []byte("content2"), 0644))
+
+	// Create LiveUpdate with InitialSync enabled
+	f.setupFrontend()
+
+	var lu v1alpha1.LiveUpdate
+	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
+	luUpdate := lu.DeepCopy()
+	luUpdate.Spec.BasePath = tmpDir
+	luUpdate.Spec.Syncs = []v1alpha1.LiveUpdateSync{
+		{LocalPath: "src", ContainerPath: "/app/src"},
+	}
+	luUpdate.Spec.Execs = []v1alpha1.LiveUpdateExec{
+		{Args: []string{"sh", "-c", "npm install"}},
+	}
+	luUpdate.Spec.InitialSync = &v1alpha1.LiveUpdateInitialSync{
+		IgnorePaths: []string{},
+	}
+	f.Update(luUpdate)
+
+	// Add pod with running container
+	f.kdUpdateStatus("frontend-discovery", v1alpha1.KubernetesDiscoveryStatus{
+		Pods: []v1alpha1.Pod{
+			{
+				Name:      "pod-1",
+				Namespace: "default",
+				Phase:     "Running",
+				Containers: []v1alpha1.Container{
+					{
+						Name:  "main",
+						ID:    "container-1",
+						Image: "frontend-image",
+						State: v1alpha1.ContainerState{
+							Running: &v1alpha1.ContainerStateRunning{},
+						},
+					},
+				},
+			},
+		},
+	})
+	f.MustReconcile(types.NamespacedName{Name: "frontend-liveupdate"})
+
+	// Verify initial sync happened
+	require.Len(t, f.cu.Calls, 1, "Expected one UpdateContainer call for initial sync")
+}
+
+func TestInitialSync_NotRepeatedForSameContainer(t *testing.T) {
+	f := newFixture(t)
+
+	tmpDir := t.TempDir()
+	srcDir := filepath.Join(tmpDir, "src")
+	require.NoError(t, os.MkdirAll(srcDir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "file1.txt"), []byte("content1"), 0644))
+
+	f.setupFrontend()
+
+	var lu v1alpha1.LiveUpdate
+	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
+	luUpdate := lu.DeepCopy()
+	luUpdate.Spec.BasePath = tmpDir
+	luUpdate.Spec.Syncs = []v1alpha1.LiveUpdateSync{
+		{LocalPath: "src", ContainerPath: "/app/src"},
+	}
+	luUpdate.Spec.InitialSync = &v1alpha1.LiveUpdateInitialSync{}
+	f.Update(luUpdate)
+
+	// First container start — initial sync fires
+	f.kdUpdateStatus("frontend-discovery", v1alpha1.KubernetesDiscoveryStatus{
+		Pods: []v1alpha1.Pod{
+			{
+				Name:      "pod-1",
+				Namespace: "default",
+				Phase:     "Running",
+				Containers: []v1alpha1.Container{
+					{
+						Name:  "main",
+						ID:    "container-1",
+						Image: "frontend-image",
+						State: v1alpha1.ContainerState{
+							Running: &v1alpha1.ContainerStateRunning{},
+						},
+					},
+				},
+			},
+		},
+	})
+	f.MustReconcile(types.NamespacedName{Name: "frontend-liveupdate"})
+	require.Len(t, f.cu.Calls, 1, "Expected initial sync on first start")
+
+	// Subsequent reconcile to same container doesn't re-sync
+	f.MustReconcile(types.NamespacedName{Name: "frontend-liveupdate"})
+	require.Len(t, f.cu.Calls, 1, "Should not re-sync without file changes")
+}
+
+func TestInitialSync_FiresAgainOnRestart(t *testing.T) {
+	f := newFixture(t)
+
+	tmpDir := t.TempDir()
+	srcDir := filepath.Join(tmpDir, "src")
+	require.NoError(t, os.MkdirAll(srcDir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "file1.txt"), []byte("content1"), 0644))
+
+	f.setupFrontend()
+
+	var lu v1alpha1.LiveUpdate
+	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
+	luUpdate := lu.DeepCopy()
+	luUpdate.Spec.BasePath = tmpDir
+	luUpdate.Spec.Syncs = []v1alpha1.LiveUpdateSync{
+		{LocalPath: "src", ContainerPath: "/app/src"},
+	}
+	luUpdate.Spec.InitialSync = &v1alpha1.LiveUpdateInitialSync{}
+	f.Update(luUpdate)
+
+	// First container
+	f.kdUpdateStatus("frontend-discovery", v1alpha1.KubernetesDiscoveryStatus{
+		Pods: []v1alpha1.Pod{
+			{
+				Name:      "pod-1",
+				Namespace: "default",
+				Phase:     "Running",
+				Containers: []v1alpha1.Container{
+					{
+						Name:  "main",
+						ID:    "container-1",
+						Image: "frontend-image",
+						State: v1alpha1.ContainerState{
+							Running: &v1alpha1.ContainerStateRunning{},
+						},
+					},
+				},
+			},
+		},
+	})
+	f.MustReconcile(types.NamespacedName{Name: "frontend-liveupdate"})
+	require.Len(t, f.cu.Calls, 1, "Expected initial sync on first start")
+
+	// Container restarts (new ID) — initial sync fires again
+	f.kdUpdateStatus("frontend-discovery", v1alpha1.KubernetesDiscoveryStatus{
+		Pods: []v1alpha1.Pod{
+			{
+				Name:      "pod-1",
+				Namespace: "default",
+				Phase:     "Running",
+				Containers: []v1alpha1.Container{
+					{
+						Name:  "main",
+						ID:    "container-2",
+						Image: "frontend-image",
+						State: v1alpha1.ContainerState{
+							Running: &v1alpha1.ContainerStateRunning{},
+						},
+					},
+				},
+			},
+		},
+	})
+	f.MustReconcile(types.NamespacedName{Name: "frontend-liveupdate"})
+	// Initial sync fires again for the new container
+	require.Len(t, f.cu.Calls, 2, "Initial sync should fire again for new container")
+}
+
+func TestInitialSync_IgnorePaths(t *testing.T) {
+	f := newFixture(t)
+
+	// Create temp directory with test files including ignored paths
+	tmpDir := t.TempDir()
+	srcDir := filepath.Join(tmpDir, "src")
+	nodeModulesDir := filepath.Join(srcDir, "node_modules")
+	require.NoError(t, os.MkdirAll(srcDir, 0755))
+	require.NoError(t, os.MkdirAll(nodeModulesDir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "file1.txt"), []byte("content1"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(nodeModulesDir, "ignored.js"), []byte("ignored"), 0644))
+
+	f.setupFrontend()
+
+	var lu v1alpha1.LiveUpdate
+	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
+	luUpdate := lu.DeepCopy()
+	luUpdate.Spec.BasePath = tmpDir
+	luUpdate.Spec.Syncs = []v1alpha1.LiveUpdateSync{
+		{LocalPath: "src", ContainerPath: "/app/src"},
+	}
+	luUpdate.Spec.InitialSync = &v1alpha1.LiveUpdateInitialSync{
+		IgnorePaths: []string{"node_modules"},
+	}
+	f.Update(luUpdate)
+
+	f.kdUpdateStatus("frontend-discovery", v1alpha1.KubernetesDiscoveryStatus{
+		Pods: []v1alpha1.Pod{
+			{
+				Name:      "pod-1",
+				Namespace: "default",
+				Phase:     "Running",
+				Containers: []v1alpha1.Container{
+					{
+						Name:  "main",
+						ID:    "container-1",
+						Image: "frontend-image",
+						State: v1alpha1.ContainerState{
+							Running: &v1alpha1.ContainerStateRunning{},
+						},
+					},
+				},
+			},
+		},
+	})
+	f.MustReconcile(types.NamespacedName{Name: "frontend-liveupdate"})
+
+	// Verify initial sync happened (node_modules should be filtered out internally)
+	require.Len(t, f.cu.Calls, 1, "Expected one UpdateContainer call")
+}
+
+func TestInitialSync_ExecsRespectTriggers(t *testing.T) {
+	f := newFixture(t)
+
+	tmpDir := t.TempDir()
+	srcDir := filepath.Join(tmpDir, "src")
+	require.NoError(t, os.MkdirAll(srcDir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "file1.txt"), []byte("content1"), 0644))
+
+	f.setupFrontend()
+
+	var lu v1alpha1.LiveUpdate
+	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
+	luUpdate := lu.DeepCopy()
+	luUpdate.Spec.BasePath = tmpDir
+	luUpdate.Spec.Syncs = []v1alpha1.LiveUpdateSync{
+		{LocalPath: "src", ContainerPath: "/app/src"},
+	}
+	luUpdate.Spec.Execs = []v1alpha1.LiveUpdateExec{
+		// This trigger won't match — no package.json was synced
+		{Args: []string{"sh", "-c", "npm install"}, TriggerPaths: []string{"package.json"}},
+		// This trigger matches — src/file1.txt is under src/
+		{Args: []string{"sh", "-c", "npm run build"}, TriggerPaths: []string{"src"}},
+		// No trigger — always runs
+		{Args: []string{"sh", "-c", "echo done"}},
+	}
+	luUpdate.Spec.InitialSync = &v1alpha1.LiveUpdateInitialSync{}
+	f.Update(luUpdate)
+
+	f.kdUpdateStatus("frontend-discovery", v1alpha1.KubernetesDiscoveryStatus{
+		Pods: []v1alpha1.Pod{
+			{
+				Name:      "pod-1",
+				Namespace: "default",
+				Phase:     "Running",
+				Containers: []v1alpha1.Container{
+					{
+						Name:  "main",
+						ID:    "container-1",
+						Image: "frontend-image",
+						State: v1alpha1.ContainerState{
+							Running: &v1alpha1.ContainerStateRunning{},
+						},
+					},
+				},
+			},
+		},
+	})
+	f.MustReconcile(types.NamespacedName{Name: "frontend-liveupdate"})
+
+	require.Len(t, f.cu.Calls, 1)
+	call := f.cu.Calls[0]
+	// npm install skipped (trigger package.json not in synced files)
+	// npm run build runs (trigger src/ matches synced files)
+	// echo done runs (no trigger, always runs)
+	require.Len(t, call.Cmds, 2, "Only matching triggered execs and untriggered execs should run")
+	assert.Equal(t, []string{"sh", "-c", "npm run build"}, call.Cmds[0].Argv)
+	assert.Equal(t, []string{"sh", "-c", "echo done"}, call.Cmds[1].Argv)
+}
+
+func TestInitialSync_NoInitialSyncWithoutConfig(t *testing.T) {
+	f := newFixture(t)
+
+	tmpDir := t.TempDir()
+	srcDir := filepath.Join(tmpDir, "src")
+	require.NoError(t, os.MkdirAll(srcDir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "file1.txt"), []byte("content1"), 0644))
+
+	f.setupFrontend()
+
+	var lu v1alpha1.LiveUpdate
+	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
+	luUpdate := lu.DeepCopy()
+	luUpdate.Spec.BasePath = tmpDir
+	luUpdate.Spec.Syncs = []v1alpha1.LiveUpdateSync{
+		{LocalPath: "src", ContainerPath: "/app/src"},
+	}
+	// No InitialSync configured
+	f.Update(luUpdate)
+
+	f.kdUpdateStatus("frontend-discovery", v1alpha1.KubernetesDiscoveryStatus{
+		Pods: []v1alpha1.Pod{
+			{
+				Name:      "pod-1",
+				Namespace: "default",
+				Phase:     "Running",
+				Containers: []v1alpha1.Container{
+					{
+						Name:  "main",
+						ID:    "container-1",
+						Image: "frontend-image",
+						State: v1alpha1.ContainerState{
+							Running: &v1alpha1.ContainerStateRunning{},
+						},
+					},
+				},
+			},
+		},
+	})
+	f.MustReconcile(types.NamespacedName{Name: "frontend-liveupdate"})
+
+	// Without file changes and without initial_sync, no update should happen
+	assert.Len(t, f.cu.Calls, 0, "Should not sync without file changes when initial_sync is not configured")
+}
+
+func TestInitialSync_ExplicitDockerignore(t *testing.T) {
+	f := newFixture(t)
+
+	tmpDir := t.TempDir()
+	srcDir := filepath.Join(tmpDir, "src")
+	require.NoError(t, os.MkdirAll(filepath.Join(srcDir, "build"), 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "app.go"), []byte("package main"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "build", "output.bin"), []byte("binary"), 0644))
+	// .dockerignore at sync root excludes build/
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, ".dockerignore"), []byte("build/\n"), 0644))
+
+	f.setupFrontend()
+
+	var lu v1alpha1.LiveUpdate
+	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
+	luUpdate := lu.DeepCopy()
+	luUpdate.Spec.BasePath = tmpDir
+	luUpdate.Spec.Syncs = []v1alpha1.LiveUpdateSync{
+		{LocalPath: "src", ContainerPath: "/app"},
+	}
+	luUpdate.Spec.InitialSync = &v1alpha1.LiveUpdateInitialSync{
+		Dockerignore: "src",
+	}
+	f.Update(luUpdate)
+
+	f.kdUpdateStatus("frontend-discovery", v1alpha1.KubernetesDiscoveryStatus{
+		Pods: []v1alpha1.Pod{
+			{
+				Name:      "pod-1",
+				Namespace: "default",
+				Phase:     "Running",
+				Containers: []v1alpha1.Container{
+					{
+						Name:  "main",
+						ID:    "container-1",
+						Image: "frontend-image",
+						State: v1alpha1.ContainerState{
+							Running: &v1alpha1.ContainerStateRunning{},
+						},
+					},
+				},
+			},
+		},
+	})
+	f.MustReconcile(types.NamespacedName{Name: "frontend-liveupdate"})
+
+	require.Len(t, f.cu.Calls, 1, "Expected one UpdateContainer call")
+	// build/output.bin should be excluded by .dockerignore, so only app.go and .dockerignore synced
+}
+
+func TestInitialSync_GlobIgnorePatterns(t *testing.T) {
+	f := newFixture(t)
+
+	tmpDir := t.TempDir()
+	srcDir := filepath.Join(tmpDir, "src")
+	require.NoError(t, os.MkdirAll(filepath.Join(srcDir, "pkg", "a", "spec"), 0755))
+	require.NoError(t, os.MkdirAll(filepath.Join(srcDir, "pkg", "b", "spec"), 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "main.go"), []byte("package main"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "pkg", "a", "a.go"), []byte("package a"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "pkg", "a", "spec", "a_test.go"), []byte("test"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "pkg", "b", "b.go"), []byte("package b"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "pkg", "b", "spec", "b_test.go"), []byte("test"), 0644))
+
+	f.setupFrontend()
+
+	var lu v1alpha1.LiveUpdate
+	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
+	luUpdate := lu.DeepCopy()
+	luUpdate.Spec.BasePath = tmpDir
+	luUpdate.Spec.Syncs = []v1alpha1.LiveUpdateSync{
+		{LocalPath: "src", ContainerPath: "/app"},
+	}
+	luUpdate.Spec.InitialSync = &v1alpha1.LiveUpdateInitialSync{
+		IgnorePaths: []string{"**/spec"},
+	}
+	f.Update(luUpdate)
+
+	f.kdUpdateStatus("frontend-discovery", v1alpha1.KubernetesDiscoveryStatus{
+		Pods: []v1alpha1.Pod{
+			{
+				Name:      "pod-1",
+				Namespace: "default",
+				Phase:     "Running",
+				Containers: []v1alpha1.Container{
+					{
+						Name:  "main",
+						ID:    "container-1",
+						Image: "frontend-image",
+						State: v1alpha1.ContainerState{
+							Running: &v1alpha1.ContainerStateRunning{},
+						},
+					},
+				},
+			},
+		},
+	})
+	f.MustReconcile(types.NamespacedName{Name: "frontend-liveupdate"})
+
+	require.Len(t, f.cu.Calls, 1, "Expected one UpdateContainer call")
+	// **/spec should exclude both pkg/a/spec and pkg/b/spec
+}
+
+func TestInitialSync_MultipleSyncPaths(t *testing.T) {
+	f := newFixture(t)
+
+	tmpDir := t.TempDir()
+	srcDir := filepath.Join(tmpDir, "src")
+	configDir := filepath.Join(tmpDir, "config")
+	require.NoError(t, os.MkdirAll(srcDir, 0755))
+	require.NoError(t, os.MkdirAll(configDir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "app.go"), []byte("package main"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(configDir, "config.yml"), []byte("key: val"), 0644))
+
+	f.setupFrontend()
+
+	var lu v1alpha1.LiveUpdate
+	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
+	luUpdate := lu.DeepCopy()
+	luUpdate.Spec.BasePath = tmpDir
+	luUpdate.Spec.Syncs = []v1alpha1.LiveUpdateSync{
+		{LocalPath: "src", ContainerPath: "/app/src"},
+		{LocalPath: "config", ContainerPath: "/app/config"},
+	}
+	luUpdate.Spec.InitialSync = &v1alpha1.LiveUpdateInitialSync{}
+	f.Update(luUpdate)
+
+	f.kdUpdateStatus("frontend-discovery", v1alpha1.KubernetesDiscoveryStatus{
+		Pods: []v1alpha1.Pod{
+			{
+				Name:      "pod-1",
+				Namespace: "default",
+				Phase:     "Running",
+				Containers: []v1alpha1.Container{
+					{
+						Name:  "main",
+						ID:    "container-1",
+						Image: "frontend-image",
+						State: v1alpha1.ContainerState{
+							Running: &v1alpha1.ContainerStateRunning{},
+						},
+					},
+				},
+			},
+		},
+	})
+	f.MustReconcile(types.NamespacedName{Name: "frontend-liveupdate"})
+
+	// Files from both sync paths should be collected
+	require.Len(t, f.cu.Calls, 1, "Expected one UpdateContainer call")
+}
+
+func TestInitialSync_NoSyncPaths(t *testing.T) {
+	f := newFixture(t)
+
+	tmpDir := t.TempDir()
+
+	f.setupFrontend()
+
+	var lu v1alpha1.LiveUpdate
+	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
+	luUpdate := lu.DeepCopy()
+	luUpdate.Spec.BasePath = tmpDir
+	luUpdate.Spec.Syncs = nil
+	luUpdate.Spec.InitialSync = &v1alpha1.LiveUpdateInitialSync{}
+	f.Update(luUpdate)
+
+	f.kdUpdateStatus("frontend-discovery", v1alpha1.KubernetesDiscoveryStatus{
+		Pods: []v1alpha1.Pod{
+			{
+				Name:      "pod-1",
+				Namespace: "default",
+				Phase:     "Running",
+				Containers: []v1alpha1.Container{
+					{
+						Name:  "main",
+						ID:    "container-1",
+						Image: "frontend-image",
+						State: v1alpha1.ContainerState{
+							Running: &v1alpha1.ContainerStateRunning{},
+						},
+					},
+				},
+			},
+		},
+	})
+	f.MustReconcile(types.NamespacedName{Name: "frontend-liveupdate"})
+
+	// No sync paths means no files to collect, no update call
+	assert.Len(t, f.cu.Calls, 0, "Should not sync when there are no sync paths")
+}

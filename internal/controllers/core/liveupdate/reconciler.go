@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -27,6 +30,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/apis/configmap"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
+	"github.com/tilt-dev/tilt/internal/dockerignore"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/ospath"
 	"github.com/tilt-dev/tilt/internal/sliceutils"
@@ -697,6 +701,24 @@ func (r *Reconciler) maybeSync(ctx context.Context, lu *v1alpha1.LiveUpdate, mon
 			}
 		}
 
+		// Initial sync: on new container, collect ALL files from sync paths
+		isInitialSync := lu.Spec.InitialSync != nil && (!ok || cStatus.lastFileTimeSynced.IsZero())
+		if isInitialSync {
+			var err error
+			filesChanged, err = r.collectAllSyncedFiles(ctx, lu.Spec)
+			if err != nil {
+				status.Failed = createFailedState(lu, "InitialSyncError",
+					fmt.Sprintf("Failed to collect files for initial sync: %v", err))
+				status.Containers = nil
+				return true
+			}
+			newHighWaterMark = apis.NowMicro()
+			// Set low water mark to reconciler start time so that any file changes
+			// between startup and initial sync completion are re-processed on the
+			// next reconcile, ensuring no changes are missed.
+			newLowWaterMark = r.startedTime
+		}
+
 		// Sort the files so that they're deterministic.
 		filesChanged = sliceutils.DedupedAndSorted(filesChanged)
 		if len(filesChanged) > 0 {
@@ -1133,4 +1155,84 @@ func indexLiveUpdate(obj ctrlclient.Object) []indexer.Key {
 		})
 	}
 	return result
+}
+
+// collectAllSyncedFiles walks all sync paths and collects all files,
+// applying .dockerignore patterns and InitialSync.IgnorePaths.
+func (r *Reconciler) collectAllSyncedFiles(ctx context.Context, spec v1alpha1.LiveUpdateSpec) ([]string, error) {
+	var allFiles []string
+
+	for _, syncSpec := range spec.Syncs {
+		localPath := syncSpec.LocalPath
+		if !filepath.IsAbs(localPath) {
+			localPath = filepath.Join(spec.BasePath, localPath)
+		}
+
+		if _, err := os.Stat(localPath); os.IsNotExist(err) {
+			continue
+		} else if err != nil {
+			return nil, fmt.Errorf("stat %s: %w", localPath, err)
+		}
+
+		ignoreMatcher, err := r.buildIgnoreMatcher(localPath, spec)
+		if err != nil {
+			return nil, fmt.Errorf("building ignore matcher for %s: %w", localPath, err)
+		}
+
+		err = filepath.WalkDir(localPath, func(path string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if d.IsDir() {
+				if matches, _ := ignoreMatcher.MatchesEntireDir(path); matches {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+			if matches, _ := ignoreMatcher.Matches(path); !matches {
+				allFiles = append(allFiles, path)
+			}
+			return nil
+		})
+		if err != nil {
+			return nil, fmt.Errorf("walking sync path %s: %w", localPath, err)
+		}
+	}
+
+	return allFiles, nil
+}
+
+func (r *Reconciler) buildIgnoreMatcher(syncPath string, spec v1alpha1.LiveUpdateSpec) (model.PathMatcher, error) {
+	var matchers []model.PathMatcher
+
+	// Load .dockerignore only if explicitly configured
+	if spec.InitialSync != nil && spec.InitialSync.Dockerignore != "" {
+		diPath := spec.InitialSync.Dockerignore
+		if !filepath.IsAbs(diPath) {
+			diPath = filepath.Join(spec.BasePath, diPath)
+		}
+		diMatcher, err := dockerignore.NewDockerIgnoreTester(diPath)
+		if err != nil {
+			return nil, fmt.Errorf("loading .dockerignore from %s: %w", diPath, err)
+		}
+		if diMatcher != nil {
+			matchers = append(matchers, diMatcher)
+		}
+	}
+
+	if spec.InitialSync != nil && len(spec.InitialSync.IgnorePaths) > 0 {
+		pm, err := dockerignore.NewDockerPatternMatcher(syncPath, spec.InitialSync.IgnorePaths)
+		if err != nil {
+			return nil, fmt.Errorf("parsing ignore paths: %w", err)
+		}
+		matchers = append(matchers, pm)
+	}
+
+	if len(matchers) == 0 {
+		return model.EmptyMatcher, nil
+	}
+	if len(matchers) == 1 {
+		return matchers[0], nil
+	}
+	return model.NewCompositeMatcher(matchers), nil
 }
