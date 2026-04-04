@@ -19,6 +19,7 @@ package v1alpha1
 import (
 	"context"
 	"path"
+	"path/filepath"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -110,6 +111,13 @@ type LiveUpdateSpec struct {
 	//
 	// +optional
 	Restart LiveUpdateRestartStrategy `json:"restart,omitempty" protobuf:"bytes,7,opt,name=restart,casttype=LiveUpdateRestartStrategy"`
+
+	// InitialSync configures full file sync on container start/restart.
+	// When set, all files matching sync rules are uploaded when a container
+	// starts for the first time or restarts, bypassing the file-watch system.
+	//
+	// +optional
+	InitialSync *LiveUpdateInitialSync `json:"initialSync,omitempty" protobuf:"bytes,8,opt,name=initialSync"`
 }
 
 var _ resource.Object = &LiveUpdate{}
@@ -205,6 +213,28 @@ func (in *LiveUpdate) Validate(ctx context.Context) field.ErrorList {
 		p := selectorPath.Child("dockerCompose")
 		if dcSelector.Service == "" {
 			errors = append(errors, field.Required(p.Child("service"), "DockerCompose service name is required"))
+		}
+	}
+
+	// Validate InitialSync fields
+	if in.Spec.InitialSync != nil {
+		initialSyncPath := field.NewPath("spec", "initialSync")
+
+		// Validate ignore paths are relative (not absolute)
+		ignorePathsField := initialSyncPath.Child("ignorePaths")
+		for i, ignorePath := range in.Spec.InitialSync.IgnorePaths {
+			if filepath.IsAbs(ignorePath) {
+				errors = append(errors,
+					field.Invalid(ignorePathsField.Index(i), ignorePath,
+						"ignore paths must be relative to basePath"))
+			}
+		}
+
+		// Validate dockerignore path is relative
+		if in.Spec.InitialSync.Dockerignore != "" && filepath.IsAbs(in.Spec.InitialSync.Dockerignore) {
+			errors = append(errors,
+				field.Invalid(initialSyncPath.Child("dockerignore"), in.Spec.InitialSync.Dockerignore,
+					"dockerignore path must be relative to basePath"))
 		}
 	}
 
@@ -377,6 +407,26 @@ var (
 	// restarts, this will be an error.
 	LiveUpdateRestartStrategyAlways LiveUpdateRestartStrategy = "always"
 )
+
+// LiveUpdateInitialSync configures initial sync behavior
+type LiveUpdateInitialSync struct {
+	// IgnorePaths is a list of relative paths (relative to BasePath)
+	// to exclude from initial sync. These paths will still be synced
+	// on subsequent file changes.
+	//
+	// Supports exact matches and directory prefixes:
+	// - 'node_modules' excludes the node_modules directory
+	// - 'file.txt' excludes that specific file
+	//
+	// +optional
+	IgnorePaths []string `json:"ignorePaths,omitempty" protobuf:"bytes,1,rep,name=ignorePaths"`
+
+	// Dockerignore is a path to a directory containing a .dockerignore file
+	// to apply during initial sync. If empty, no .dockerignore is loaded.
+	//
+	// +optional
+	Dockerignore string `json:"dockerignore,omitempty" protobuf:"bytes,2,opt,name=dockerignore"`
+}
 
 // LiveUpdateContainerStatus defines the observed state of
 // the live-update syncer for a particular container.

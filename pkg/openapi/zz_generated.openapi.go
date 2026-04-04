@@ -135,6 +135,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		v1alpha1.LiveUpdateContainerStatus{}.OpenAPIModelName():         schema_pkg_apis_core_v1alpha1_LiveUpdateContainerStatus(ref),
 		v1alpha1.LiveUpdateDockerComposeSelector{}.OpenAPIModelName():   schema_pkg_apis_core_v1alpha1_LiveUpdateDockerComposeSelector(ref),
 		v1alpha1.LiveUpdateExec{}.OpenAPIModelName():                    schema_pkg_apis_core_v1alpha1_LiveUpdateExec(ref),
+		v1alpha1.LiveUpdateInitialSync{}.OpenAPIModelName():             schema_pkg_apis_core_v1alpha1_LiveUpdateInitialSync(ref),
 		v1alpha1.LiveUpdateKubernetesSelector{}.OpenAPIModelName():      schema_pkg_apis_core_v1alpha1_LiveUpdateKubernetesSelector(ref),
 		v1alpha1.LiveUpdateList{}.OpenAPIModelName():                    schema_pkg_apis_core_v1alpha1_LiveUpdateList(ref),
 		v1alpha1.LiveUpdateSelector{}.OpenAPIModelName():                schema_pkg_apis_core_v1alpha1_LiveUpdateSelector(ref),
@@ -4906,6 +4907,41 @@ func schema_pkg_apis_core_v1alpha1_LiveUpdateExec(ref common.ReferenceCallback) 
 	}
 }
 
+func schema_pkg_apis_core_v1alpha1_LiveUpdateInitialSync(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "LiveUpdateInitialSync configures initial sync behavior",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"ignorePaths": {
+						SchemaProps: spec.SchemaProps{
+							Description: "IgnorePaths is a list of relative paths (relative to BasePath) to exclude from initial sync. These paths will still be synced on subsequent file changes.\n\nSupports exact matches and directory prefixes: - 'node_modules' excludes the node_modules directory - 'file.txt' excludes that specific file",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"dockerignore": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Dockerignore is a path to a directory containing a .dockerignore file to apply during initial sync. If empty, no .dockerignore is loaded.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
 func schema_pkg_apis_core_v1alpha1_LiveUpdateKubernetesSelector(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -5145,12 +5181,18 @@ func schema_pkg_apis_core_v1alpha1_LiveUpdateSpec(ref common.ReferenceCallback) 
 							Format:      "",
 						},
 					},
+					"initialSync": {
+						SchemaProps: spec.SchemaProps{
+							Description: "InitialSync configures full file sync on container start/restart. When set, all files matching sync rules are uploaded when a container starts for the first time or restarts, bypassing the file-watch system.",
+							Ref:         ref(v1alpha1.LiveUpdateInitialSync{}.OpenAPIModelName()),
+						},
+					},
 				},
 				Required: []string{"basePath", "selector"},
 			},
 		},
 		Dependencies: []string{
-			v1alpha1.LiveUpdateExec{}.OpenAPIModelName(), v1alpha1.LiveUpdateSelector{}.OpenAPIModelName(), v1alpha1.LiveUpdateSource{}.OpenAPIModelName(), v1alpha1.LiveUpdateSync{}.OpenAPIModelName()},
+			v1alpha1.LiveUpdateExec{}.OpenAPIModelName(), v1alpha1.LiveUpdateInitialSync{}.OpenAPIModelName(), v1alpha1.LiveUpdateSelector{}.OpenAPIModelName(), v1alpha1.LiveUpdateSource{}.OpenAPIModelName(), v1alpha1.LiveUpdateSync{}.OpenAPIModelName()},
 	}
 }
 

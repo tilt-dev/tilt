@@ -527,6 +527,11 @@ func (in LiveUpdateExec) OpenAPIModelName() string {
 }
 
 // OpenAPIModelName returns the OpenAPI model name for this type.
+func (in LiveUpdateInitialSync) OpenAPIModelName() string {
+	return "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateInitialSync"
+}
+
+// OpenAPIModelName returns the OpenAPI model name for this type.
 func (in LiveUpdateKubernetesSelector) OpenAPIModelName() string {
 	return "github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1.LiveUpdateKubernetesSelector"
 }
