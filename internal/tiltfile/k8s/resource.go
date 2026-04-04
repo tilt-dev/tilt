@@ -11,11 +11,16 @@ type KindInfo struct {
 }
 
 func InitialKinds() map[k8s.ObjectSelector]*KindInfo {
-	sel, err := k8s.NewPartialMatchObjectSelector("batch/v1", "Job", "", "")
+	jobSel, err := k8s.NewPartialMatchObjectSelector("batch/v1", "Job", "", "")
+	if err != nil {
+		panic(err)
+	}
+	cronJobSel, err := k8s.NewPartialMatchObjectSelector("batch/v1", "CronJob", "", "")
 	if err != nil {
 		panic(err)
 	}
 	return map[k8s.ObjectSelector]*KindInfo{
-		sel: {PodReadinessMode: model.PodReadinessSucceeded},
+		jobSel:     {PodReadinessMode: model.PodReadinessSucceeded},
+		cronJobSel: {PodReadinessMode: model.PodReadinessIgnore},
 	}
 }
