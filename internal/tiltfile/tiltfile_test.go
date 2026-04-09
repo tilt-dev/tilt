@@ -1856,6 +1856,24 @@ k8s_yaml('job.yaml')
 	)
 }
 
+func TestCronJobReadiness(t *testing.T) {
+	f := newFixture(t)
+
+	f.file("cronjob.yaml", `apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: mycronjob
+`)
+	f.file("Tiltfile", `
+k8s_yaml('cronjob.yaml')
+`)
+
+	f.load("mycronjob")
+	f.assertNextManifest("mycronjob",
+		podReadiness(model.PodReadinessIgnore),
+	)
+}
+
 func TestK8sDiscoveryStrategy(t *testing.T) {
 	f := newFixture(t)
 
