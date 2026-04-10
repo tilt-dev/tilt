@@ -185,10 +185,13 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		monitor.hasChangesToSync = true
 	}
 
-	// When initial_sync is configured, always enter maybeSync so that new
-	// containers get their initial file sync even when no file changes have
-	// been detected yet.
-	if lu.Spec.InitialSync != nil {
+	// When initial_sync is configured, enter maybeSync if there may be
+	// unsynced containers. This handles the case where tilt starts and
+	// finds an already-running container — no file changes or k8s changes
+	// are detected, but the container still needs its initial sync.
+	// Once all tracked containers have been synced, skip this to avoid
+	// unnecessary work on every reconcile.
+	if lu.Spec.InitialSync != nil && monitor.needsInitialSync() {
 		monitor.hasChangesToSync = true
 	}
 

@@ -44,6 +44,22 @@ type monitorContainerKey struct {
 	namespace   string
 }
 
+// needsInitialSync reports whether any container may still need an initial
+// sync. Returns true when no containers are tracked yet (first reconcile,
+// or after garbage collection) or when any tracked container has never
+// been synced.
+func (m *monitor) needsInitialSync() bool {
+	if len(m.containers) == 0 {
+		return true
+	}
+	for _, c := range m.containers {
+		if c.lastFileTimeSynced.IsZero() {
+			return true
+		}
+	}
+	return false
+}
+
 type monitorContainerStatus struct {
 	lastFileTimeSynced metav1.MicroTime
 
