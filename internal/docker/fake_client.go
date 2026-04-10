@@ -21,6 +21,7 @@ import (
 	typesbuild "github.com/moby/moby/api/types/build"
 	typescontainer "github.com/moby/moby/api/types/container"
 	typesimage "github.com/moby/moby/api/types/image"
+	"github.com/moby/moby/api/types/system"
 	"github.com/moby/moby/client"
 
 	"github.com/tilt-dev/tilt/internal/container"
@@ -142,6 +143,8 @@ type FakeClient struct {
 	ContainersPruneErr     error
 	ContainersPruneFilters client.Filters
 	ContainersPruned       []string
+
+	FakeDaemonInfo system.Info
 }
 
 var _ Client = &FakeClient{}
@@ -178,6 +181,10 @@ func (c *FakeClient) ServerVersion(ctx context.Context) (client.ServerVersionRes
 		Arch:    "amd64",
 		Version: "20.10.11",
 	}, nil
+}
+
+func (c *FakeClient) DaemonInfo(ctx context.Context) (system.Info, error) {
+	return c.FakeDaemonInfo, nil
 }
 
 func (c *FakeClient) SetExecError(err error) {

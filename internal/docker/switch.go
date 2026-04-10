@@ -7,6 +7,7 @@ import (
 
 	"github.com/distribution/reference"
 	typesbuild "github.com/moby/moby/api/types/build"
+	"github.com/moby/moby/api/types/system"
 	"github.com/moby/moby/client"
 	"golang.org/x/sync/errgroup"
 
@@ -124,6 +125,9 @@ func (c *switchCli) BuildCachePrune(ctx context.Context, opts client.BuildCacheP
 }
 func (c *switchCli) ContainerPrune(ctx context.Context, opts client.ContainerPruneOptions) (client.ContainerPruneResult, error) {
 	return c.client(ctx).ContainerPrune(ctx, opts)
+}
+func (c *switchCli) DaemonInfo(ctx context.Context) (system.Info, error) {
+	return c.client(ctx).DaemonInfo(ctx)
 }
 
 // CompositeClient

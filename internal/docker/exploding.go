@@ -6,6 +6,7 @@ import (
 
 	"github.com/distribution/reference"
 	typesbuild "github.com/moby/moby/api/types/build"
+	"github.com/moby/moby/api/types/system"
 	"github.com/moby/moby/client"
 	"golang.org/x/sync/errgroup"
 
@@ -89,6 +90,9 @@ func (c explodingClient) BuildCachePrune(ctx context.Context, opts client.BuildC
 }
 func (c explodingClient) ContainerPrune(ctx context.Context, opts client.ContainerPruneOptions) (client.ContainerPruneResult, error) {
 	return client.ContainerPruneResult{}, c.err
+}
+func (c explodingClient) DaemonInfo(ctx context.Context) (system.Info, error) {
+	return system.Info{}, c.err
 }
 
 var _ Client = &explodingClient{}

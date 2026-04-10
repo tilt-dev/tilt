@@ -27,6 +27,7 @@ import (
 	typesbuild "github.com/moby/moby/api/types/build"
 	typescontainer "github.com/moby/moby/api/types/container"
 	typesregistry "github.com/moby/moby/api/types/registry"
+	"github.com/moby/moby/api/types/system"
 	"github.com/moby/moby/client"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
@@ -111,6 +112,9 @@ type Client interface {
 	NewVersionError(ctx context.Context, APIrequired, feature string) error
 	BuildCachePrune(ctx context.Context, opts client.BuildCachePruneOptions) (client.BuildCachePruneResult, error)
 	ContainerPrune(ctx context.Context, opts client.ContainerPruneOptions) (client.ContainerPruneResult, error)
+
+	// Returns information about the docker daemon.
+	DaemonInfo(ctx context.Context) (system.Info, error)
 }
 
 // Add-on interface for a client that manages multiple clients transparently.
@@ -394,6 +398,14 @@ func (c *Cli) BuilderVersion(ctx context.Context) (typesbuild.BuilderVersion, er
 func (c *Cli) ServerVersion(ctx context.Context) (client.ServerVersionResult, error) {
 	c.initVersion(ctx)
 	return c.serverVersion, c.versionError
+}
+
+func (c *Cli) DaemonInfo(ctx context.Context) (system.Info, error) {
+	result, err := c.Client.Info(ctx, client.InfoOptions{})
+	if err != nil {
+		return system.Info{}, err
+	}
+	return result.Info, nil
 }
 
 type encodedAuth string

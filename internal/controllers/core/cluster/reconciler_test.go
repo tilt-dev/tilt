@@ -15,7 +15,11 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 
+	"github.com/moby/moby/api/types/system"
+
+	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/hud/server"
 	"github.com/tilt-dev/tilt/internal/k8s/kubeconfig"
 	"github.com/tilt-dev/tilt/internal/localexec"
@@ -81,6 +85,88 @@ func TestKubernetesError(t *testing.T) {
 	if assert.NotNil(t, cluster.Status.ConnectedAt, "ConnectedAt should be populated") {
 		assert.NotZero(t, cluster.Status.ConnectedAt.Time, "ConnectedAt should not be zero time")
 	}
+}
+
+func TestDockerDesktopContainerdWithoutSnapshotter(t *testing.T) {
+	f := newFixture(t)
+
+	// Set up the fake K8s client to look like a Docker Desktop cluster with containerd runtime.
+	f.k8sClient.FakeAPIConfig = &clientcmdapi.Config{
+		CurrentContext: "docker-desktop",
+		Contexts: map[string]*clientcmdapi.Context{
+			"docker-desktop": {
+				Cluster:   "docker-desktop",
+				Namespace: "default",
+			},
+		},
+		Clusters: map[string]*clientcmdapi.Cluster{
+			"docker-desktop": {},
+		},
+	}
+	f.k8sClient.Runtime = container.RuntimeContainerd
+
+	// Simulate Docker Desktop without containerd image snapshotter (no io.containerd.snapshotter.v1).
+	f.dockerClient.FakeDaemonInfo = system.Info{
+		DriverStatus: [][2]string{
+			{"Backing Filesystem", "extfs"},
+		},
+	}
+
+	cluster := &v1alpha1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "default"},
+		Spec: v1alpha1.ClusterSpec{
+			Connection: &v1alpha1.ClusterConnection{
+				Kubernetes: &v1alpha1.KubernetesClusterConnection{},
+			},
+		},
+	}
+	nn := apis.Key(cluster)
+
+	f.Create(cluster)
+	f.MustGet(nn, cluster)
+	assert.Contains(t, cluster.Status.Error, "containerd image snapshotter is disabled")
+	assert.Nil(t, cluster.Status.ConnectedAt, "ConnectedAt should be empty on error")
+}
+
+func TestDockerDesktopContainerdWithSnapshotter(t *testing.T) {
+	f := newFixture(t)
+
+	// Set up the fake K8s client to look like a Docker Desktop cluster with containerd runtime.
+	f.k8sClient.FakeAPIConfig = &clientcmdapi.Config{
+		CurrentContext: "docker-desktop",
+		Contexts: map[string]*clientcmdapi.Context{
+			"docker-desktop": {
+				Cluster:   "docker-desktop",
+				Namespace: "default",
+			},
+		},
+		Clusters: map[string]*clientcmdapi.Cluster{
+			"docker-desktop": {},
+		},
+	}
+	f.k8sClient.Runtime = container.RuntimeContainerd
+
+	// Simulate Docker Desktop with containerd image snapshotter enabled.
+	f.dockerClient.FakeDaemonInfo = system.Info{
+		DriverStatus: [][2]string{
+			{"driver-type", "io.containerd.snapshotter.v1"},
+		},
+	}
+
+	cluster := &v1alpha1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "default"},
+		Spec: v1alpha1.ClusterSpec{
+			Connection: &v1alpha1.ClusterConnection{
+				Kubernetes: &v1alpha1.KubernetesClusterConnection{},
+			},
+		},
+	}
+	nn := apis.Key(cluster)
+
+	f.Create(cluster)
+	f.MustGet(nn, cluster)
+	assert.Empty(t, cluster.Status.Error, "No error when containerd snapshotter is enabled")
+	assert.NotNil(t, cluster.Status.ConnectedAt, "ConnectedAt should be populated")
 }
 
 func TestKubernetesDelete(t *testing.T) {

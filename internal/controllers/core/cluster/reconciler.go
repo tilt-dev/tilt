@@ -16,6 +16,7 @@ import (
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/tilt-dev/clusterid"
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
@@ -353,9 +354,19 @@ func (r *Reconciler) populateK8sMetadata(ctx context.Context, clusterNN types.Na
 
 	if conn.connStatus == nil {
 		apiConfig := conn.k8sClient.APIConfig()
+		product := k8s.ClusterProductFromAPIConfig(apiConfig)
+
+		if product == clusterid.ProductDockerDesktop &&
+			conn.k8sClient.ContainerRuntime(ctx) == container.RuntimeContainerd {
+			if err := r.checkDockerDesktopContainerdSnapshotter(ctx); err != nil {
+				conn.initError = err.Error()
+				return
+			}
+		}
+
 		k8sStatus := &v1alpha1.KubernetesClusterConnectionStatus{
 			Context: apiConfig.CurrentContext,
-			Product: string(k8s.ClusterProductFromAPIConfig(apiConfig)),
+			Product: string(product),
 		}
 		context, ok := apiConfig.Contexts[apiConfig.CurrentContext]
 		if ok {
@@ -409,6 +420,33 @@ func (r *Reconciler) populateDockerMetadata(ctx context.Context, conn *connectio
 			conn.serverVersion = versionInfo.Version
 		}
 	}
+}
+
+// checkDockerDesktopContainerdSnapshotter checks that Docker Desktop has the containerd
+// image snapshotter enabled when using a Docker Desktop Kubernetes cluster with containerd runtime.
+// If the snapshotter is disabled, image loading will not work correctly.
+// Returns nil if the check passes or cannot be performed.
+func (r *Reconciler) checkDockerDesktopContainerdSnapshotter(ctx context.Context) error {
+	dockerClient, err := r.dockerClientFactory.New(ctx, docker.Env(r.localDockerEnv))
+	if err != nil {
+		return nil // can't connect to Docker, skip check
+	}
+
+	info, err := dockerClient.DaemonInfo(ctx)
+	if err != nil {
+		return nil // can't get info, skip check
+	}
+
+	for _, kv := range info.DriverStatus {
+		if kv[0] == "driver-type" && kv[1] == "io.containerd.snapshotter.v1" {
+			return nil // containerd snapshotter is enabled
+		}
+	}
+
+	return fmt.Errorf(
+		"Your Docker Desktop Kubernetes cluster uses containerd, but the containerd image snapshotter is disabled.\n\t" +
+			"Enable 'Use containerd for pulling and storing images' in Docker Desktop settings,\n\t" +
+			"then recreate the cluster.")
 }
 
 func (r *Reconciler) cleanup(clusterNN types.NamespacedName) {
