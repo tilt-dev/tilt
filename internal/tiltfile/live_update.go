@@ -275,7 +275,7 @@ func (s *tiltfileState) liveUpdateFromSteps(t *starlark.Thread, maybeSteps starl
 		return v1alpha1.LiveUpdateSpec{}, nil
 	}
 
-	noMoreInitialSync := false
+	seenInitialSync := false
 	noMoreFallbacks := false
 	noMoreSyncs := false
 	noMoreRuns := false
@@ -288,10 +288,10 @@ func (s *tiltfileState) liveUpdateFromSteps(t *starlark.Thread, maybeSteps starl
 		switch x := step.(type) {
 
 		case liveUpdateInitialSyncStep:
-			if noMoreInitialSync {
+			if seenInitialSync {
 				return v1alpha1.LiveUpdateSpec{}, fmt.Errorf("initial_sync must appear at most once, at the start of the list")
 			}
-			noMoreInitialSync = true
+			seenInitialSync = true
 
 			spec.InitialSync = &v1alpha1.LiveUpdateInitialSync{
 				IgnorePaths:  x.ignorePaths,
@@ -299,7 +299,7 @@ func (s *tiltfileState) liveUpdateFromSteps(t *starlark.Thread, maybeSteps starl
 			}
 
 		case liveUpdateFallBackOnStep:
-			noMoreInitialSync = true
+			seenInitialSync = true
 			if noMoreFallbacks {
 				return v1alpha1.LiveUpdateSpec{}, fmt.Errorf("fall_back_on steps must appear at the start of the list")
 			}
@@ -321,7 +321,7 @@ func (s *tiltfileState) liveUpdateFromSteps(t *starlark.Thread, maybeSteps starl
 			if noMoreSyncs {
 				return v1alpha1.LiveUpdateSpec{}, fmt.Errorf("all sync steps must precede all run steps")
 			}
-			noMoreInitialSync = true
+			seenInitialSync = true
 			noMoreFallbacks = true
 
 			localPath := x.localPath
@@ -340,7 +340,7 @@ func (s *tiltfileState) liveUpdateFromSteps(t *starlark.Thread, maybeSteps starl
 			if noMoreRuns {
 				return v1alpha1.LiveUpdateSpec{}, fmt.Errorf("restart container is only valid as the last step")
 			}
-			noMoreInitialSync = true
+			seenInitialSync = true
 			noMoreFallbacks = true
 			noMoreSyncs = true
 
@@ -351,7 +351,7 @@ func (s *tiltfileState) liveUpdateFromSteps(t *starlark.Thread, maybeSteps starl
 			})
 
 		case liveUpdateRestartContainerStep:
-			noMoreInitialSync = true
+			seenInitialSync = true
 			noMoreFallbacks = true
 			noMoreSyncs = true
 			noMoreRuns = true

@@ -414,9 +414,11 @@ type LiveUpdateInitialSync struct {
 	// to exclude from initial sync. These paths will still be synced
 	// on subsequent file changes.
 	//
-	// Supports exact matches and directory prefixes:
+	// Uses dockerignore-style glob syntax:
 	// - 'node_modules' excludes the node_modules directory
 	// - 'file.txt' excludes that specific file
+	// - '**/test' excludes all directories named 'test' at any depth
+	// - '*.log' excludes all .log files
 	//
 	// +optional
 	IgnorePaths []string `json:"ignorePaths,omitempty" protobuf:"bytes,1,rep,name=ignorePaths"`
