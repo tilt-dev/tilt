@@ -19,7 +19,6 @@ package v1alpha1
 import (
 	"context"
 	"path"
-	"path/filepath"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -220,10 +219,12 @@ func (in *LiveUpdate) Validate(ctx context.Context) field.ErrorList {
 	if in.Spec.InitialSync != nil {
 		initialSyncPath := field.NewPath("spec", "initialSync")
 
-		// Validate ignore paths are relative (not absolute)
+		// Validate ignore paths are relative (not absolute).
+		// Use path.IsAbs (POSIX) rather than filepath.IsAbs so that
+		// "/absolute/path" is rejected on all platforms including Windows.
 		ignorePathsField := initialSyncPath.Child("ignorePaths")
 		for i, ignorePath := range in.Spec.InitialSync.IgnorePaths {
-			if filepath.IsAbs(ignorePath) {
+			if path.IsAbs(ignorePath) {
 				errors = append(errors,
 					field.Invalid(ignorePathsField.Index(i), ignorePath,
 						"ignore paths must be relative to basePath"))
@@ -231,7 +232,7 @@ func (in *LiveUpdate) Validate(ctx context.Context) field.ErrorList {
 		}
 
 		// Validate dockerignore path is relative
-		if in.Spec.InitialSync.Dockerignore != "" && filepath.IsAbs(in.Spec.InitialSync.Dockerignore) {
+		if in.Spec.InitialSync.Dockerignore != "" && path.IsAbs(in.Spec.InitialSync.Dockerignore) {
 			errors = append(errors,
 				field.Invalid(initialSyncPath.Child("dockerignore"), in.Spec.InitialSync.Dockerignore,
 					"dockerignore path must be relative to basePath"))
