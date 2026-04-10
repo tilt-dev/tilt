@@ -970,12 +970,12 @@ func (r *Reconciler) applyInternal(
 		}
 	} else {
 		// rm files from container
-		var err2 error
-		toRemove, toArchive, err2 = build.MissingLocalPaths(ctx, changedFiles)
-		if err2 != nil {
+		var err error
+		toRemove, toArchive, err = build.MissingLocalPaths(ctx, changedFiles)
+		if err != nil {
 			result.Failed = &v1alpha1.LiveUpdateStateFailed{
 				Reason:  "Invalid",
-				Message: fmt.Sprintf("Mapping paths: %v", err2),
+				Message: fmt.Sprintf("Mapping paths: %v", err),
 			}
 			return result
 		}
