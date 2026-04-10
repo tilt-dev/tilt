@@ -185,6 +185,13 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		monitor.hasChangesToSync = true
 	}
 
+	// When initial_sync is configured, always enter maybeSync so that new
+	// containers get their initial file sync even when no file changes have
+	// been detected yet.
+	if lu.Spec.InitialSync != nil {
+		monitor.hasChangesToSync = true
+	}
+
 	if monitor.hasChangesToSync {
 		status := r.maybeSync(ctx, lu, monitor)
 		if status.Failed != nil {
