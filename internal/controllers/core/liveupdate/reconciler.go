@@ -708,7 +708,11 @@ func (r *Reconciler) maybeSync(ctx context.Context, lu *v1alpha1.LiveUpdate, mon
 			}
 		}
 
-		// Initial sync: on new container, collect ALL files from sync paths
+		// Initial sync: on new container, collect ALL files from sync paths.
+		// We collect the file list for trigger matching (BoilRuns), but the
+		// actual tar archive is built directly from directory-level sync
+		// mappings with the ignore filter, avoiding a second walk.
+		var initialSyncFilter model.PathMatcher
 		isInitialSync := lu.Spec.InitialSync != nil && (!ok || cStatus.lastFileTimeSynced.IsZero())
 		if isInitialSync {
 			var err error
@@ -716,6 +720,15 @@ func (r *Reconciler) maybeSync(ctx context.Context, lu *v1alpha1.LiveUpdate, mon
 			if err != nil {
 				status.Failed = createFailedState(lu, "InitialSyncError",
 					fmt.Sprintf("Failed to collect files for initial sync: %v", err))
+				status.Containers = nil
+				return true
+			}
+			// Build the ignore filter for tar batching. We use the first sync
+			// path as the base for pattern matching — patterns are relative.
+			initialSyncFilter, err = r.buildInitialSyncFilter(lu.Spec)
+			if err != nil {
+				status.Failed = createFailedState(lu, "InitialSyncError",
+					fmt.Sprintf("Failed to build initial sync filter: %v", err))
 				status.Containers = nil
 				return true
 			}
@@ -807,6 +820,7 @@ func (r *Reconciler) maybeSync(ctx context.Context, lu *v1alpha1.LiveUpdate, mon
 				ChangedFiles:       plan.SyncPaths,
 				Containers:         []liveupdates.Container{c},
 				LastFileTimeSynced: newHighWaterMark,
+				InitialSyncFilter:  initialSyncFilter,
 			})
 			filesApplied = true
 		}
@@ -935,27 +949,46 @@ func (r *Reconciler) applyInternal(
 		return result
 	}
 
-	// rm files from container
-	toRemove, toArchive, err := build.MissingLocalPaths(ctx, changedFiles)
-	if err != nil {
-		result.Failed = &v1alpha1.LiveUpdateStateFailed{
-			Reason:  "Invalid",
-			Message: fmt.Sprintf("Mapping paths: %v", err),
-		}
-		return result
-	}
-
-	if len(toRemove) > 0 {
-		l.Infof("Will delete %d file(s) from container%s: %s", len(toRemove), suffix, names)
-		for _, pm := range toRemove {
-			l.Infof("- '%s' (matched local path: '%s')", pm.ContainerPath, pm.LocalPath)
-		}
-	}
-
-	if len(toArchive) > 0 {
-		l.Infof("Will copy %d file(s) to container%s: %s", len(toArchive), suffix, names)
+	// For initial sync, build a tar directly from sync directories with the
+	// ignore filter applied. This avoids the overhead of collecting all files
+	// into individual PathMappings and then re-walking them to build the tar.
+	// A single directory walk with filter is much faster for large trees (20k+ files).
+	var toRemove []build.PathMapping
+	var toArchive []build.PathMapping
+	var archiveFilter model.PathMatcher
+	if input.InitialSyncFilter != nil {
+		// No files to remove during initial sync — all files exist locally.
+		toRemove = nil
+		toArchive = build.SyncsToPathMappings(liveupdate.SyncSteps(spec))
+		archiveFilter = input.InitialSyncFilter
+		l.Infof("Initial sync: will copy sync paths to container%s: %s", suffix, names)
 		for _, pm := range toArchive {
 			l.Infof("- %s", pm.PrettyStr())
+		}
+	} else {
+		// rm files from container
+		var err2 error
+		toRemove, toArchive, err2 = build.MissingLocalPaths(ctx, changedFiles)
+		if err2 != nil {
+			result.Failed = &v1alpha1.LiveUpdateStateFailed{
+				Reason:  "Invalid",
+				Message: fmt.Sprintf("Mapping paths: %v", err2),
+			}
+			return result
+		}
+
+		if len(toRemove) > 0 {
+			l.Infof("Will delete %d file(s) from container%s: %s", len(toRemove), suffix, names)
+			for _, pm := range toRemove {
+				l.Infof("- '%s' (matched local path: '%s')", pm.ContainerPath, pm.LocalPath)
+			}
+		}
+
+		if len(toArchive) > 0 {
+			l.Infof("Will copy %d file(s) to container%s: %s", len(toArchive), suffix, names)
+			for _, pm := range toArchive {
+				l.Infof("- %s", pm.PrettyStr())
+			}
 		}
 	}
 
@@ -964,7 +997,7 @@ func (r *Reconciler) applyInternal(
 		// TODO(nick): We should try to distinguish between cases where the tar writer
 		// fails (which is recoverable) vs when the server-side unpacking
 		// fails (which may not be recoverable).
-		archive := build.TarArchiveForPaths(ctx, toArchive, nil)
+		archive := build.TarArchiveForPaths(ctx, toArchive, archiveFilter)
 		err = cu.UpdateContainer(ctx, cInfo, archive,
 			build.PathMappingsToContainerPaths(toRemove), boiledSteps, hotReload)
 		_ = archive.Close()
@@ -1167,7 +1200,20 @@ func indexLiveUpdate(obj ctrlclient.Object) []indexer.Key {
 // collectAllSyncedFiles walks all sync paths and collects all files,
 // applying .dockerignore patterns and InitialSync.IgnorePaths.
 func (r *Reconciler) collectAllSyncedFiles(ctx context.Context, spec v1alpha1.LiveUpdateSpec) ([]string, error) {
+	l := logger.Get(ctx)
 	var allFiles []string
+
+	// Warn if the configured dockerignore directory has no .dockerignore file
+	if spec.InitialSync != nil && spec.InitialSync.Dockerignore != "" {
+		diPath := spec.InitialSync.Dockerignore
+		if !filepath.IsAbs(diPath) {
+			diPath = filepath.Join(spec.BasePath, diPath)
+		}
+		diFile := filepath.Join(diPath, ".dockerignore")
+		if _, err := os.Stat(diFile); os.IsNotExist(err) {
+			l.Warnf("initial_sync: configured dockerignore path %q has no .dockerignore file", diPath)
+		}
+	}
 
 	for _, syncSpec := range spec.Syncs {
 		localPath := syncSpec.LocalPath
@@ -1176,6 +1222,7 @@ func (r *Reconciler) collectAllSyncedFiles(ctx context.Context, spec v1alpha1.Li
 		}
 
 		if _, err := os.Stat(localPath); os.IsNotExist(err) {
+			l.Warnf("initial_sync: sync path %q does not exist, skipping", localPath)
 			continue
 		} else if err != nil {
 			return nil, fmt.Errorf("stat %s: %w", localPath, err)
@@ -1207,6 +1254,39 @@ func (r *Reconciler) collectAllSyncedFiles(ctx context.Context, spec v1alpha1.Li
 	}
 
 	return allFiles, nil
+}
+
+// buildInitialSyncFilter creates a single PathMatcher that can be used as a
+// tar archive filter during initial sync. Unlike buildIgnoreMatcher (which is
+// per-sync-path), this builds a composite matcher that works across all sync
+// paths by combining per-path matchers.
+func (r *Reconciler) buildInitialSyncFilter(spec v1alpha1.LiveUpdateSpec) (model.PathMatcher, error) {
+	if spec.InitialSync == nil {
+		return model.EmptyMatcher, nil
+	}
+
+	var matchers []model.PathMatcher
+	for _, syncSpec := range spec.Syncs {
+		localPath := syncSpec.LocalPath
+		if !filepath.IsAbs(localPath) {
+			localPath = filepath.Join(spec.BasePath, localPath)
+		}
+		m, err := r.buildIgnoreMatcher(localPath, spec)
+		if err != nil {
+			return nil, err
+		}
+		if m != model.EmptyMatcher {
+			matchers = append(matchers, m)
+		}
+	}
+
+	if len(matchers) == 0 {
+		return model.EmptyMatcher, nil
+	}
+	if len(matchers) == 1 {
+		return matchers[0], nil
+	}
+	return model.NewCompositeMatcher(matchers), nil
 }
 
 func (r *Reconciler) buildIgnoreMatcher(syncPath string, spec v1alpha1.LiveUpdateSpec) (model.PathMatcher, error) {
