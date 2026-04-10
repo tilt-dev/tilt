@@ -60,6 +60,25 @@ func TestExitControlIdempotent(t *testing.T) {
 	assert.Equal(t, s1.ObjectMeta, s2.ObjectMeta)
 }
 
+func TestExitControlCI_ClusterError(t *testing.T) {
+	f := newFixture(t, store.EngineModeCI)
+
+	m := manifestbuilder.New(f, "fe").WithK8sYAML(testyaml.SanchoYAML).Build()
+	f.upsertManifest(m)
+
+	f.Store.WithState(func(state *store.EngineState) {
+		state.Clusters["default"] = &v1alpha1.Cluster{
+			ObjectMeta: metav1.ObjectMeta{Name: "default"},
+			Status: v1alpha1.ClusterStatus{
+				Error: "connection refused",
+			},
+		}
+	})
+
+	f.MustReconcile(sessionKey)
+	f.requireDoneWithError(`cluster connection failed`)
+}
+
 func TestExitControlCI_FirstBuildFailure(t *testing.T) {
 	f := newFixture(t, store.EngineModeCI)
 

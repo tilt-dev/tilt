@@ -48,6 +48,30 @@ func (r *Reconciler) makeLatestStatus(session *v1alpha1.Session, result *ctrl.Re
 	return status
 }
 
+// If the default cluster has an error, and we have enabled kubernetes resources, exit immediately.
+// No resources will be able to run.
+func (r *Reconciler) hasClusterError(state *store.EngineState) bool {
+	hasKubernetesResource := false
+	for _, mt := range state.ManifestTargets {
+		if mt.Manifest.IsK8s() &&
+			mt.State != nil && mt.State.DisableState == v1alpha1.DisableStateEnabled {
+			hasKubernetesResource = true
+			break
+		}
+	}
+
+	if !hasKubernetesResource {
+		return false
+	}
+
+	if defaultCluster, ok := state.Clusters[v1alpha1.ClusterNameDefault]; ok {
+		if errMsg := defaultCluster.Status.Error; errMsg != "" {
+			return true
+		}
+	}
+	return false
+}
+
 func (r *Reconciler) processExitCondition(spec v1alpha1.SessionSpec, state *store.EngineState, status *v1alpha1.SessionStatus, result *ctrl.Result) {
 	exitCondition := spec.ExitCondition
 	if exitCondition == v1alpha1.ExitConditionManual {
@@ -55,6 +79,13 @@ func (r *Reconciler) processExitCondition(spec v1alpha1.SessionSpec, state *stor
 	} else if exitCondition != v1alpha1.ExitConditionCI {
 		status.Done = true
 		status.Error = fmt.Sprintf("unsupported exit condition: %s", exitCondition)
+	}
+
+	if r.hasClusterError(state) {
+		// Assume the cluster error has already printed.
+		status.Done = true
+		status.Error = "cluster connection failed"
+		return
 	}
 
 	var waiting []string
