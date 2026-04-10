@@ -674,7 +674,7 @@ func TestKubernetesContainerNameSelector(t *testing.T) {
 					{
 						Name:  "main",
 						ID:    "main-id",
-						Image: "frontend-image",
+						Image: "local-registry:12345/frontend-image:my-tag",
 						State: v1alpha1.ContainerState{
 							Running: &v1alpha1.ContainerStateRunning{},
 						},
@@ -1172,6 +1172,7 @@ func TestInitialSync_FirstContainerStart(t *testing.T) {
 	f.Update(luUpdate)
 
 	// Add pod with running container
+	f.cu.Calls = nil
 	f.kdUpdateStatus("frontend-discovery", v1alpha1.KubernetesDiscoveryStatus{
 		Pods: []v1alpha1.Pod{
 			{
@@ -1182,7 +1183,7 @@ func TestInitialSync_FirstContainerStart(t *testing.T) {
 					{
 						Name:  "main",
 						ID:    "container-1",
-						Image: "frontend-image",
+						Image: "local-registry:12345/frontend-image:my-tag",
 						State: v1alpha1.ContainerState{
 							Running: &v1alpha1.ContainerStateRunning{},
 						},
@@ -1217,7 +1218,8 @@ func TestInitialSync_NotRepeatedForSameContainer(t *testing.T) {
 	luUpdate.Spec.InitialSync = &v1alpha1.LiveUpdateInitialSync{}
 	f.Update(luUpdate)
 
-	// First container start — initial sync fires
+	// First container start — initial sync fires via auto-reconcile
+	f.cu.Calls = nil
 	f.kdUpdateStatus("frontend-discovery", v1alpha1.KubernetesDiscoveryStatus{
 		Pods: []v1alpha1.Pod{
 			{
@@ -1228,7 +1230,7 @@ func TestInitialSync_NotRepeatedForSameContainer(t *testing.T) {
 					{
 						Name:  "main",
 						ID:    "container-1",
-						Image: "frontend-image",
+						Image: "local-registry:12345/frontend-image:my-tag",
 						State: v1alpha1.ContainerState{
 							Running: &v1alpha1.ContainerStateRunning{},
 						},
@@ -1265,7 +1267,8 @@ func TestInitialSync_FiresAgainOnRestart(t *testing.T) {
 	luUpdate.Spec.InitialSync = &v1alpha1.LiveUpdateInitialSync{}
 	f.Update(luUpdate)
 
-	// First container
+	// First container — initial sync fires via auto-reconcile
+	f.cu.Calls = nil
 	f.kdUpdateStatus("frontend-discovery", v1alpha1.KubernetesDiscoveryStatus{
 		Pods: []v1alpha1.Pod{
 			{
@@ -1276,7 +1279,7 @@ func TestInitialSync_FiresAgainOnRestart(t *testing.T) {
 					{
 						Name:  "main",
 						ID:    "container-1",
-						Image: "frontend-image",
+						Image: "local-registry:12345/frontend-image:my-tag",
 						State: v1alpha1.ContainerState{
 							Running: &v1alpha1.ContainerStateRunning{},
 						},
@@ -1289,6 +1292,7 @@ func TestInitialSync_FiresAgainOnRestart(t *testing.T) {
 	require.Len(t, f.cu.Calls, 1, "Expected initial sync on first start")
 
 	// Container restarts (new ID) — initial sync fires again
+	f.cu.Calls = nil
 	f.kdUpdateStatus("frontend-discovery", v1alpha1.KubernetesDiscoveryStatus{
 		Pods: []v1alpha1.Pod{
 			{
@@ -1299,7 +1303,7 @@ func TestInitialSync_FiresAgainOnRestart(t *testing.T) {
 					{
 						Name:  "main",
 						ID:    "container-2",
-						Image: "frontend-image",
+						Image: "local-registry:12345/frontend-image:my-tag",
 						State: v1alpha1.ContainerState{
 							Running: &v1alpha1.ContainerStateRunning{},
 						},
@@ -1310,7 +1314,7 @@ func TestInitialSync_FiresAgainOnRestart(t *testing.T) {
 	})
 	f.MustReconcile(types.NamespacedName{Name: "frontend-liveupdate"})
 	// Initial sync fires again for the new container
-	require.Len(t, f.cu.Calls, 2, "Initial sync should fire again for new container")
+	require.Len(t, f.cu.Calls, 1, "Initial sync should fire again for new container")
 }
 
 func TestInitialSync_IgnorePaths(t *testing.T) {
@@ -1339,6 +1343,7 @@ func TestInitialSync_IgnorePaths(t *testing.T) {
 	}
 	f.Update(luUpdate)
 
+	f.cu.Calls = nil
 	f.kdUpdateStatus("frontend-discovery", v1alpha1.KubernetesDiscoveryStatus{
 		Pods: []v1alpha1.Pod{
 			{
@@ -1349,7 +1354,7 @@ func TestInitialSync_IgnorePaths(t *testing.T) {
 					{
 						Name:  "main",
 						ID:    "container-1",
-						Image: "frontend-image",
+						Image: "local-registry:12345/frontend-image:my-tag",
 						State: v1alpha1.ContainerState{
 							Running: &v1alpha1.ContainerStateRunning{},
 						},
@@ -1392,6 +1397,7 @@ func TestInitialSync_ExecsRespectTriggers(t *testing.T) {
 	luUpdate.Spec.InitialSync = &v1alpha1.LiveUpdateInitialSync{}
 	f.Update(luUpdate)
 
+	f.cu.Calls = nil
 	f.kdUpdateStatus("frontend-discovery", v1alpha1.KubernetesDiscoveryStatus{
 		Pods: []v1alpha1.Pod{
 			{
@@ -1402,7 +1408,7 @@ func TestInitialSync_ExecsRespectTriggers(t *testing.T) {
 					{
 						Name:  "main",
 						ID:    "container-1",
-						Image: "frontend-image",
+						Image: "local-registry:12345/frontend-image:my-tag",
 						State: v1alpha1.ContainerState{
 							Running: &v1alpha1.ContainerStateRunning{},
 						},
@@ -1443,6 +1449,7 @@ func TestInitialSync_NoInitialSyncWithoutConfig(t *testing.T) {
 	// No InitialSync configured
 	f.Update(luUpdate)
 
+	f.cu.Calls = nil
 	f.kdUpdateStatus("frontend-discovery", v1alpha1.KubernetesDiscoveryStatus{
 		Pods: []v1alpha1.Pod{
 			{
@@ -1453,7 +1460,7 @@ func TestInitialSync_NoInitialSyncWithoutConfig(t *testing.T) {
 					{
 						Name:  "main",
 						ID:    "container-1",
-						Image: "frontend-image",
+						Image: "local-registry:12345/frontend-image:my-tag",
 						State: v1alpha1.ContainerState{
 							Running: &v1alpha1.ContainerStateRunning{},
 						},
@@ -1493,6 +1500,7 @@ func TestInitialSync_ExplicitDockerignore(t *testing.T) {
 	}
 	f.Update(luUpdate)
 
+	f.cu.Calls = nil
 	f.kdUpdateStatus("frontend-discovery", v1alpha1.KubernetesDiscoveryStatus{
 		Pods: []v1alpha1.Pod{
 			{
@@ -1503,7 +1511,7 @@ func TestInitialSync_ExplicitDockerignore(t *testing.T) {
 					{
 						Name:  "main",
 						ID:    "container-1",
-						Image: "frontend-image",
+						Image: "local-registry:12345/frontend-image:my-tag",
 						State: v1alpha1.ContainerState{
 							Running: &v1alpha1.ContainerStateRunning{},
 						},
@@ -1545,6 +1553,7 @@ func TestInitialSync_GlobIgnorePatterns(t *testing.T) {
 	}
 	f.Update(luUpdate)
 
+	f.cu.Calls = nil
 	f.kdUpdateStatus("frontend-discovery", v1alpha1.KubernetesDiscoveryStatus{
 		Pods: []v1alpha1.Pod{
 			{
@@ -1555,7 +1564,7 @@ func TestInitialSync_GlobIgnorePatterns(t *testing.T) {
 					{
 						Name:  "main",
 						ID:    "container-1",
-						Image: "frontend-image",
+						Image: "local-registry:12345/frontend-image:my-tag",
 						State: v1alpha1.ContainerState{
 							Running: &v1alpha1.ContainerStateRunning{},
 						},
@@ -1594,6 +1603,7 @@ func TestInitialSync_MultipleSyncPaths(t *testing.T) {
 	luUpdate.Spec.InitialSync = &v1alpha1.LiveUpdateInitialSync{}
 	f.Update(luUpdate)
 
+	f.cu.Calls = nil
 	f.kdUpdateStatus("frontend-discovery", v1alpha1.KubernetesDiscoveryStatus{
 		Pods: []v1alpha1.Pod{
 			{
@@ -1604,7 +1614,7 @@ func TestInitialSync_MultipleSyncPaths(t *testing.T) {
 					{
 						Name:  "main",
 						ID:    "container-1",
-						Image: "frontend-image",
+						Image: "local-registry:12345/frontend-image:my-tag",
 						State: v1alpha1.ContainerState{
 							Running: &v1alpha1.ContainerStateRunning{},
 						},
@@ -1634,6 +1644,7 @@ func TestInitialSync_NoSyncPaths(t *testing.T) {
 	luUpdate.Spec.InitialSync = &v1alpha1.LiveUpdateInitialSync{}
 	f.Update(luUpdate)
 
+	f.cu.Calls = nil
 	f.kdUpdateStatus("frontend-discovery", v1alpha1.KubernetesDiscoveryStatus{
 		Pods: []v1alpha1.Pod{
 			{
@@ -1644,7 +1655,7 @@ func TestInitialSync_NoSyncPaths(t *testing.T) {
 					{
 						Name:  "main",
 						ID:    "container-1",
-						Image: "frontend-image",
+						Image: "local-registry:12345/frontend-image:my-tag",
 						State: v1alpha1.ContainerState{
 							Running: &v1alpha1.ContainerStateRunning{},
 						},
@@ -1658,3 +1669,5 @@ func TestInitialSync_NoSyncPaths(t *testing.T) {
 	// No sync paths means no files to collect, no update call
 	assert.Len(t, f.cu.Calls, 0, "Should not sync when there are no sync paths")
 }
+
+// tarEntryNames extracts file names from a tar archive captured by FakeContainerUpdater.
