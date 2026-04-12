@@ -1,11 +1,6 @@
 // Helper functions for dealing with logs
 
-import {
-  FilterLevel,
-  FilterSet,
-  FilterSource,
-  TermState,
-} from "./logfilters"
+import { FilterLevel, FilterSet, FilterSource, TermState } from "./logfilters"
 import { LogLine, ResourceName } from "./types"
 
 export const DISPLAY_LOG_PROLOGUE_LENGTH = 5
