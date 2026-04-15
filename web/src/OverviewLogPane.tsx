@@ -1,13 +1,7 @@
 import React, { Component } from "react"
 import { useNavigate, useLocation } from "react-router-dom"
 import styled, { keyframes } from "styled-components"
-import {
-  FilterLevel,
-  FilterSet,
-  filterSetsEqual,
-  FilterSource,
-  TermState,
-} from "./logfilters"
+import { FilterSet, filterSetsEqual } from "./logfilters"
 import "./LogLine.scss"
 import "./LogPane.scss"
 import LogStore, {
@@ -15,16 +9,16 @@ import LogStore, {
   LogUpdateEvent,
   useLogStore,
 } from "./LogStore"
-import { isBuildSpanId } from "./logs"
+import { DISPLAY_LOG_PROLOGUE_LENGTH, LogDisplay } from "./logs"
 import PathBuilder, { usePathBuilder } from "./PathBuilder"
 import { RafContext, useRaf } from "./raf"
 import { useStarredResources } from "./StarredResourcesContext"
 import { Color, FontSize, SizeUnit } from "./style-helpers"
 import Anser from "./third-party/anser/index.js"
-import { LogLevel, LogLine, ResourceName } from "./types"
+import { LogLine, ResourceName } from "./types"
 
 // The number of lines to display before an error.
-export const PROLOGUE_LENGTH = 5
+export const PROLOGUE_LENGTH = DISPLAY_LOG_PROLOGUE_LENGTH
 
 type OverviewLogComponentProps = {
   manifestName: string
@@ -215,13 +209,12 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
 
   private lineHashList: LineHashList = new LineHashList()
 
-  // When we're displaying warnings or errors, we want to display the last
-  // N lines before the error. So we keep track of the last N lines for each span.
-  private prologuesBySpanId: { [key: string]: LogLine[] } = {}
+  private logDisplay: LogDisplay
 
   constructor(props: OverviewLogComponentProps) {
     super(props)
 
+    this.logDisplay = new LogDisplay(props.filterSet)
     this.onScroll = this.onScroll.bind(this)
     this.onLogUpdate = this.onLogUpdate.bind(this)
     this.renderBuffer = this.renderBuffer.bind(this)
@@ -402,7 +395,7 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
     }
 
     this.lineHashList = new LineHashList()
-    this.prologuesBySpanId = {}
+    this.logDisplay = new LogDisplay(this.props.filterSet)
     this.logCheckpoint = 0
     this.scrollTop = -1
 
@@ -415,67 +408,6 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
       this.props.raf.cancelAnimationFrame(this.autoscrollRafId)
       this.autoscrollRafId = 0
     }
-  }
-
-  matchesTermFilter(line: LogLine): boolean {
-    const { term } = this.props.filterSet
-
-    // Don't consider a filter term if the term hasn't been parsed for matching
-    if (!term || term.state !== TermState.Parsed) {
-      return true
-    }
-
-    return term.regexp.test(line.text)
-  }
-
-  // If we have a level filter on, check if this line matches the level filter.
-  matchesLevelFilter(line: LogLine): boolean {
-    let level = this.props.filterSet.level
-    if (level === FilterLevel.warn && line.level !== LogLevel.WARN) {
-      return false
-    }
-    if (level === FilterLevel.error && line.level !== LogLevel.ERROR) {
-      return false
-    }
-    return true
-  }
-
-  // Check if this line matches the current filter.
-  matchesFilter(line: LogLine): boolean {
-    if (line.buildEvent) {
-      // Always leave in build event logs.
-      // This makes it easier to see which logs belong to which builds.
-      return true
-    }
-
-    let source = this.props.filterSet.source
-    if (source === FilterSource.runtime && isBuildSpanId(line.spanId)) {
-      return false
-    }
-    if (source === FilterSource.build && !isBuildSpanId(line.spanId)) {
-      return false
-    }
-
-    return this.matchesLevelFilter(line) && this.matchesTermFilter(line)
-  }
-
-  // Index this line so that we can display prologues to errors.
-  trackPrologueLine(line: LogLine) {
-    if (!this.prologuesBySpanId[line.spanId]) {
-      this.prologuesBySpanId[line.spanId] = []
-    }
-    this.prologuesBySpanId[line.spanId].push(line)
-  }
-
-  // Gets the prologue for the given span, and clear the lines used for prologuing.
-  getAndClearPrologue(spanId: string): LogLine[] {
-    let lines = this.prologuesBySpanId[spanId]
-    if (!lines) {
-      return []
-    }
-
-    delete this.prologuesBySpanId[spanId]
-    return lines.slice(-PROLOGUE_LENGTH) // last N lines
   }
 
   // Render new logs that have come in since the current checkpoint.
@@ -493,21 +425,7 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
         : logStore.manifestLogPatchSet(mn, startCheckpoint)
       : logStore.allLogPatchSet(startCheckpoint)
 
-    let lines: LogLine[] = []
-    let shouldDisplayPrologues = this.props.filterSet.level !== FilterLevel.all
-
-    patch.lines.forEach((line) => {
-      let matches = this.matchesFilter(line)
-      if (matches) {
-        if (shouldDisplayPrologues) {
-          lines.push(...this.getAndClearPrologue(line.spanId))
-        }
-        lines.push(line)
-        return
-      } else if (shouldDisplayPrologues) {
-        this.trackPrologueLine(line)
-      }
-    })
+    let lines = this.logDisplay.filterLines(patch.lines)
 
     this.logCheckpoint = patch.checkpoint
     lines.forEach((line) => this.lineHashList.append(line))
@@ -658,7 +576,7 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
       return
     }
 
-    let shouldDisplayPrologues = this.props.filterSet.level !== FilterLevel.all
+    let shouldDisplayPrologues = this.logDisplay.shouldDisplayPrologues()
     let mn = this.props.manifestName
     let showManifestName = !mn || mn === ResourceName.starred
     let prevManifestName = entry.prev?.line.manifestName || ""
@@ -671,7 +589,7 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
 
     let isEndOfAlert =
       shouldDisplayPrologues &&
-      this.matchesLevelFilter(line) &&
+      this.logDisplay.matchesLevelFilter(line) &&
       (!entry.next || entry.next?.line.level !== line.level)
     if (isEndOfAlert) {
       extraClasses.push("is-endOfAlert")
@@ -680,9 +598,9 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
     let isStartOfAlert =
       shouldDisplayPrologues &&
       !line.buildEvent &&
-      !this.matchesLevelFilter(line) &&
+      !this.logDisplay.matchesLevelFilter(line) &&
       (!entry.prev ||
-        this.matchesLevelFilter(entry.prev.line) ||
+        this.logDisplay.matchesLevelFilter(entry.prev.line) ||
         entry.prev.line.buildEvent)
     if (isStartOfAlert) {
       extraClasses.push("is-startOfAlert")

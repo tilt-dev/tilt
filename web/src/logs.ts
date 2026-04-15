@@ -62,91 +62,95 @@ export function isBuildSpanId(spanId: string): boolean {
   return spanId.indexOf("build:") === 0 || spanId.indexOf("cmdimage:") === 0
 }
 
-export function logLineMatchesTermFilter(
-  line: LogLine,
+export class LogDisplay {
+  private prologuesBySpanId: { [key: string]: LogLine[] } = {}
   filterSet: FilterSet
-): boolean {
-  const { term } = filterSet
 
-  if (!term || term.state !== TermState.Parsed) {
+  constructor(filterSet: FilterSet) {
+    this.filterSet = filterSet
+  }
+
+  shouldDisplayPrologues(): boolean {
+    return this.filterSet.level !== FilterLevel.all
+  }
+
+  matchesTermFilter(line: LogLine): boolean {
+    const { term } = this.filterSet
+
+    if (!term || term.state !== TermState.Parsed) {
+      return true
+    }
+
+    return term.regexp.test(line.text)
+  }
+
+  matchesLevelFilter(line: LogLine): boolean {
+    let level = this.filterSet.level
+    if (level === FilterLevel.warn && line.level !== "WARN") {
+      return false
+    }
+    if (level === FilterLevel.error && line.level !== "ERROR") {
+      return false
+    }
     return true
   }
 
-  return term.regexp.test(line.text)
-}
+  matchesFilter(line: LogLine): boolean {
+    if (line.buildEvent) {
+      return true
+    }
 
-export function logLineMatchesLevelFilter(
-  line: LogLine,
-  filterSet: FilterSet
-): boolean {
-  let level = filterSet.level
-  if (level === FilterLevel.warn && line.level !== "WARN") {
-    return false
-  }
-  if (level === FilterLevel.error && line.level !== "ERROR") {
-    return false
-  }
-  return true
-}
+    let source = this.filterSet.source
+    if (source === FilterSource.runtime && isBuildSpanId(line.spanId)) {
+      return false
+    }
+    if (source === FilterSource.build && !isBuildSpanId(line.spanId)) {
+      return false
+    }
 
-export function logLineMatchesDisplayFilter(
-  line: LogLine,
-  filterSet: FilterSet
-): boolean {
-  if (line.buildEvent) {
-    return true
+    return this.matchesLevelFilter(line) && this.matchesTermFilter(line)
   }
 
-  let source = filterSet.source
-  if (source === FilterSource.runtime && isBuildSpanId(line.spanId)) {
-    return false
-  }
-  if (source === FilterSource.build && !isBuildSpanId(line.spanId)) {
-    return false
+  trackPrologueLine(line: LogLine) {
+    if (!this.prologuesBySpanId[line.spanId]) {
+      this.prologuesBySpanId[line.spanId] = []
+    }
+    this.prologuesBySpanId[line.spanId].push(line)
   }
 
-  return (
-    logLineMatchesLevelFilter(line, filterSet) &&
-    logLineMatchesTermFilter(line, filterSet)
-  )
+  getAndClearPrologue(spanId: string): LogLine[] {
+    let spanLines = this.prologuesBySpanId[spanId]
+    if (!spanLines) {
+      return []
+    }
+
+    delete this.prologuesBySpanId[spanId]
+    return spanLines.slice(-DISPLAY_LOG_PROLOGUE_LENGTH)
+  }
+
+  filterLines(lines: LogLine[]): LogLine[] {
+    let result: LogLine[] = []
+    let shouldDisplayPrologues = this.shouldDisplayPrologues()
+
+    lines.forEach((line) => {
+      let matches = this.matchesFilter(line)
+      if (matches) {
+        if (shouldDisplayPrologues) {
+          result.push(...this.getAndClearPrologue(line.spanId))
+        }
+        result.push(line)
+      } else if (shouldDisplayPrologues) {
+        this.trackPrologueLine(line)
+      }
+    })
+
+    return result
+  }
 }
 
 export function filterLogLinesForDisplay(
   lines: LogLine[],
   filterSet: FilterSet
 ): LogLine[] {
-  let result: LogLine[] = []
-  let prologuesBySpanId: { [key: string]: LogLine[] } = {}
-  let shouldDisplayPrologues = filterSet.level !== FilterLevel.all
-
-  function trackPrologueLine(line: LogLine) {
-    if (!prologuesBySpanId[line.spanId]) {
-      prologuesBySpanId[line.spanId] = []
-    }
-    prologuesBySpanId[line.spanId].push(line)
-  }
-
-  function getAndClearPrologue(spanId: string): LogLine[] {
-    let spanLines = prologuesBySpanId[spanId]
-    if (!spanLines) {
-      return []
-    }
-
-    delete prologuesBySpanId[spanId]
-    return spanLines.slice(-DISPLAY_LOG_PROLOGUE_LENGTH)
-  }
-
-  lines.forEach((line) => {
-    let matches = logLineMatchesDisplayFilter(line, filterSet)
-    if (matches) {
-      if (shouldDisplayPrologues) {
-        result.push(...getAndClearPrologue(line.spanId))
-      }
-      result.push(line)
-    } else if (shouldDisplayPrologues) {
-      trackPrologueLine(line)
-    }
-  })
-
-  return result
+  return new LogDisplay(filterSet).filterLines(lines)
 }
