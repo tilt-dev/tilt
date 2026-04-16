@@ -124,6 +124,23 @@ func extractEnvVars(obj interface{}) ([]*v1.EnvVar, error) {
 	return result, nil
 }
 
+func extractImageVolumeSources(obj interface{}) ([]*v1.ImageVolumeSource, error) {
+	extracted, err := newExtractor(reflect.TypeOf(v1.ImageVolumeSource{})).extractPointersFrom(obj)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]*v1.ImageVolumeSource, len(extracted))
+	for i, e := range extracted {
+		iv, ok := e.(*v1.ImageVolumeSource)
+		if !ok {
+			return nil, fmt.Errorf("extractImageVolumeSources: expected ImageVolumeSource, actual %T", e)
+		}
+		result[i] = iv
+	}
+	return result, nil
+}
+
 func extractContainers(obj interface{}) ([]*v1.Container, error) {
 	extracted, err := newExtractor(reflect.TypeOf(v1.Container{})).extractPointersFrom(obj)
 	if err != nil {

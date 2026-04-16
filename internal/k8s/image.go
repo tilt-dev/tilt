@@ -64,6 +64,14 @@ func InjectImageDigest(entity K8sEntity, selector container.RefSelector, injectR
 		replaced = true
 	}
 
+	entity, r, err = injectImageDigestInImageVolumes(entity, selector, injectRef, policy)
+	if err != nil {
+		return K8sEntity{}, false, err
+	}
+	if r {
+		replaced = true
+	}
+
 	if matchInEnvVars {
 		entity, r, err = injectImageDigestInEnvVars(entity, selector, injectRef)
 		if err != nil {
@@ -125,6 +133,32 @@ func injectImageDigestInEnvVars(entity K8sEntity, selector container.RefSelector
 
 		if selector.Matches(existingRef) {
 			envVar.Value = container.FamiliarString(injectRef)
+			replaced = true
+		}
+	}
+
+	return entity, replaced, nil
+}
+
+func injectImageDigestInImageVolumes(entity K8sEntity, selector container.RefSelector, injectRef reference.Named, policy v1.PullPolicy) (K8sEntity, bool, error) {
+	imageVolumes, err := extractImageVolumeSources(&entity)
+	if err != nil {
+		return K8sEntity{}, false, err
+	}
+
+	replaced := false
+	for _, iv := range imageVolumes {
+		if iv.Reference == "" {
+			continue
+		}
+		existingRef, err := container.ParseNamed(iv.Reference)
+		if err != nil {
+			return K8sEntity{}, false, err
+		}
+
+		if selector.Matches(existingRef) {
+			iv.Reference = container.FamiliarString(injectRef)
+			iv.PullPolicy = policy
 			replaced = true
 		}
 	}
@@ -218,6 +252,22 @@ func (e K8sEntity) FindImages(locators []ImageLocator, envVarImages []container.
 			return nil, errors.Wrapf(err, "parsing %s", c.Image)
 		}
 
+		result = append(result, ref)
+	}
+
+	// Look for images in image volume sources
+	imageVolumes, err := extractImageVolumeSources(&e)
+	if err != nil {
+		return nil, err
+	}
+	for _, iv := range imageVolumes {
+		if iv.Reference == "" {
+			continue
+		}
+		ref, err := container.ParseNamed(iv.Reference)
+		if err != nil {
+			return nil, errors.Wrapf(err, "parsing image volume reference %s", iv.Reference)
+		}
 		result = append(result, ref)
 	}
 
