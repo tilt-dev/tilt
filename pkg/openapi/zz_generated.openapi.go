@@ -4911,32 +4911,8 @@ func schema_pkg_apis_core_v1alpha1_LiveUpdateInitialSync(ref common.ReferenceCal
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "LiveUpdateInitialSync configures initial sync behavior",
+				Description: "LiveUpdateInitialSync enables full file sync on container start/restart.",
 				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"ignorePaths": {
-						SchemaProps: spec.SchemaProps{
-							Description: "IgnorePaths is a list of relative paths (relative to BasePath) to exclude from initial sync. These paths will still be synced on subsequent file changes.\n\nUses dockerignore-style glob syntax: - 'node_modules' excludes the node_modules directory - 'file.txt' excludes that specific file - '**/test' excludes all directories named 'test' at any depth - '*.log' excludes all .log files",
-							Type:        []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: "",
-										Type:    []string{"string"},
-										Format:  "",
-									},
-								},
-							},
-						},
-					},
-					"dockerignore": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Dockerignore is a path to a directory containing a .dockerignore file to apply during initial sync. If empty, no .dockerignore is loaded.",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-				},
 			},
 		},
 	}

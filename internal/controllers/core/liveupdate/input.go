@@ -20,8 +20,11 @@ type Input struct {
 
 	LastFileTimeSynced metav1.MicroTime
 
-	// InitialSyncFilter is set during initial sync to enable tar batching.
-	// When set, the archive is built directly from directory-level sync mappings
-	// with this filter applied, instead of archiving individual file PathMappings.
+	// InitialSync is set during initial sync to enable tar batching directly from
+	// the configured sync mappings instead of individual file PathMappings.
+	InitialSync bool
+
+	// InitialSyncFilter applies the same ignore semantics used by the source
+	// FileWatch objects during the initial filesystem walk and tar creation.
 	InitialSyncFilter model.PathMatcher
 }

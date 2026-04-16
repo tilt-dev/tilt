@@ -34,6 +34,7 @@ type monitor struct {
 
 type monitorSource struct {
 	modTimeByPath   map[string]metav1.MicroTime
+	ignores         []v1alpha1.IgnoreDef
 	lastImageStatus *v1alpha1.ImageMapStatus
 	lastFileEvent   *v1alpha1.FileEvent
 }

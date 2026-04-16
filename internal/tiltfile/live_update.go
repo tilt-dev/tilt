@@ -130,16 +130,14 @@ func (l liveUpdateRestartContainerStep) declarationPos() string { return l.posit
 func (l liveUpdateRestartContainerStep) liveUpdateStep()        {}
 
 type liveUpdateInitialSyncStep struct {
-	ignorePaths  []string
-	dockerignore string
-	position     syntax.Position
+	position syntax.Position
 }
 
 var _ starlark.Value = liveUpdateInitialSyncStep{}
 var _ liveUpdateStep = liveUpdateInitialSyncStep{}
 
 func (l liveUpdateInitialSyncStep) String() string {
-	return fmt.Sprintf("initial_sync step (ignore: %v)", l.ignorePaths)
+	return "initial_sync step"
 }
 func (l liveUpdateInitialSyncStep) Type() string           { return "live_update_initial_sync_step" }
 func (l liveUpdateInitialSyncStep) Freeze()                {}
@@ -154,30 +152,12 @@ func (s *tiltfileState) recordLiveUpdateStep(step liveUpdateStep) {
 
 // initialSync creates a live update step that syncs all files on container start/restart.
 func (s *tiltfileState) liveUpdateInitialSync(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var ignoreVal starlark.Value
-	var dockerignore starlark.String
-	if err := s.unpackArgs(fn.Name(), args, kwargs,
-		"ignore?", &ignoreVal,
-		"dockerignore?", &dockerignore); err != nil {
+	if err := s.unpackArgs(fn.Name(), args, kwargs); err != nil {
 		return nil, err
 	}
 
-	var ignorePaths []string
-	if ignoreVal != nil && ignoreVal != starlark.None {
-		ignoreList := starlarkValueOrSequenceToSlice(ignoreVal)
-		for _, item := range ignoreList {
-			if str, ok := item.(starlark.String); ok {
-				ignorePaths = append(ignorePaths, string(str))
-			} else {
-				return nil, fmt.Errorf("initial_sync ignore paths must be strings, got %s", item.Type())
-			}
-		}
-	}
-
 	ret := liveUpdateInitialSyncStep{
-		ignorePaths:  ignorePaths,
-		dockerignore: string(dockerignore),
-		position:     thread.CallFrame(1).Pos,
+		position: thread.CallFrame(1).Pos,
 	}
 	s.recordLiveUpdateStep(ret)
 	return ret, nil
@@ -293,10 +273,7 @@ func (s *tiltfileState) liveUpdateFromSteps(t *starlark.Thread, maybeSteps starl
 			}
 			seenInitialSync = true
 
-			spec.InitialSync = &v1alpha1.LiveUpdateInitialSync{
-				IgnorePaths:  x.ignorePaths,
-				Dockerignore: x.dockerignore,
-			}
+			spec.InitialSync = &v1alpha1.LiveUpdateInitialSync{}
 
 		case liveUpdateFallBackOnStep:
 			seenInitialSync = true

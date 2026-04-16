@@ -215,30 +215,6 @@ func (in *LiveUpdate) Validate(ctx context.Context) field.ErrorList {
 		}
 	}
 
-	// Validate InitialSync fields
-	if in.Spec.InitialSync != nil {
-		initialSyncPath := field.NewPath("spec", "initialSync")
-
-		// Validate ignore paths are relative (not absolute).
-		// Use path.IsAbs (POSIX) rather than filepath.IsAbs so that
-		// "/absolute/path" is rejected on all platforms including Windows.
-		ignorePathsField := initialSyncPath.Child("ignorePaths")
-		for i, ignorePath := range in.Spec.InitialSync.IgnorePaths {
-			if path.IsAbs(ignorePath) {
-				errors = append(errors,
-					field.Invalid(ignorePathsField.Index(i), ignorePath,
-						"ignore paths must be relative to basePath"))
-			}
-		}
-
-		// Validate dockerignore path is relative
-		if in.Spec.InitialSync.Dockerignore != "" && path.IsAbs(in.Spec.InitialSync.Dockerignore) {
-			errors = append(errors,
-				field.Invalid(initialSyncPath.Child("dockerignore"), in.Spec.InitialSync.Dockerignore,
-					"dockerignore path must be relative to basePath"))
-		}
-	}
-
 	return errors
 }
 
@@ -409,27 +385,8 @@ var (
 	LiveUpdateRestartStrategyAlways LiveUpdateRestartStrategy = "always"
 )
 
-// LiveUpdateInitialSync configures initial sync behavior
-type LiveUpdateInitialSync struct {
-	// IgnorePaths is a list of relative paths (relative to BasePath)
-	// to exclude from initial sync. These paths will still be synced
-	// on subsequent file changes.
-	//
-	// Uses dockerignore-style glob syntax:
-	// - 'node_modules' excludes the node_modules directory
-	// - 'file.txt' excludes that specific file
-	// - '**/test' excludes all directories named 'test' at any depth
-	// - '*.log' excludes all .log files
-	//
-	// +optional
-	IgnorePaths []string `json:"ignorePaths,omitempty" protobuf:"bytes,1,rep,name=ignorePaths"`
-
-	// Dockerignore is a path to a directory containing a .dockerignore file
-	// to apply during initial sync. If empty, no .dockerignore is loaded.
-	//
-	// +optional
-	Dockerignore string `json:"dockerignore,omitempty" protobuf:"bytes,2,opt,name=dockerignore"`
-}
+// LiveUpdateInitialSync enables full file sync on container start/restart.
+type LiveUpdateInitialSync struct{}
 
 // LiveUpdateContainerStatus defines the observed state of
 // the live-update syncer for a particular container.

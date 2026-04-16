@@ -30,7 +30,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/apis/configmap"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
-	"github.com/tilt-dev/tilt/internal/dockerignore"
+	"github.com/tilt-dev/tilt/internal/ignore"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/ospath"
 	"github.com/tilt-dev/tilt/internal/sliceutils"
@@ -321,12 +321,25 @@ func (r *Reconciler) reconcileOneSource(ctx context.Context, monitor *monitor, s
 	fwn := source.FileWatch
 	imn := source.ImageMap
 
+	var mSource *monitorSource
+	if fwn != "" {
+		var ok bool
+		mSource, ok = monitor.sources[fwn]
+		if !ok {
+			mSource = &monitorSource{
+				modTimeByPath: make(map[string]metav1.MicroTime),
+			}
+			monitor.sources[fwn] = mSource
+		}
+	}
+
 	var fw v1alpha1.FileWatch
 	if fwn != "" {
 		err := r.client.Get(ctx, types.NamespacedName{Name: fwn}, &fw)
 		if err != nil {
 			return false, err
 		}
+		mSource.ignores = append([]v1alpha1.IgnoreDef(nil), fw.Spec.Ignores...)
 	}
 
 	var im v1alpha1.ImageMap
@@ -340,14 +353,6 @@ func (r *Reconciler) reconcileOneSource(ctx context.Context, monitor *monitor, s
 	events := fw.Status.FileEvents
 	if len(events) == 0 || fwn == "" {
 		return false, nil
-	}
-
-	mSource, ok := monitor.sources[fwn]
-	if !ok {
-		mSource = &monitorSource{
-			modTimeByPath: make(map[string]metav1.MicroTime),
-		}
-		monitor.sources[fwn] = mSource
 	}
 
 	newImageStatus := im.Status
@@ -714,24 +719,16 @@ func (r *Reconciler) maybeSync(ctx context.Context, lu *v1alpha1.LiveUpdate, mon
 		// Initial sync: on new container, collect ALL files from sync paths.
 		// We collect the file list for trigger matching (BoilRuns), but the
 		// actual tar archive is built directly from directory-level sync
-		// mappings with the ignore filter, avoiding a second walk.
-		var initialSyncFilter model.PathMatcher
+		// mappings, avoiding a second walk into individual file mappings.
 		isInitialSync := lu.Spec.InitialSync != nil && (!ok || cStatus.lastFileTimeSynced.IsZero())
+		initialSyncFilter := model.EmptyMatcher
 		if isInitialSync {
+			initialSyncFilter = r.buildInitialSyncFilter(monitor)
 			var err error
-			filesChanged, err = r.collectAllSyncedFiles(ctx, lu.Spec)
+			filesChanged, err = r.collectAllSyncedFiles(ctx, lu.Spec, initialSyncFilter)
 			if err != nil {
 				status.Failed = createFailedState(lu, "InitialSyncError",
 					fmt.Sprintf("Failed to collect files for initial sync: %v", err))
-				status.Containers = nil
-				return true
-			}
-			// Build the ignore filter for tar batching. We use the first sync
-			// path as the base for pattern matching — patterns are relative.
-			initialSyncFilter, err = r.buildInitialSyncFilter(lu.Spec)
-			if err != nil {
-				status.Failed = createFailedState(lu, "InitialSyncError",
-					fmt.Sprintf("Failed to build initial sync filter: %v", err))
 				status.Containers = nil
 				return true
 			}
@@ -823,6 +820,7 @@ func (r *Reconciler) maybeSync(ctx context.Context, lu *v1alpha1.LiveUpdate, mon
 				ChangedFiles:       plan.SyncPaths,
 				Containers:         []liveupdates.Container{c},
 				LastFileTimeSynced: newHighWaterMark,
+				InitialSync:        isInitialSync,
 				InitialSyncFilter:  initialSyncFilter,
 			})
 			filesApplied = true
@@ -952,14 +950,13 @@ func (r *Reconciler) applyInternal(
 		return result
 	}
 
-	// For initial sync, build a tar directly from sync directories with the
-	// ignore filter applied. This avoids the overhead of collecting all files
-	// into individual PathMappings and then re-walking them to build the tar.
-	// A single directory walk with filter is much faster for large trees (20k+ files).
+	// For initial sync, build a tar directly from sync directories. This avoids
+	// the overhead of collecting all files into individual PathMappings and then
+	// re-walking them to build the tar.
 	var toRemove []build.PathMapping
 	var toArchive []build.PathMapping
-	var archiveFilter model.PathMatcher
-	if input.InitialSyncFilter != nil {
+	archiveFilter := model.EmptyMatcher
+	if input.InitialSync {
 		// No files to remove during initial sync — all files exist locally.
 		toRemove = nil
 		toArchive = build.SyncsToPathMappings(liveupdate.SyncSteps(spec))
@@ -1200,22 +1197,29 @@ func indexLiveUpdate(obj ctrlclient.Object) []indexer.Key {
 	return result
 }
 
-// collectAllSyncedFiles walks all sync paths and collects all files,
-// applying .dockerignore patterns and InitialSync.IgnorePaths.
-func (r *Reconciler) collectAllSyncedFiles(ctx context.Context, spec v1alpha1.LiveUpdateSpec) ([]string, error) {
+func (r *Reconciler) buildInitialSyncFilter(monitor *monitor) model.PathMatcher {
+	if len(monitor.spec.Sources) == 0 {
+		return model.EmptyMatcher
+	}
+
+	var allIgnores []v1alpha1.IgnoreDef
+	for _, source := range monitor.spec.Sources {
+		mSource, ok := monitor.sources[source.FileWatch]
+		if !ok {
+			continue
+		}
+		allIgnores = append(allIgnores, mSource.ignores...)
+	}
+	return ignore.CreateFileChangeFilter(allIgnores)
+}
+
+// collectAllSyncedFiles walks all sync paths and collects all files.
+func (r *Reconciler) collectAllSyncedFiles(ctx context.Context, spec v1alpha1.LiveUpdateSpec, filter model.PathMatcher) ([]string, error) {
 	l := logger.Get(ctx)
 	var allFiles []string
 
-	// Warn if the configured dockerignore directory has no .dockerignore file
-	if spec.InitialSync != nil && spec.InitialSync.Dockerignore != "" {
-		diPath := spec.InitialSync.Dockerignore
-		if !filepath.IsAbs(diPath) {
-			diPath = filepath.Join(spec.BasePath, diPath)
-		}
-		diFile := filepath.Join(diPath, ".dockerignore")
-		if _, err := os.Stat(diFile); os.IsNotExist(err) {
-			l.Warnf("initial_sync: configured dockerignore path %q has no .dockerignore file", diPath)
-		}
+	if filter == nil {
+		filter = model.EmptyMatcher
 	}
 
 	for _, syncSpec := range spec.Syncs {
@@ -1231,24 +1235,24 @@ func (r *Reconciler) collectAllSyncedFiles(ctx context.Context, spec v1alpha1.Li
 			return nil, fmt.Errorf("stat %s: %w", localPath, err)
 		}
 
-		ignoreMatcher, err := r.buildIgnoreMatcher(localPath, spec)
-		if err != nil {
-			return nil, fmt.Errorf("building ignore matcher for %s: %w", localPath, err)
-		}
-
-		err = filepath.WalkDir(localPath, func(path string, d fs.DirEntry, err error) error {
+		err := filepath.WalkDir(localPath, func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return err
 			}
 			if d.IsDir() {
-				if matches, _ := ignoreMatcher.MatchesEntireDir(path); matches {
+				if matches, err := filter.MatchesEntireDir(path); err != nil {
+					return err
+				} else if matches && path != localPath {
 					return filepath.SkipDir
 				}
 				return nil
 			}
-			if matches, _ := ignoreMatcher.Matches(path); !matches {
-				allFiles = append(allFiles, path)
+			if matches, err := filter.Matches(path); err != nil {
+				return err
+			} else if matches {
+				return nil
 			}
+			allFiles = append(allFiles, path)
 			return nil
 		})
 		if err != nil {
@@ -1257,72 +1261,4 @@ func (r *Reconciler) collectAllSyncedFiles(ctx context.Context, spec v1alpha1.Li
 	}
 
 	return allFiles, nil
-}
-
-// buildInitialSyncFilter creates a single PathMatcher that can be used as a
-// tar archive filter during initial sync. Unlike buildIgnoreMatcher (which is
-// per-sync-path), this builds a composite matcher that works across all sync
-// paths by combining per-path matchers.
-func (r *Reconciler) buildInitialSyncFilter(spec v1alpha1.LiveUpdateSpec) (model.PathMatcher, error) {
-	if spec.InitialSync == nil {
-		return model.EmptyMatcher, nil
-	}
-
-	var matchers []model.PathMatcher
-	for _, syncSpec := range spec.Syncs {
-		localPath := syncSpec.LocalPath
-		if !filepath.IsAbs(localPath) {
-			localPath = filepath.Join(spec.BasePath, localPath)
-		}
-		m, err := r.buildIgnoreMatcher(localPath, spec)
-		if err != nil {
-			return nil, err
-		}
-		if m != model.EmptyMatcher {
-			matchers = append(matchers, m)
-		}
-	}
-
-	if len(matchers) == 0 {
-		return model.EmptyMatcher, nil
-	}
-	if len(matchers) == 1 {
-		return matchers[0], nil
-	}
-	return model.NewCompositeMatcher(matchers), nil
-}
-
-func (r *Reconciler) buildIgnoreMatcher(syncPath string, spec v1alpha1.LiveUpdateSpec) (model.PathMatcher, error) {
-	var matchers []model.PathMatcher
-
-	// Load .dockerignore only if explicitly configured
-	if spec.InitialSync != nil && spec.InitialSync.Dockerignore != "" {
-		diPath := spec.InitialSync.Dockerignore
-		if !filepath.IsAbs(diPath) {
-			diPath = filepath.Join(spec.BasePath, diPath)
-		}
-		diMatcher, err := dockerignore.NewDockerIgnoreTester(diPath)
-		if err != nil {
-			return nil, fmt.Errorf("loading .dockerignore from %s: %w", diPath, err)
-		}
-		if diMatcher != nil {
-			matchers = append(matchers, diMatcher)
-		}
-	}
-
-	if spec.InitialSync != nil && len(spec.InitialSync.IgnorePaths) > 0 {
-		pm, err := dockerignore.NewDockerPatternMatcher(syncPath, spec.InitialSync.IgnorePaths)
-		if err != nil {
-			return nil, fmt.Errorf("parsing ignore paths: %w", err)
-		}
-		matchers = append(matchers, pm)
-	}
-
-	if len(matchers) == 0 {
-		return model.EmptyMatcher, nil
-	}
-	if len(matchers) == 1 {
-		return matchers[0], nil
-	}
-	return model.NewCompositeMatcher(matchers), nil
 }

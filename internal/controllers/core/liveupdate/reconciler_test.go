@@ -116,7 +116,8 @@ func TestConsumeFileEvents(t *testing.T) {
 	// Verify initial setup.
 	m, ok := f.r.monitors["frontend-liveupdate"]
 	require.True(t, ok)
-	assert.Equal(t, map[string]*monitorSource{}, m.sources)
+	require.Contains(t, m.sources, "frontend-fw")
+	assert.Empty(t, m.sources["frontend-fw"].modTimeByPath)
 	assert.Equal(t, "frontend-discovery", m.lastKubernetesDiscovery.Name)
 	assert.Nil(t, f.st.lastStartedAction)
 
@@ -163,7 +164,8 @@ func TestConsumeFileEventsDockerCompose(t *testing.T) {
 	// Verify initial setup.
 	m, ok := f.r.monitors["frontend-liveupdate"]
 	require.True(t, ok)
-	assert.Equal(t, map[string]*monitorSource{}, m.sources)
+	require.Contains(t, m.sources, "frontend-fw")
+	assert.Empty(t, m.sources["frontend-fw"].modTimeByPath)
 	assert.Equal(t, "frontend-service", m.lastDockerComposeService.Name)
 	assert.Nil(t, f.st.lastStartedAction)
 
@@ -1167,9 +1169,7 @@ func TestInitialSync_FirstContainerStart(t *testing.T) {
 	luUpdate.Spec.Execs = []v1alpha1.LiveUpdateExec{
 		{Args: []string{"sh", "-c", "npm install"}},
 	}
-	luUpdate.Spec.InitialSync = &v1alpha1.LiveUpdateInitialSync{
-		IgnorePaths: []string{},
-	}
+	luUpdate.Spec.InitialSync = &v1alpha1.LiveUpdateInitialSync{}
 	f.Update(luUpdate)
 
 	// Add pod with running container
@@ -1318,10 +1318,9 @@ func TestInitialSync_FiresAgainOnRestart(t *testing.T) {
 	require.Len(t, f.cu.Calls, 1, "Initial sync should fire again for new container")
 }
 
-func TestInitialSync_IgnorePaths(t *testing.T) {
+func TestInitialSync_SyncsAllFilesInSyncPath(t *testing.T) {
 	f := newFixture(t)
 
-	// Create temp directory with test files including ignored paths
 	tmpDir := t.TempDir()
 	srcDir := filepath.Join(tmpDir, "src")
 	nodeModulesDir := filepath.Join(srcDir, "node_modules")
@@ -1339,9 +1338,7 @@ func TestInitialSync_IgnorePaths(t *testing.T) {
 	luUpdate.Spec.Syncs = []v1alpha1.LiveUpdateSync{
 		{LocalPath: "src", ContainerPath: "/app/src"},
 	}
-	luUpdate.Spec.InitialSync = &v1alpha1.LiveUpdateInitialSync{
-		IgnorePaths: []string{"node_modules"},
-	}
+	luUpdate.Spec.InitialSync = &v1alpha1.LiveUpdateInitialSync{}
 	f.Update(luUpdate)
 
 	f.cu.Calls = nil
@@ -1366,8 +1363,10 @@ func TestInitialSync_IgnorePaths(t *testing.T) {
 	})
 	f.MustReconcile(types.NamespacedName{Name: "frontend-liveupdate"})
 
-	// Verify initial sync happened (node_modules should be filtered out internally)
-	require.Len(t, f.cu.Calls, 1, "Expected one UpdateContainer call")
+	require.Len(t, f.cu.Calls, 1)
+	names := tarEntryNames(t, f.cu.Calls[0])
+	assert.Contains(t, names, "app/src/file1.txt")
+	assert.Contains(t, names, "app/src/node_modules/ignored.js")
 }
 
 func TestInitialSync_ExecsRespectTriggers(t *testing.T) {
@@ -1476,7 +1475,7 @@ func TestInitialSync_NoInitialSyncWithoutConfig(t *testing.T) {
 	assert.Len(t, f.cu.Calls, 0, "Should not sync without file changes when initial_sync is not configured")
 }
 
-func TestInitialSync_ExplicitDockerignore(t *testing.T) {
+func TestInitialSync_UsesSourceFileWatchIgnores(t *testing.T) {
 	f := newFixture(t)
 
 	tmpDir := t.TempDir()
@@ -1484,11 +1483,19 @@ func TestInitialSync_ExplicitDockerignore(t *testing.T) {
 	require.NoError(t, os.MkdirAll(filepath.Join(srcDir, "build"), 0755))
 	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "app.go"), []byte("package main"), 0644))
 	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "build", "output.bin"), []byte("binary"), 0644))
-	// .dockerignore at sync root excludes build/
 	require.NoError(t, os.WriteFile(filepath.Join(srcDir, ".dockerignore"), []byte("build/\n"), 0644))
 
 	f.setupFrontend()
 
+	var fw v1alpha1.FileWatch
+	f.MustGet(types.NamespacedName{Name: "frontend-fw"}, &fw)
+	fwUpdate := fw.DeepCopy()
+	fwUpdate.Spec.Ignores = []v1alpha1.IgnoreDef{{
+		BasePath: srcDir,
+		Patterns: []string{"build/"},
+	}}
+	f.Update(fwUpdate)
+
 	var lu v1alpha1.LiveUpdate
 	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
 	luUpdate := lu.DeepCopy()
@@ -1496,9 +1503,7 @@ func TestInitialSync_ExplicitDockerignore(t *testing.T) {
 	luUpdate.Spec.Syncs = []v1alpha1.LiveUpdateSync{
 		{LocalPath: "src", ContainerPath: "/app"},
 	}
-	luUpdate.Spec.InitialSync = &v1alpha1.LiveUpdateInitialSync{
-		Dockerignore: "src",
-	}
+	luUpdate.Spec.InitialSync = &v1alpha1.LiveUpdateInitialSync{}
 	f.Update(luUpdate)
 
 	f.cu.Calls = nil
@@ -1523,61 +1528,11 @@ func TestInitialSync_ExplicitDockerignore(t *testing.T) {
 	})
 	f.MustReconcile(types.NamespacedName{Name: "frontend-liveupdate"})
 
-	require.Len(t, f.cu.Calls, 1, "Expected one UpdateContainer call")
-	// build/output.bin should be excluded by .dockerignore, so only app.go and .dockerignore synced
-}
-
-func TestInitialSync_GlobIgnorePatterns(t *testing.T) {
-	f := newFixture(t)
-
-	tmpDir := t.TempDir()
-	srcDir := filepath.Join(tmpDir, "src")
-	require.NoError(t, os.MkdirAll(filepath.Join(srcDir, "pkg", "a", "spec"), 0755))
-	require.NoError(t, os.MkdirAll(filepath.Join(srcDir, "pkg", "b", "spec"), 0755))
-	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "main.go"), []byte("package main"), 0644))
-	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "pkg", "a", "a.go"), []byte("package a"), 0644))
-	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "pkg", "a", "spec", "a_test.go"), []byte("test"), 0644))
-	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "pkg", "b", "b.go"), []byte("package b"), 0644))
-	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "pkg", "b", "spec", "b_test.go"), []byte("test"), 0644))
-
-	f.setupFrontend()
-
-	var lu v1alpha1.LiveUpdate
-	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
-	luUpdate := lu.DeepCopy()
-	luUpdate.Spec.BasePath = tmpDir
-	luUpdate.Spec.Syncs = []v1alpha1.LiveUpdateSync{
-		{LocalPath: "src", ContainerPath: "/app"},
-	}
-	luUpdate.Spec.InitialSync = &v1alpha1.LiveUpdateInitialSync{
-		IgnorePaths: []string{"**/spec"},
-	}
-	f.Update(luUpdate)
-
-	f.cu.Calls = nil
-	f.kdUpdateStatus("frontend-discovery", v1alpha1.KubernetesDiscoveryStatus{
-		Pods: []v1alpha1.Pod{
-			{
-				Name:      "pod-1",
-				Namespace: "default",
-				Phase:     "Running",
-				Containers: []v1alpha1.Container{
-					{
-						Name:  "main",
-						ID:    "container-1",
-						Image: "local-registry:12345/frontend-image:my-tag",
-						State: v1alpha1.ContainerState{
-							Running: &v1alpha1.ContainerStateRunning{},
-						},
-					},
-				},
-			},
-		},
-	})
-	f.MustReconcile(types.NamespacedName{Name: "frontend-liveupdate"})
-
-	require.Len(t, f.cu.Calls, 1, "Expected one UpdateContainer call")
-	// **/spec should exclude both pkg/a/spec and pkg/b/spec
+	require.Len(t, f.cu.Calls, 1)
+	names := tarEntryNames(t, f.cu.Calls[0])
+	assert.Contains(t, names, "app/app.go")
+	assert.Contains(t, names, "app/.dockerignore")
+	assert.NotContains(t, names, "app/build/output.bin")
 }
 
 func TestInitialSync_MultipleSyncPaths(t *testing.T) {
@@ -1688,7 +1643,7 @@ func tarEntryNames(t *testing.T, call containerupdate.UpdateContainerCall) []str
 	return names
 }
 
-func TestInitialSync_TarBatching_IgnoresFilteredFiles(t *testing.T) {
+func TestInitialSync_TarBatching_UsesFileWatchIgnores(t *testing.T) {
 	f := newFixture(t)
 
 	tmpDir := t.TempDir()
@@ -1702,6 +1657,15 @@ func TestInitialSync_TarBatching_IgnoresFilteredFiles(t *testing.T) {
 
 	f.setupFrontend()
 
+	var fw v1alpha1.FileWatch
+	f.MustGet(types.NamespacedName{Name: "frontend-fw"}, &fw)
+	fwUpdate := fw.DeepCopy()
+	fwUpdate.Spec.Ignores = []v1alpha1.IgnoreDef{{
+		BasePath: srcDir,
+		Patterns: []string{"node_modules", "vendor"},
+	}}
+	f.Update(fwUpdate)
+
 	var lu v1alpha1.LiveUpdate
 	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
 	luUpdate := lu.DeepCopy()
@@ -1709,9 +1673,7 @@ func TestInitialSync_TarBatching_IgnoresFilteredFiles(t *testing.T) {
 	luUpdate.Spec.Syncs = []v1alpha1.LiveUpdateSync{
 		{LocalPath: "src", ContainerPath: "/app"},
 	}
-	luUpdate.Spec.InitialSync = &v1alpha1.LiveUpdateInitialSync{
-		IgnorePaths: []string{"node_modules", "vendor"},
-	}
+	luUpdate.Spec.InitialSync = &v1alpha1.LiveUpdateInitialSync{}
 	f.Update(luUpdate)
 
 	f.cu.Calls = nil
@@ -1739,76 +1701,11 @@ func TestInitialSync_TarBatching_IgnoresFilteredFiles(t *testing.T) {
 	require.Len(t, f.cu.Calls, 1)
 	names := tarEntryNames(t, f.cu.Calls[0])
 
-	// Verify the tar contains only the non-ignored files
 	assert.Contains(t, names, "app/app.js")
 	assert.Contains(t, names, "app/index.html")
-
-	// Verify ignored directories are excluded from the tar
 	for _, name := range names {
 		assert.NotContains(t, name, "node_modules", "node_modules should be excluded from tar")
 		assert.NotContains(t, name, "vendor", "vendor should be excluded from tar")
-	}
-}
-
-func TestInitialSync_TarBatching_DockerignoreExcludesFromTar(t *testing.T) {
-	f := newFixture(t)
-
-	tmpDir := t.TempDir()
-	srcDir := filepath.Join(tmpDir, "src")
-	require.NoError(t, os.MkdirAll(filepath.Join(srcDir, "build"), 0755))
-	require.NoError(t, os.MkdirAll(filepath.Join(srcDir, "tmp"), 0755))
-	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "main.go"), []byte("package main"), 0644))
-	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "build", "output.bin"), []byte("binary"), 0644))
-	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "tmp", "cache.dat"), []byte("cache"), 0644))
-	require.NoError(t, os.WriteFile(filepath.Join(srcDir, ".dockerignore"), []byte("build/\ntmp/\n"), 0644))
-
-	f.setupFrontend()
-
-	var lu v1alpha1.LiveUpdate
-	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
-	luUpdate := lu.DeepCopy()
-	luUpdate.Spec.BasePath = tmpDir
-	luUpdate.Spec.Syncs = []v1alpha1.LiveUpdateSync{
-		{LocalPath: "src", ContainerPath: "/app"},
-	}
-	luUpdate.Spec.InitialSync = &v1alpha1.LiveUpdateInitialSync{
-		Dockerignore: "src",
-	}
-	f.Update(luUpdate)
-
-	f.cu.Calls = nil
-	f.kdUpdateStatus("frontend-discovery", v1alpha1.KubernetesDiscoveryStatus{
-		Pods: []v1alpha1.Pod{
-			{
-				Name:      "pod-1",
-				Namespace: "default",
-				Phase:     "Running",
-				Containers: []v1alpha1.Container{
-					{
-						Name:  "main",
-						ID:    "container-1",
-						Image: "local-registry:12345/frontend-image:my-tag",
-						State: v1alpha1.ContainerState{
-							Running: &v1alpha1.ContainerStateRunning{},
-						},
-					},
-				},
-			},
-		},
-	})
-	f.MustReconcile(types.NamespacedName{Name: "frontend-liveupdate"})
-
-	require.Len(t, f.cu.Calls, 1)
-	names := tarEntryNames(t, f.cu.Calls[0])
-
-	// main.go and .dockerignore should be in the tar
-	assert.Contains(t, names, "app/main.go")
-	assert.Contains(t, names, "app/.dockerignore")
-
-	// build/ and tmp/ should be excluded by .dockerignore
-	for _, name := range names {
-		assert.NotContains(t, name, "build/", "build/ should be excluded by .dockerignore")
-		assert.NotContains(t, name, "tmp/", "tmp/ should be excluded by .dockerignore")
 	}
 }
 
@@ -1916,70 +1813,6 @@ func TestInitialSync_TarBatching_NoDeletesDuringInitialSync(t *testing.T) {
 	assert.Empty(t, f.cu.Calls[0].ToDelete, "Initial sync should not delete any files")
 }
 
-func TestInitialSync_TarBatching_GlobPatternExcludesFromTar(t *testing.T) {
-	f := newFixture(t)
-
-	tmpDir := t.TempDir()
-	srcDir := filepath.Join(tmpDir, "src")
-	require.NoError(t, os.MkdirAll(filepath.Join(srcDir, "pkg", "a", "testdata"), 0755))
-	require.NoError(t, os.MkdirAll(filepath.Join(srcDir, "pkg", "b", "testdata"), 0755))
-	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "main.go"), []byte("package main"), 0644))
-	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "pkg", "a", "a.go"), []byte("package a"), 0644))
-	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "pkg", "a", "testdata", "fixture.json"), []byte("{}"), 0644))
-	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "pkg", "b", "b.go"), []byte("package b"), 0644))
-	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "pkg", "b", "testdata", "fixture.json"), []byte("{}"), 0644))
-
-	f.setupFrontend()
-
-	var lu v1alpha1.LiveUpdate
-	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
-	luUpdate := lu.DeepCopy()
-	luUpdate.Spec.BasePath = tmpDir
-	luUpdate.Spec.Syncs = []v1alpha1.LiveUpdateSync{
-		{LocalPath: "src", ContainerPath: "/app"},
-	}
-	luUpdate.Spec.InitialSync = &v1alpha1.LiveUpdateInitialSync{
-		IgnorePaths: []string{"**/testdata"},
-	}
-	f.Update(luUpdate)
-
-	f.cu.Calls = nil
-	f.kdUpdateStatus("frontend-discovery", v1alpha1.KubernetesDiscoveryStatus{
-		Pods: []v1alpha1.Pod{
-			{
-				Name:      "pod-1",
-				Namespace: "default",
-				Phase:     "Running",
-				Containers: []v1alpha1.Container{
-					{
-						Name:  "main",
-						ID:    "container-1",
-						Image: "local-registry:12345/frontend-image:my-tag",
-						State: v1alpha1.ContainerState{
-							Running: &v1alpha1.ContainerStateRunning{},
-						},
-					},
-				},
-			},
-		},
-	})
-	f.MustReconcile(types.NamespacedName{Name: "frontend-liveupdate"})
-
-	require.Len(t, f.cu.Calls, 1)
-	names := tarEntryNames(t, f.cu.Calls[0])
-
-	// Source files should be present
-	assert.Contains(t, names, "app/main.go")
-	assert.Contains(t, names, "app/pkg/a/a.go")
-	assert.Contains(t, names, "app/pkg/b/b.go")
-
-	// testdata dirs should be excluded by **/testdata glob
-	for _, name := range names {
-		assert.NotContains(t, name, "testdata", "testdata should be excluded from tar")
-	}
-	assert.Len(t, names, 3, "Expected exactly 3 files (testdata excluded)")
-}
-
 func TestInitialSync_TarBatching_LargeFileTree(t *testing.T) {
 	f := newFixture(t)
 
@@ -1987,7 +1820,7 @@ func TestInitialSync_TarBatching_LargeFileTree(t *testing.T) {
 	srcDir := filepath.Join(tmpDir, "src")
 
 	// Create a moderately large file tree: 10 dirs x 100 files = 1000 files
-	// plus 10 dirs x 10 ignored files = 100 ignored files
+	// plus 10 dirs x 10 ignored files = 100 ignored files.
 	for i := 0; i < 10; i++ {
 		dir := filepath.Join(srcDir, fmt.Sprintf("pkg%d", i))
 		require.NoError(t, os.MkdirAll(dir, 0755))
@@ -1996,7 +1829,7 @@ func TestInitialSync_TarBatching_LargeFileTree(t *testing.T) {
 				filepath.Join(dir, fmt.Sprintf("file%d.go", j)),
 				[]byte(fmt.Sprintf("package pkg%d", i)), 0644))
 		}
-		// Create ignored test files
+		// Create ignored test files.
 		testDir := filepath.Join(dir, "test")
 		require.NoError(t, os.MkdirAll(testDir, 0755))
 		for j := 0; j < 10; j++ {
@@ -2008,6 +1841,15 @@ func TestInitialSync_TarBatching_LargeFileTree(t *testing.T) {
 
 	f.setupFrontend()
 
+	var fw v1alpha1.FileWatch
+	f.MustGet(types.NamespacedName{Name: "frontend-fw"}, &fw)
+	fwUpdate := fw.DeepCopy()
+	fwUpdate.Spec.Ignores = []v1alpha1.IgnoreDef{{
+		BasePath: srcDir,
+		Patterns: []string{"**/test"},
+	}}
+	f.Update(fwUpdate)
+
 	var lu v1alpha1.LiveUpdate
 	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
 	luUpdate := lu.DeepCopy()
@@ -2015,9 +1857,7 @@ func TestInitialSync_TarBatching_LargeFileTree(t *testing.T) {
 	luUpdate.Spec.Syncs = []v1alpha1.LiveUpdateSync{
 		{LocalPath: "src", ContainerPath: "/app"},
 	}
-	luUpdate.Spec.InitialSync = &v1alpha1.LiveUpdateInitialSync{
-		IgnorePaths: []string{"**/test"},
-	}
+	luUpdate.Spec.InitialSync = &v1alpha1.LiveUpdateInitialSync{}
 	f.Update(luUpdate)
 
 	f.cu.Calls = nil
@@ -2045,7 +1885,6 @@ func TestInitialSync_TarBatching_LargeFileTree(t *testing.T) {
 	require.Len(t, f.cu.Calls, 1)
 	names := tarEntryNames(t, f.cu.Calls[0])
 
-	// Should have exactly 1000 files (10 dirs x 100 files), no test files
 	assert.Len(t, names, 1000, "Expected 1000 files (test dirs excluded)")
 	for _, name := range names {
 		assert.NotContains(t, name, "/test/", "test directories should be excluded")

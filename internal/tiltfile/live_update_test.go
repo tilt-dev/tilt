@@ -500,7 +500,7 @@ func newLiveUpdateFixture(t *testing.T) *liveUpdateFixture {
 	return f
 }
 
-func TestLiveUpdate_InitialSync_WithIgnore(t *testing.T) {
+func TestLiveUpdate_InitialSync(t *testing.T) {
 	f := newFixture(t)
 	f.setupFoo()
 
@@ -508,7 +508,7 @@ func TestLiveUpdate_InitialSync_WithIgnore(t *testing.T) {
 k8s_yaml('foo.yaml')
 docker_build('gcr.io/foo', 'foo',
   live_update=[
-    initial_sync(ignore=['node_modules', '.git']),
+    initial_sync(),
     sync('foo', '/app'),
     run('npm install'),
   ]
@@ -523,9 +523,7 @@ docker_build('gcr.io/foo', 'foo',
 		Execs: []v1alpha1.LiveUpdateExec{
 			{Args: []string{"sh", "-c", "npm install"}},
 		},
-		InitialSync: &v1alpha1.LiveUpdateInitialSync{
-			IgnorePaths: []string{"node_modules", ".git"},
-		},
+		InitialSync: &v1alpha1.LiveUpdateInitialSync{},
 	}
 
 	f.assertNextManifest("foo", db(image("gcr.io/foo"), lu))
@@ -554,36 +552,6 @@ docker_build('gcr.io/foo', 'foo',
 	}
 
 	f.assertNextManifest("foo", db(image("gcr.io/foo"), lu))
-}
-
-func TestLiveUpdate_InitialSync_AbsolutePathError(t *testing.T) {
-	f := newFixture(t)
-	f.setupFoo()
-
-	f.file("Tiltfile", `
-k8s_yaml('foo.yaml')
-docker_build('gcr.io/foo', 'foo',
-  live_update=[
-    initial_sync(ignore=['/absolute/path']),
-    sync('foo', '/app'),
-  ]
-)`)
-	f.loadErrString("ignore paths must be relative to basePath")
-}
-
-func TestLiveUpdate_InitialSync_InvalidIgnoreType(t *testing.T) {
-	f := newFixture(t)
-	f.setupFoo()
-
-	f.file("Tiltfile", `
-k8s_yaml('foo.yaml')
-docker_build('gcr.io/foo', 'foo',
-  live_update=[
-    initial_sync(ignore=[123, 456]),
-    sync('foo', '/app'),
-  ]
-)`)
-	f.loadErrString("initial_sync ignore paths must be strings")
 }
 
 func TestLiveUpdate_InitialSync_MustBeFirst(t *testing.T) {
@@ -623,7 +591,7 @@ func TestLiveUpdate_InitialSync_K8sCustomDeploy(t *testing.T) {
 	f.file("Tiltfile", `
 k8s_custom_deploy('foo', 'apply', 'delete', deps=['foo'], container_selector='foo',
   live_update=[
-    initial_sync(ignore=['node_modules']),
+    initial_sync(),
     sync('foo', '/app'),
     run('npm install'),
   ]
@@ -638,9 +606,7 @@ k8s_custom_deploy('foo', 'apply', 'delete', deps=['foo'], container_selector='fo
 		Execs: []v1alpha1.LiveUpdateExec{
 			{Args: []string{"sh", "-c", "npm install"}},
 		},
-		InitialSync: &v1alpha1.LiveUpdateInitialSync{
-			IgnorePaths: []string{"node_modules"},
-		},
+		InitialSync: &v1alpha1.LiveUpdateInitialSync{},
 		Selector: v1alpha1.LiveUpdateSelector{
 			Kubernetes: &v1alpha1.LiveUpdateKubernetesSelector{
 				ContainerName: "foo",
