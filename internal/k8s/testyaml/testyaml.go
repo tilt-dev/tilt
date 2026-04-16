@@ -1712,3 +1712,95 @@ metadata:
 spec:
   group: metrics.k8s.io
 `
+
+const ImageVolumeYAML = `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: oci-volume-example
+spec:
+  containers:
+  - name: web-server
+    image: nginx:latest
+    volumeMounts:
+    - name: my-oci-volume
+      mountPath: /usr/share/nginx/html/data
+  volumes:
+  - name: my-oci-volume
+    image:
+      reference: ghcr.io/example-user/website-dist:latest
+      pullPolicy: IfNotPresent
+`
+
+const ImageVolumeDeploymentYAML = `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oci-volume-deploy
+spec:
+  selector:
+    matchLabels:
+      app: oci-vol
+  template:
+    metadata:
+      labels:
+        app: oci-vol
+    spec:
+      containers:
+      - name: web-server
+        image: nginx:latest
+        volumeMounts:
+        - name: my-oci-volume
+          mountPath: /data
+      volumes:
+      - name: my-oci-volume
+        image:
+          reference: ghcr.io/example-user/website-dist:latest
+          pullPolicy: IfNotPresent
+`
+
+const ImageVolumeStatefulSetYAML = `
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: oci-volume-sts
+spec:
+  serviceName: oci-vol
+  selector:
+    matchLabels:
+      app: oci-vol
+  template:
+    metadata:
+      labels:
+        app: oci-vol
+    spec:
+      containers:
+      - name: web-server
+        image: nginx:latest
+        volumeMounts:
+        - name: my-oci-volume
+          mountPath: /data
+      volumes:
+      - name: my-oci-volume
+        image:
+          reference: ghcr.io/example-user/website-dist:latest
+          pullPolicy: IfNotPresent
+`
+
+const ImageVolumeOnlyYAML = `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: oci-volume-only
+spec:
+  containers:
+  - name: web-server
+    image: nginx:latest
+  volumes:
+  - name: my-oci-volume
+    image:
+      reference: ghcr.io/example-user/website-dist:latest
+  - name: config-vol
+    configMap:
+      name: my-config
+`

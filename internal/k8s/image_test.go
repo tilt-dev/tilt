@@ -463,3 +463,139 @@ func TestMatchInEnvVarsTrue(t *testing.T) {
 	assert.Equal(t, namedTagged.String(), c.Image)
 	assert.Contains(t, c.Env, v1.EnvVar{Name: "bar", Value: namedTagged.String()})
 }
+
+func TestImageVolumeFindImages(t *testing.T) {
+	entity := parseOneEntity(t, testyaml.ImageVolumeYAML)
+	images, err := entity.FindImages(nil, nil)
+	require.NoError(t, err)
+
+	// Should find both the container image (nginx:latest) and the volume image
+	refStrs := make([]string, len(images))
+	for i, ref := range images {
+		refStrs[i] = ref.String()
+	}
+	assert.Contains(t, refStrs, "docker.io/library/nginx:latest")
+	assert.Contains(t, refStrs, "ghcr.io/example-user/website-dist:latest")
+}
+
+func TestImageVolumeHasImage(t *testing.T) {
+	entity := parseOneEntity(t, testyaml.ImageVolumeYAML)
+
+	volImg := container.MustParseSelector("ghcr.io/example-user/website-dist")
+	match, err := entity.HasImage(volImg, nil, false)
+	require.NoError(t, err)
+	assert.True(t, match, "entity should match volume image")
+
+	wrongImg := container.MustParseSelector("ghcr.io/example-user/wrong-image")
+	match, err = entity.HasImage(wrongImg, nil, false)
+	require.NoError(t, err)
+	assert.False(t, match, "entity should not match wrong image")
+}
+
+func TestImageVolumeInjectDigest(t *testing.T) {
+	entity := parseOneEntity(t, testyaml.ImageVolumeYAML)
+
+	name := "ghcr.io/example-user/website-dist"
+	digest := "sha256:2baf1f40105d9501fe319a8ec463fdf4325a2a5df445adf3f572f626253678c9"
+	newEntity, replaced, err := InjectImageDigestWithStrings(entity, name, digest, nil, v1.PullIfNotPresent)
+	require.NoError(t, err)
+	assert.True(t, replaced)
+
+	result, err := SerializeSpecYAML([]K8sEntity{newEntity})
+	require.NoError(t, err)
+
+	assert.Contains(t, result, fmt.Sprintf("reference: %s@%s", name, digest))
+}
+
+func TestImageVolumeInjectPullPolicy(t *testing.T) {
+	entity := parseOneEntity(t, testyaml.ImageVolumeYAML)
+
+	name := "ghcr.io/example-user/website-dist"
+	namedTagged, err := reference.ParseNamed(fmt.Sprintf("%s:my-tag", name))
+	require.NoError(t, err)
+
+	newEntity, replaced, err := InjectImageDigest(entity, container.NameSelector(namedTagged), namedTagged, nil, false, v1.PullNever)
+	require.NoError(t, err)
+	assert.True(t, replaced)
+
+	result, err := SerializeSpecYAML([]K8sEntity{newEntity})
+	require.NoError(t, err)
+
+	assert.Contains(t, result, "pullPolicy: Never")
+}
+
+func TestImageVolumeInjectDoesNotMutateOriginal(t *testing.T) {
+	entity := parseOneEntity(t, testyaml.ImageVolumeYAML)
+
+	name := "ghcr.io/example-user/website-dist"
+	digest := "sha256:2baf1f40105d9501fe319a8ec463fdf4325a2a5df445adf3f572f626253678c9"
+	_, replaced, err := InjectImageDigestWithStrings(entity, name, digest, nil, v1.PullIfNotPresent)
+	require.NoError(t, err)
+	assert.True(t, replaced)
+
+	// Original should be untouched
+	result, err := SerializeSpecYAML([]K8sEntity{entity})
+	require.NoError(t, err)
+	assert.NotContains(t, result, digest)
+	assert.Contains(t, result, "reference: ghcr.io/example-user/website-dist:latest")
+}
+
+func TestImageVolumeAndContainerBothReplaced(t *testing.T) {
+	// Use a YAML where the same image appears in both a container and a volume
+	yaml := `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: dual-image
+spec:
+  containers:
+  - name: app
+    image: ghcr.io/example-user/website-dist:latest
+  volumes:
+  - name: vol
+    image:
+      reference: ghcr.io/example-user/website-dist:latest
+`
+	entity := parseOneEntity(t, yaml)
+
+	name := "ghcr.io/example-user/website-dist"
+	digest := "sha256:2baf1f40105d9501fe319a8ec463fdf4325a2a5df445adf3f572f626253678c9"
+	newEntity, replaced, err := InjectImageDigestWithStrings(entity, name, digest, nil, v1.PullIfNotPresent)
+	require.NoError(t, err)
+	assert.True(t, replaced)
+
+	result, err := SerializeSpecYAML([]K8sEntity{newEntity})
+	require.NoError(t, err)
+
+	expected := fmt.Sprintf("%s@%s", name, digest)
+	assert.Contains(t, result, fmt.Sprintf("image: %s", expected))
+	assert.Contains(t, result, fmt.Sprintf("reference: %s", expected))
+}
+
+func TestImageVolumeInDeployment(t *testing.T) {
+	entity := parseOneEntity(t, testyaml.ImageVolumeDeploymentYAML)
+
+	name := "ghcr.io/example-user/website-dist"
+	digest := "sha256:2baf1f40105d9501fe319a8ec463fdf4325a2a5df445adf3f572f626253678c9"
+	newEntity, replaced, err := InjectImageDigestWithStrings(entity, name, digest, nil, v1.PullIfNotPresent)
+	require.NoError(t, err)
+	assert.True(t, replaced)
+
+	result, err := SerializeSpecYAML([]K8sEntity{newEntity})
+	require.NoError(t, err)
+	assert.Contains(t, result, fmt.Sprintf("reference: %s@%s", name, digest))
+}
+
+func TestImageVolumeInStatefulSet(t *testing.T) {
+	entity := parseOneEntity(t, testyaml.ImageVolumeStatefulSetYAML)
+
+	name := "ghcr.io/example-user/website-dist"
+	digest := "sha256:2baf1f40105d9501fe319a8ec463fdf4325a2a5df445adf3f572f626253678c9"
+	newEntity, replaced, err := InjectImageDigestWithStrings(entity, name, digest, nil, v1.PullIfNotPresent)
+	require.NoError(t, err)
+	assert.True(t, replaced)
+
+	result, err := SerializeSpecYAML([]K8sEntity{newEntity})
+	require.NoError(t, err)
+	assert.Contains(t, result, fmt.Sprintf("reference: %s@%s", name, digest))
+}
