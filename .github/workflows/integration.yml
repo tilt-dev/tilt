@@ -1,0 +1,115 @@
+name: Integration
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      has-go-changes: ${{ steps.check.outputs.go-changes }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for Go changes
+        id: check
+        run: |
+          if ./scripts/ci-has-go-changes.sh; then
+            echo "go-changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "go-changes=false" >> $GITHUB_OUTPUT
+          fi
+
+  build-integration:
+    needs: check-changes
+    if: needs.check-changes.outputs.has-go-changes == 'true'
+    runs-on: ubuntu-latest
+    container:
+      image: docker/tilt-integration-ci@sha256:9821f02b3304ede7a09ec0564e0a68abea9375bf596b64f34aa683c613db69f4
+      options: --privileged
+    services:
+      dind:
+        image: docker:dind
+        options: --privileged
+        env:
+          DOCKER_TLS_CERTDIR: ""
+    env:
+      DOCKER_HOST: tcp://dind:2375
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Wait for Docker
+        run: |
+          timeout 30 sh -c 'until docker info; do sleep 1; done'
+
+      - name: Setup Kind cluster
+        run: ctlptl create cluster kind --registry=ctlptl-registry
+
+      - name: Build and run integration tests
+        run: make build-js integration
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: integration-test-results
+          path: test-results/
+
+      - name: Notify Slack on failure
+        if: failure() && github.ref == 'refs/heads/master'
+        uses: slackapi/slack-github-action@v2
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "build-integration failed on master: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }
+
+  test-extensions:
+    needs: check-changes
+    if: needs.check-changes.outputs.has-go-changes == 'true'
+    runs-on: ubuntu-latest
+    container:
+      image: docker/tilt-extensions-ci@sha256:c22a39c287c7c3afba182f4f46044475b43bd2d4e2bb89f41136eae7d4f4b94d
+      options: --privileged
+    services:
+      dind:
+        image: docker:dind
+        options: --privileged
+        env:
+          DOCKER_TLS_CERTDIR: ""
+    env:
+      DOCKER_HOST: tcp://dind:2375
+      PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Wait for Docker
+        run: |
+          timeout 30 sh -c 'until docker info; do sleep 1; done'
+
+      - name: Setup Kind cluster
+        run: ctlptl create cluster kind --registry=ctlptl-registry
+
+      - name: Build and test extensions
+        run: make build-js install test-extensions
+
+      - name: Notify Slack on failure
+        if: failure() && github.ref == 'refs/heads/master'
+        uses: slackapi/slack-github-action@v2
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "test-extensions failed on master: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }

@@ -1,0 +1,101 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    container:
+      image: docker/tilt-ci@sha256:3b83314ab36d9a529f5af8ca788b00d0926d16ed981a929317aab62696a88d77
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v3
+
+      - name: Pull registry image
+        run: docker pull registry:2
+
+      - name: Build
+        run: make install
+
+      - name: Lint
+        run: make lint
+
+      - name: Version check
+        run: make test_install_version_check
+
+      - name: Wire check
+        run: make wire-check
+
+      - name: Check codegen
+        run: ./scripts/check-codegen.sh
+
+      - name: Run tests
+        run: make test-go-ci
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: go-test-results
+          path: test-results/
+
+      - name: Notify Slack on failure
+        if: failure() && github.ref == 'refs/heads/master'
+        uses: slackapi/slack-github-action@v2
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "build-linux failed on master: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }
+
+  build-js:
+    runs-on: ubuntu-latest
+    needs: build-linux
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.14.0'
+          cache: 'yarn'
+          cache-dependency-path: web/yarn.lock
+
+      - name: Check JS
+        run: make check-js
+
+      - name: Test JS
+        run: make test-js-ci
+        env:
+          JEST_JUNIT_OUTPUT_DIR: reports/junit/js-test-results.xml
+
+      - name: Test Storybook
+        run: make test-storybook
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: js-test-results
+          path: web/reports/junit/
+
+      - name: Notify Slack on failure
+        if: failure() && github.ref == 'refs/heads/master'
+        uses: slackapi/slack-github-action@v2
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "build-js failed on master: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }

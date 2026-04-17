@@ -1,0 +1,64 @@
+name: Docs
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-docs:
+    runs-on: ubuntu-latest
+    container:
+      image: docker/tilt-ci@sha256:3b83314ab36d9a529f5af8ca788b00d0926d16ed981a929317aab62696a88d77
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for Go changes
+        id: changes
+        run: |
+          if ! ./scripts/ci-has-go-changes.sh; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Setup SSH
+        if: steps.changes.outputs.skip != 'true'
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.TILT_BUILD_DEPLOY_KEY }}
+
+      - name: Clone tilt.build repo
+        if: steps.changes.outputs.skip != 'true'
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+          git clone git@github.com:tilt-dev/tilt.build ../tilt.build
+
+      - name: Build Tilt
+        if: steps.changes.outputs.skip != 'true'
+        run: make install
+
+      - name: Generate and verify docs
+        if: steps.changes.outputs.skip != 'true'
+        working-directory: ../tilt.build
+        run: |
+          tilt dump cli-docs --dir="./docs/cli"
+          tilt dump api-docs --dir="./api"
+          make cli-toc
+          make api
+
+      - name: Notify Slack on failure
+        if: failure() && github.ref == 'refs/heads/master'
+        uses: slackapi/slack-github-action@v2
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "check-docs failed on master: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }

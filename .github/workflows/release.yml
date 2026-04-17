@@ -1,0 +1,123 @@
+name: Release
+
+on:
+  push:
+    branches: [master]
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release-dry-run:
+    # Run on master branch pushes only (not tags)
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    container:
+      image: docker/tilt-releaser@sha256:304fa435c4b18d71d1aeae4578762625fc43ab69bc24656e20d150ee23dc2b2b
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build JS
+        run: make build-js
+
+      - name: Goreleaser dry run
+        run: goreleaser --verbose --clean --skip=publish --snapshot
+        timeout-minutes: 20
+
+      - name: Notify Slack on failure
+        if: failure()
+        uses: slackapi/slack-github-action@v2
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "release-dry-run failed: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }
+
+  release:
+    # Run only on version tags
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    container:
+      image: docker/tilt-releaser@sha256:304fa435c4b18d71d1aeae4578762625fc43ab69bc24656e20d150ee23dc2b2b
+    env:
+      DOCKER_CLI_EXPERIMENTAL: enabled
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Notify Slack - Release Started
+        uses: slackapi/slack-github-action@v2
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "A Tilt release has started! Version: ${{ github.ref_name }}"
+            }
+
+      - name: Docker login
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Setup SSH for repo updates
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: Configure Git
+        run: |
+          git config --global user.email "hi@tilt.dev"
+          git config --global user.name "Tilt Dev"
+          mkdir -p ~/.ssh
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+
+      - name: Run release
+        run: ./scripts/release-ci.sh
+        timeout-minutes: 20
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Notify Slack - Release Complete
+        if: success()
+        uses: slackapi/slack-github-action@v2
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "Tilt release ${{ github.ref_name }} completed successfully!"
+            }
+
+      - name: Notify Slack - Release Failed
+        if: failure()
+        uses: slackapi/slack-github-action@v2
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "Tilt release ${{ github.ref_name }} FAILED: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }
