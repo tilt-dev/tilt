@@ -204,6 +204,20 @@ func (s K8sRuntimeState) EntityDisplayNames() []string {
 	return k8s.UniqueNamesMeta(entities, 2)
 }
 
+// GetNamespace returns the Kubernetes namespace for the deployed resources.
+// It extracts the namespace from the first deployed reference if available.
+func (s K8sRuntimeState) GetNamespace() string {
+	if s.ApplyFilter == nil || len(s.ApplyFilter.DeployedRefs) == 0 {
+		// Fall back to pod namespace if no deployed refs
+		pod := s.MostRecentPod()
+		if pod.Name != "" {
+			return pod.Namespace
+		}
+		return ""
+	}
+	return s.ApplyFilter.DeployedRefs[0].Namespace
+}
+
 type objectRefMeta struct {
 	v1.ObjectReference
 }

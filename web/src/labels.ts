@@ -90,3 +90,79 @@ export function resourcesHaveLabels<T>(
 
   return resources.some((r) => getLabels(r).length > 0)
 }
+
+// Namespace grouping support for Kubernetes resources
+const DEFAULT_NAMESPACE = "default"
+const UNGROUPED_NAMESPACE = "ungrouped"
+
+export type GroupByNamespaceView<T> = {
+  namespaces: string[]
+  namespacesToResources: { [key: string]: T[] }
+  ungrouped: T[]
+}
+
+/**
+ * Extract namespace from a K8s resource
+ * Resources with namespace info will be grouped by namespace
+ */
+export function getResourceNamespace(resource: UIResource): string | null {
+  const k8sInfo = resource.status?.k8sResourceInfo
+  if (!k8sInfo || !k8sInfo.namespace) {
+    return null
+  }
+  return k8sInfo.namespace
+}
+
+/**
+ * Check if resources have namespace information
+ * This allows conditional grouping by namespace
+ */
+export function resourcesHaveNamespaces<T>(
+  resources: T[] | undefined,
+  getNamespace: (resource: T) => string | null
+): boolean {
+  if (resources === undefined) {
+    return false
+  }
+
+  return resources.some((r) => getNamespace(r) !== null)
+}
+
+/**
+ * Group resources by their Kubernetes namespace
+ * Resources without namespace info are placed in "ungrouped"
+ */
+export function groupResourcesByNamespace<T>(
+  resources: T[],
+  getNamespace: (resource: T) => string | null
+): GroupByNamespaceView<T> {
+  const namespacesToResources: { [key: string]: T[] } = {}
+  const ungrouped: T[] = []
+  const namespacesSet = new Set<string>()
+
+  resources.forEach((resource) => {
+    const namespace = getNamespace(resource)
+    if (namespace) {
+      if (!namespacesToResources[namespace]) {
+        namespacesToResources[namespace] = []
+      }
+      namespacesToResources[namespace].push(resource)
+      namespacesSet.add(namespace)
+    } else {
+      ungrouped.push(resource)
+    }
+  })
+
+  // Sort namespaces alphabetically, with "default" first if present
+  const namespaces = Array.from(namespacesSet).sort((a, b) => {
+    if (a === DEFAULT_NAMESPACE) return -1
+    if (b === DEFAULT_NAMESPACE) return 1
+    return a.localeCompare(b)
+  })
+
+  return {
+    namespaces,
+    namespacesToResources,
+    ungrouped,
+  }
+}

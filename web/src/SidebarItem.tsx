@@ -36,6 +36,7 @@ class SidebarItem {
   hold: Hold | null = null
   targetType: string
   stopBuildButton?: UIButton
+  resource: UIResource
 
   /**
    * Create a pared down SidebarItem from a ResourceView
@@ -70,6 +71,7 @@ class SidebarItem {
     this.hold = status.waiting ? new Hold(status.waiting) : null
     this.targetType = resourceTargetType(res)
     this.stopBuildButton = stopBuildButton
+    this.resource = res
   }
 }
 

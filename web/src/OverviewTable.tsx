@@ -35,8 +35,12 @@ import Features, { Flag, useFeatures } from "./feature"
 import { Hold } from "./Hold"
 import {
   getResourceLabels,
+  getResourceNamespace,
+  groupResourcesByNamespace,
   GroupByLabelView,
+  GroupByNamespaceView,
   orderLabels,
+  resourcesHaveNamespaces,
   TILTFILE_LABEL,
   UNLABELED_LABEL,
 } from "./labels"
@@ -828,6 +832,97 @@ export function TableGroupedByLabels({
   )
 }
 
+export function TableGroupedByNamespace({
+  resources,
+  buttons,
+}: TableWrapperProps) {
+  const features = useFeatures()
+  const logAlertIndex = useLogAlertIndex()
+
+  // Group resources by namespace
+  const data = useMemo(() => {
+    const namespacesToResources: { [namespace: string]: RowValues[] } = {}
+    let ungrouped: RowValues[] = []
+
+    resources?.forEach((r) => {
+      const namespace = getResourceNamespace(r)
+      const isTiltfile = r.metadata?.name === ResourceName.tiltfile
+      const tableCell = uiResourceToCell(r, buttons, logAlertIndex)
+
+      if (namespace) {
+        if (!namespacesToResources.hasOwnProperty(namespace)) {
+          namespacesToResources[namespace] = []
+        }
+        namespacesToResources[namespace].push(tableCell)
+      } else if (isTiltfile) {
+        ungrouped.push(tableCell)
+      } else {
+        ungrouped.push(tableCell)
+      }
+    }) || []
+
+    const namespaces = Object.keys(namespacesToResources).sort()
+    return { namespaces, namespacesToResources, ungrouped }
+  }, [resources, buttons, logAlertIndex])
+
+  const totalOrder = useMemo(() => {
+    let totalOrder: RowValues[] = []
+    data.namespaces.forEach((namespace) =>
+      totalOrder.push(...enabledRowsFirst(data.namespacesToResources[namespace]))
+    )
+    totalOrder.push(...enabledRowsFirst(data.ungrouped))
+    return totalOrder
+  }, [data])
+
+  let [focused, setFocused] = useState("")
+
+  // Global table settings are currently used to sort multiple
+  // tables by the same column
+  const [globalTableSettings, setGlobalTableSettings] =
+    useState<UseSortByState<RowValues>>()
+
+  const useControlledState = (state: TableState<RowValues>) =>
+    useMemo(() => {
+      return { ...state, ...globalTableSettings }
+    }, [state, globalTableSettings])
+
+  const setGlobalSortBy = (columnId: string) => {
+    const sortBy = calculateNextSort(columnId, globalTableSettings?.sortBy)
+    setGlobalTableSettings({ sortBy })
+  }
+
+  return (
+    <>
+      {data.namespaces.map((namespace) => (
+        <TableGroup
+          key={`namespace-${namespace}`}
+          label={`${namespace} (namespace)`}
+          data={data.namespacesToResources[namespace]}
+          columns={COLUMNS}
+          useControlledState={useControlledState}
+          setGlobalSortBy={setGlobalSortBy}
+          focused={focused}
+        />
+      ))}
+      {data.ungrouped.length > 0 && (
+        <TableGroup
+          label="No namespace"
+          data={data.ungrouped}
+          columns={COLUMNS}
+          useControlledState={useControlledState}
+          setGlobalSortBy={setGlobalSortBy}
+          focused={focused}
+        />
+      )}
+      <OverviewTableKeyboardShortcuts
+        focused={focused}
+        setFocused={setFocused}
+        rows={totalOrder}
+      />
+    </>
+  )
+}
+
 export function TableWithoutGroups({ resources, buttons }: TableWrapperProps) {
   const features = useFeatures()
   const logAlertIndex = useLogAlertIndex()
@@ -862,6 +957,9 @@ function OverviewTableContent(props: OverviewTableProps) {
   const resourcesHaveLabels =
     props.view.uiResources?.some((r) => getResourceLabels(r).length > 0) ||
     false
+  const resourcesHaveNamespaces =
+    props.view.uiResources?.some((r) => getResourceNamespace(r) !== undefined) ||
+    false
 
   const { options } = useResourceListOptions()
   const resourceFilterApplied = options.resourceNameFilter.length > 0
@@ -877,10 +975,20 @@ function OverviewTableContent(props: OverviewTableProps) {
   // and no resource name filter is applied
   const displayResourceGroups =
     labelsEnabled && resourcesHaveLabels && !resourceFilterApplied
+  // Namespace groups are displayed when no label groups and resources have namespaces
+  const displayNamespaceGroups =
+    !resourceFilterApplied && !displayResourceGroups && resourcesHaveNamespaces
 
   if (displayResourceGroups) {
     return (
       <TableGroupedByLabels
+        resources={resourcesToDisplay}
+        buttons={props.view.uiButtons}
+      />
+    )
+  } else if (displayNamespaceGroups) {
+    return (
+      <TableGroupedByNamespace
         resources={resourcesToDisplay}
         buttons={props.view.uiButtons}
       />

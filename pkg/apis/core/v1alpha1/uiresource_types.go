@@ -365,6 +365,11 @@ type UIResourceKubernetes struct {
 	// for this resource.
 	// +optional
 	DisplayNames []string `json:"displayNames,omitempty" protobuf:"bytes,9,rep,name=displayNames"`
+
+	// The Kubernetes namespace where resources are deployed.
+	// This allows grouping resources by namespace in the UI.
+	// +optional
+	Namespace string `json:"namespace,omitempty" protobuf:"bytes,10,opt,name=namespace"`
 }
 
 // UIResourceCompose contains status information specific to Docker Compose.

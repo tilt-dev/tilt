@@ -13,9 +13,13 @@ import {
 import { FeaturesContext, Flag, useFeatures } from "./feature"
 import {
   GroupByLabelView,
+  GroupByNamespaceView,
   orderLabels,
   TILTFILE_LABEL,
   UNLABELED_LABEL,
+  getResourceNamespace,
+  groupResourcesByNamespace,
+  resourcesHaveNamespaces,
 } from "./labels"
 import { OverviewSidebarOptions } from "./OverviewSidebarOptions"
 import PathBuilder from "./PathBuilder"
@@ -40,7 +44,7 @@ import SidebarItemView, {
 import SidebarKeyboardShortcuts from "./SidebarKeyboardShortcuts"
 import { AnimDuration, Color, Font, FontSize, SizeUnit } from "./style-helpers"
 import { startBuild } from "./trigger"
-import { ResourceName, ResourceStatus, ResourceView } from "./types"
+import { ResourceName, ResourceStatus, ResourceView, UIResource } from "./types"
 import { useStarredResources } from "./StarredResourcesContext"
 
 export type SidebarProps = {
@@ -387,6 +391,38 @@ function resourcesLabelView(
   return { labels, labelsToResources, tiltfile, unlabeled }
 }
 
+function resourcesNamespaceView(
+  items: SidebarItem[]
+): GroupByNamespaceView<SidebarItem> {
+  const namespacesToResources: { [key: string]: SidebarItem[] } = {}
+  const ungrouped: SidebarItem[] = []
+  const namespacesSet = new Set<string>()
+
+  items.forEach((item) => {
+    const resource = item.resource
+    const namespace = getResourceNamespace(resource)
+    
+    if (namespace) {
+      if (!namespacesToResources[namespace]) {
+        namespacesToResources[namespace] = []
+      }
+      namespacesToResources[namespace].push(item)
+      namespacesSet.add(namespace)
+    } else if (!item.isTiltfile) {
+      ungrouped.push(item)
+    }
+  })
+
+  // Sort namespaces alphabetically, with "default" first if present
+  const namespaces = Array.from(namespacesSet).sort((a, b) => {
+    if (a === "default") return -1
+    if (b === "default") return 1
+    return a.localeCompare(b)
+  })
+
+  return { namespaces, namespacesToResources, ungrouped }
+}
+
 function SidebarGroupedByLabels(props: SidebarGroupedByProps) {
   const { labels, labelsToResources, tiltfile, unlabeled } = resourcesLabelView(
     props.items
@@ -424,6 +460,45 @@ function SidebarGroupedByLabels(props: SidebarGroupedByProps) {
         items={tiltfile}
         groupView={true}
       />
+      <SidebarKeyboardShortcuts
+        selected={props.selected}
+        items={totalOrder}
+        onStartBuild={props.onStartBuild}
+        resourceView={props.resourceView}
+      />
+    </>
+  )
+}
+
+function SidebarGroupedByNamespace(props: SidebarGroupedByProps) {
+  const { namespaces, namespacesToResources, ungrouped } = resourcesNamespaceView(
+    props.items
+  )
+
+  // Build total order similar to label grouping
+  let totalOrder: SidebarItem[] = []
+  namespaces.map((namespace) => {
+    totalOrder.push(...enabledItemsFirst(namespacesToResources[namespace]))
+  })
+  totalOrder.push(...enabledItemsFirst(ungrouped))
+
+  return (
+    <>
+      {namespaces.map((namespace) => (
+        <SidebarGroupListSection
+          {...props}
+          key={`sidebarItem-namespace-${namespace}`}
+          label={`${namespace} (namespace)`}
+          items={namespacesToResources[namespace]}
+        />
+      ))}
+      {ungrouped.length > 0 && (
+        <SidebarGroupListSection
+          {...props}
+          label="No namespace"
+          items={ungrouped}
+        />
+      )}
       <SidebarKeyboardShortcuts
         selected={props.selected}
         items={totalOrder}
@@ -511,12 +586,18 @@ export class SidebarResources extends React.Component<SidebarProps> {
     const resourcesHaveLabels = this.props.items.some(
       (item) => item.labels.length > 0
     )
+    const resourcesHaveNamespaces = this.props.items.some(
+      (item) => getResourceNamespace(item.resource) !== undefined
+    )
 
     // The label group tip is only displayed if labels are enabled but not used
     const displayLabelGroupsTip = labelsEnabled && !resourcesHaveLabels
     // The label group view does not display if a resource name filter is applied
     const displayLabelGroups =
       !resourceFilterApplied && labelsEnabled && resourcesHaveLabels
+    // The namespace group view displays if no label groups and resources have namespaces
+    const displayNamespaceGroups =
+      !resourceFilterApplied && !displayLabelGroups && resourcesHaveNamespaces
 
     return (
       <SidebarResourcesRoot
@@ -546,6 +627,12 @@ export class SidebarResources extends React.Component<SidebarProps> {
               items={filteredItems}
               onStartBuild={this.startBuildOnSelected}
             />
+          ) : displayNamespaceGroups ? (
+            <SidebarGroupedByNamespace
+              {...this.props}
+              items={filteredItems}
+              onStartBuild={this.startBuildOnSelected}
+            />
           ) : (
             <SidebarListSection
               {...this.props}
@@ -555,7 +642,7 @@ export class SidebarResources extends React.Component<SidebarProps> {
           )}
         </SidebarResourcesContent>
         {/* The label groups display handles the keyboard shortcuts separately. */}
-        {displayLabelGroups ? null : (
+        {displayLabelGroups || displayNamespaceGroups ? null : (
           <SidebarKeyboardShortcuts
             selected={this.props.selected}
             items={enabledItemsFirst(filteredItems)}

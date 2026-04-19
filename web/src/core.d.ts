@@ -4070,6 +4070,12 @@ export interface UIResourceKubernetes {
    * +optional
    */
   displayNames?: string[]
+  /**
+   * The Kubernetes namespace where resources are deployed.
+   * This allows grouping resources by namespace in the UI.
+   * +optional
+   */
+  namespace?: string
 }
 /**
  * UIResourceCompose contains status information specific to Docker Compose.
