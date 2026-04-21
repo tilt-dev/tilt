@@ -4,6 +4,7 @@ import styled from "styled-components"
 import ClearLogs from "./ClearLogs"
 import CopyLogs from "./CopyLogs"
 import { InstrumentedButton } from "./instrumentedComponents"
+import { FilterSet } from "./logfilters"
 import {
   AnimDuration,
   Color,
@@ -116,11 +117,13 @@ export const LogsFontSize: React.FC = () => {
 export interface LogActionsProps {
   resourceName: string
   isSnapshot: boolean
+  filterSet: FilterSet
 }
 
 const LogActions: React.FC<LogActionsProps> = ({
   resourceName,
   isSnapshot,
+  filterSet,
 }) => {
   return (
     <LogActionsGroup>
@@ -128,7 +131,7 @@ const LogActions: React.FC<LogActionsProps> = ({
       {isSnapshot || (
         <>
           <LogActionsDivider aria-hidden={true}>|</LogActionsDivider>
-          <CopyLogs resourceName={resourceName} />
+          <CopyLogs resourceName={resourceName} filterSet={filterSet} />
           <LogActionsDivider aria-hidden={true}>|</LogActionsDivider>
           <ClearLogs resourceName={resourceName} />
         </>

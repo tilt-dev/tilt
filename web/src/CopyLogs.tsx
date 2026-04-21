@@ -1,8 +1,10 @@
 import React, { useState } from "react"
 import styled from "styled-components"
 import { InstrumentedButton } from "./instrumentedComponents"
+import { FilterSet } from "./logfilters"
 import LogStore, { useLogStore } from "./LogStore"
-import { logLinesToString } from "./logs"
+import { filterLogLinesForDisplay, logLinesToString } from "./logs"
+import { useStarredResources } from "./StarredResourcesContext"
 import {
   AnimDuration,
   Color,
@@ -25,25 +27,52 @@ const CopyLogsButton = styled(InstrumentedButton)`
 
 export interface CopyLogsProps {
   resourceName: string
+  filterSet: FilterSet
 }
 
-export const copyLogs = (logStore: LogStore, resourceName: string): number => {
+function logLinesForResource(
+  logStore: LogStore,
+  resourceName: string,
+  starredResources: string[]
+) {
   const all = resourceName === ResourceName.all
-  const lines = all ? logStore.allLog() : logStore.manifestLog(resourceName)
-  const text = logLinesToString(lines, !all)
-  navigator.clipboard.writeText(text)
-  return lines.length
+  if (all) {
+    return logStore.allLog()
+  }
+  if (resourceName === ResourceName.starred) {
+    return logStore.starredLogPatchSet(starredResources, 0).lines
+  }
+  return logStore.manifestLog(resourceName)
 }
 
-const CopyLogs: React.FC<CopyLogsProps> = ({ resourceName }) => {
+export const copyLogs = (
+  logStore: LogStore,
+  resourceName: string,
+  filterSet: FilterSet,
+  starredResources: string[] = []
+): number => {
+  const all = resourceName === ResourceName.all
+  const lines = logLinesForResource(logStore, resourceName, starredResources)
+  const visibleLines = filterLogLinesForDisplay(lines, filterSet)
+  const text = logLinesToString(visibleLines, !all)
+  navigator.clipboard.writeText(text)
+  return visibleLines.length
+}
+
+const CopyLogs: React.FC<CopyLogsProps> = ({ resourceName, filterSet }) => {
   const logStore = useLogStore()
-  const all = resourceName == ResourceName.all
+  const { starredResources } = useStarredResources()
   const label = "Copy"
   const [tooltipOpen, setTooltipOpen] = useState(false)
   const [tooltipText, setTooltipText] = useState("")
 
   const handleClick = () => {
-    const lineCount = copyLogs(logStore, resourceName)
+    const lineCount = copyLogs(
+      logStore,
+      resourceName,
+      filterSet,
+      starredResources
+    )
     setTooltipText(
       lineCount === 1 ? "Copied 1 line" : `Copied ${lineCount} lines`
     )

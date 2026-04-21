@@ -811,6 +811,7 @@ export default function OverviewActionBar(props: OverviewActionBarProps) {
         key="logActions"
         resourceName={resourceName}
         isSnapshot={isSnapshot}
+        filterSet={filterSet}
       />
     )
   }

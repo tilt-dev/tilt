@@ -2,10 +2,28 @@ import { act, render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import React from "react"
 import CopyLogs, { copyLogs } from "./CopyLogs"
-import { logLinesToString, stripAnsiCodes } from "./logs"
+import {
+  filterLogLinesForDisplay,
+  logLinesToString,
+  stripAnsiCodes,
+} from "./logs"
+import {
+  createFilterTermState,
+  EMPTY_FILTER_TERM,
+  FilterLevel,
+  FilterSet,
+  FilterSource,
+} from "./logfilters"
 import LogStore, { LogStoreProvider } from "./LogStore"
+import { StarredResourceMemoryProvider } from "./StarredResourcesContext"
 import { appendLinesForManifestAndSpan } from "./testlogs"
 import { ResourceName } from "./types"
+
+const DEFAULT_FILTER_SET: FilterSet = {
+  source: FilterSource.all,
+  level: FilterLevel.all,
+  term: EMPTY_FILTER_TERM,
+}
 
 describe("CopyLogs", () => {
   let writeTextMock: jest.Mock
@@ -53,7 +71,10 @@ describe("CopyLogs", () => {
     const logStore = createPopulatedLogStore()
     render(
       <LogStoreProvider value={logStore}>
-        <CopyLogs resourceName={ResourceName.all} />
+        <CopyLogs
+          resourceName={ResourceName.all}
+          filterSet={DEFAULT_FILTER_SET}
+        />
       </LogStoreProvider>
     )
 
@@ -69,7 +90,7 @@ describe("CopyLogs", () => {
     const logStore = createPopulatedLogStore()
     render(
       <LogStoreProvider value={logStore}>
-        <CopyLogs resourceName={"vigoda"} />
+        <CopyLogs resourceName={"vigoda"} filterSet={DEFAULT_FILTER_SET} />
       </LogStoreProvider>
     )
 
@@ -87,7 +108,10 @@ describe("CopyLogs", () => {
 
     render(
       <LogStoreProvider value={logStore}>
-        <CopyLogs resourceName={ResourceName.all} />
+        <CopyLogs
+          resourceName={ResourceName.all}
+          filterSet={DEFAULT_FILTER_SET}
+        />
       </LogStoreProvider>
     )
 
@@ -103,7 +127,10 @@ describe("CopyLogs", () => {
     const logStore = createPopulatedLogStore()
     render(
       <LogStoreProvider value={logStore}>
-        <CopyLogs resourceName={ResourceName.all} />
+        <CopyLogs
+          resourceName={ResourceName.all}
+          filterSet={DEFAULT_FILTER_SET}
+        />
       </LogStoreProvider>
     )
 
@@ -119,7 +146,10 @@ describe("CopyLogs", () => {
     const logStore = createPopulatedLogStore()
     render(
       <LogStoreProvider value={logStore}>
-        <CopyLogs resourceName={ResourceName.all} />
+        <CopyLogs
+          resourceName={ResourceName.all}
+          filterSet={DEFAULT_FILTER_SET}
+        />
       </LogStoreProvider>
     )
 
@@ -140,8 +170,57 @@ describe("CopyLogs", () => {
 
   it("returns the number of lines copied", () => {
     const logStore = createPopulatedLogStore()
-    const count = copyLogs(logStore, ResourceName.all)
+    const count = copyLogs(logStore, ResourceName.all, DEFAULT_FILTER_SET)
     expect(count).toBe(logStore.allLog().length)
+  })
+
+  it("copies only the currently filtered log lines", async () => {
+    const logStore = createPopulatedLogStore()
+    const filterSet: FilterSet = {
+      ...DEFAULT_FILTER_SET,
+      term: createFilterTermState("runtime"),
+    }
+
+    render(
+      <LogStoreProvider value={logStore}>
+        <CopyLogs resourceName={ResourceName.all} filterSet={filterSet} />
+      </LogStoreProvider>
+    )
+
+    await act(async () => {
+      userEvent.click(screen.getByText("Copy"))
+    })
+
+    const expectedText = logLinesToString(
+      filterLogLinesForDisplay(logStore.allLog(), filterSet),
+      false
+    )
+    expect(writeTextMock).toHaveBeenCalledWith(expectedText)
+  })
+
+  it("copies only starred resource logs in starred view", async () => {
+    const logStore = createPopulatedLogStore()
+
+    render(
+      <StarredResourceMemoryProvider initialValueForTesting={["vigoda"]}>
+        <LogStoreProvider value={logStore}>
+          <CopyLogs
+            resourceName={ResourceName.starred}
+            filterSet={DEFAULT_FILTER_SET}
+          />
+        </LogStoreProvider>
+      </StarredResourceMemoryProvider>
+    )
+
+    await act(async () => {
+      userEvent.click(screen.getByText("Copy"))
+    })
+
+    const expectedText = logLinesToString(
+      logStore.starredLogPatchSet(["vigoda"], 0).lines,
+      true
+    )
+    expect(writeTextMock).toHaveBeenCalledWith(expectedText)
   })
 })
 

@@ -1,6 +1,9 @@
 // Helper functions for dealing with logs
 
+import { FilterLevel, FilterSet, FilterSource, TermState } from "./logfilters"
 import { LogLine, ResourceName } from "./types"
+
+export const DISPLAY_LOG_PROLOGUE_LENGTH = 5
 
 export function logLinesFromString(
   log: string,
@@ -57,4 +60,97 @@ export function sourcePrefix(n: string) {
 
 export function isBuildSpanId(spanId: string): boolean {
   return spanId.indexOf("build:") === 0 || spanId.indexOf("cmdimage:") === 0
+}
+
+export class LogDisplay {
+  private prologuesBySpanId: { [key: string]: LogLine[] } = {}
+  filterSet: FilterSet
+
+  constructor(filterSet: FilterSet) {
+    this.filterSet = filterSet
+  }
+
+  shouldDisplayPrologues(): boolean {
+    return this.filterSet.level !== FilterLevel.all
+  }
+
+  matchesTermFilter(line: LogLine): boolean {
+    const { term } = this.filterSet
+
+    if (!term || term.state !== TermState.Parsed) {
+      return true
+    }
+
+    return term.regexp.test(line.text)
+  }
+
+  matchesLevelFilter(line: LogLine): boolean {
+    let level = this.filterSet.level
+    if (level === FilterLevel.warn && line.level !== "WARN") {
+      return false
+    }
+    if (level === FilterLevel.error && line.level !== "ERROR") {
+      return false
+    }
+    return true
+  }
+
+  matchesFilter(line: LogLine): boolean {
+    if (line.buildEvent) {
+      return true
+    }
+
+    let source = this.filterSet.source
+    if (source === FilterSource.runtime && isBuildSpanId(line.spanId)) {
+      return false
+    }
+    if (source === FilterSource.build && !isBuildSpanId(line.spanId)) {
+      return false
+    }
+
+    return this.matchesLevelFilter(line) && this.matchesTermFilter(line)
+  }
+
+  trackPrologueLine(line: LogLine) {
+    if (!this.prologuesBySpanId[line.spanId]) {
+      this.prologuesBySpanId[line.spanId] = []
+    }
+    this.prologuesBySpanId[line.spanId].push(line)
+  }
+
+  getAndClearPrologue(spanId: string): LogLine[] {
+    let spanLines = this.prologuesBySpanId[spanId]
+    if (!spanLines) {
+      return []
+    }
+
+    delete this.prologuesBySpanId[spanId]
+    return spanLines.slice(-DISPLAY_LOG_PROLOGUE_LENGTH)
+  }
+
+  filterLines(lines: LogLine[]): LogLine[] {
+    let result: LogLine[] = []
+    let shouldDisplayPrologues = this.shouldDisplayPrologues()
+
+    lines.forEach((line) => {
+      let matches = this.matchesFilter(line)
+      if (matches) {
+        if (shouldDisplayPrologues) {
+          result.push(...this.getAndClearPrologue(line.spanId))
+        }
+        result.push(line)
+      } else if (shouldDisplayPrologues) {
+        this.trackPrologueLine(line)
+      }
+    })
+
+    return result
+  }
+}
+
+export function filterLogLinesForDisplay(
+  lines: LogLine[],
+  filterSet: FilterSet
+): LogLine[] {
+  return new LogDisplay(filterSet).filterLines(lines)
 }
