@@ -14,6 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: docker/tilt-ci@sha256:3b83314ab36d9a529f5af8ca788b00d0926d16ed981a929317aab62696a88d77
+      options: --user root
       volumes:
         - /var/run/docker.sock:/var/run/docker.sock
     steps:
