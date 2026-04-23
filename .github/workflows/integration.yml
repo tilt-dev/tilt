@@ -15,7 +15,7 @@ jobs:
     outputs:
       has-go-changes: ${{ steps.check.outputs.go-changes }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           fetch-depth: 0
 
@@ -44,7 +44,7 @@ jobs:
     env:
       DOCKER_HOST: tcp://dind:2375
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: Wait for Docker
         run: |
@@ -57,7 +57,7 @@ jobs:
         run: make build-js integration
 
       - name: Upload test results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
           name: integration-test-results
@@ -65,7 +65,7 @@ jobs:
 
       - name: Notify Slack on failure
         if: failure() && github.ref == 'refs/heads/master'
-        uses: slackapi/slack-github-action@v2
+        uses: slackapi/slack-github-action@91efab103c0de0a537f72a35f6b8cda0ee76bf0a # v2.1.1
         with:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: incoming-webhook
@@ -91,7 +91,7 @@ jobs:
       DOCKER_HOST: tcp://dind:2375
       PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: Wait for Docker
         run: |
@@ -105,7 +105,7 @@ jobs:
 
       - name: Notify Slack on failure
         if: failure() && github.ref == 'refs/heads/master'
-        uses: slackapi/slack-github-action@v2
+        uses: slackapi/slack-github-action@91efab103c0de0a537f72a35f6b8cda0ee76bf0a # v2.1.1
         with:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: incoming-webhook

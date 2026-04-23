@@ -15,7 +15,7 @@ jobs:
     container:
       image: docker/tilt-ci@sha256:3b83314ab36d9a529f5af8ca788b00d0926d16ed981a929317aab62696a88d77
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
 
@@ -26,18 +26,23 @@ jobs:
             echo "skip=true" >> $GITHUB_OUTPUT
           fi
 
-      - name: Setup SSH
+      - name: Generate GitHub App token
         if: steps.changes.outputs.skip != 'true'
-        uses: webfactory/ssh-agent@v0.9.0
+        id: app-token
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
         with:
-          ssh-private-key: ${{ secrets.TILT_BUILD_DEPLOY_KEY }}
+          app-id: ${{ vars.TILT_APP_ID }}
+          private-key: ${{ secrets.TILT_APP_PRIVATE_KEY }}
+          owner: tilt-dev
+          repositories: tilt.build
 
-      - name: Clone tilt.build repo
+      - name: Checkout tilt.build repo
         if: steps.changes.outputs.skip != 'true'
-        run: |
-          mkdir -p ~/.ssh
-          ssh-keyscan github.com >> ~/.ssh/known_hosts
-          git clone git@github.com:tilt-dev/tilt.build ../tilt.build
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: tilt-dev/tilt.build
+          token: ${{ steps.app-token.outputs.token }}
+          path: ../tilt.build
 
       - name: Build Tilt
         if: steps.changes.outputs.skip != 'true'
@@ -54,7 +59,7 @@ jobs:
 
       - name: Notify Slack on failure
         if: failure() && github.ref == 'refs/heads/master'
-        uses: slackapi/slack-github-action@v2
+        uses: slackapi/slack-github-action@91efab103c0de0a537f72a35f6b8cda0ee76bf0a # v2.1.1
         with:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: incoming-webhook
