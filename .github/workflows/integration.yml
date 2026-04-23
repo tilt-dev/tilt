@@ -34,21 +34,14 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: docker/tilt-integration-ci@sha256:9821f02b3304ede7a09ec0564e0a68abea9375bf596b64f34aa683c613db69f4
-      options: --privileged
-    services:
-      dind:
-        image: docker:dind
-        options: --privileged
-        env:
-          DOCKER_TLS_CERTDIR: ""
-    env:
-      DOCKER_HOST: tcp://dind:2375
+      options: --privileged --user root
+      volumes:
+        - /var/run/docker.sock:/var/run/docker.sock
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Wait for Docker
-        run: |
-          timeout 30 sh -c 'until docker info; do sleep 1; done'
+      - name: Configure Git safe directory
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - name: Setup Kind cluster
         run: ctlptl create cluster kind --registry=ctlptl-registry
@@ -80,22 +73,16 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: docker/tilt-extensions-ci@sha256:c22a39c287c7c3afba182f4f46044475b43bd2d4e2bb89f41136eae7d4f4b94d
-      options: --privileged
-    services:
-      dind:
-        image: docker:dind
-        options: --privileged
-        env:
-          DOCKER_TLS_CERTDIR: ""
+      options: --privileged --user root
+      volumes:
+        - /var/run/docker.sock:/var/run/docker.sock
     env:
-      DOCKER_HOST: tcp://dind:2375
       PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Wait for Docker
-        run: |
-          timeout 30 sh -c 'until docker info; do sleep 1; done'
+      - name: Configure Git safe directory
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - name: Setup Kind cluster
         run: ctlptl create cluster kind --registry=ctlptl-registry
