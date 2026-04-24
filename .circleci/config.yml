@@ -170,8 +170,6 @@ jobs:
     docker:
       # keep image in sync with build.toast.yml
       - image: "docker/tilt-releaser@sha256:304fa435c4b18d71d1aeae4578762625fc43ab69bc24656e20d150ee23dc2b2b"
-    environment:
-      DOCKER_CLI_EXPERIMENTAL: enabled
     steps:
       - setup_remote_docker
       # https://discuss.circleci.com/t/arm-version-of-remote-docker/41624
@@ -179,6 +177,7 @@ jobs:
       - slack/notify:
           message: "A Tilt release has started!"
       - checkout
+      - run: echo "export GITHUB_TOKEN=$(./scripts/github-app-token.sh)" >> "$BASH_ENV"
       - run:
           command: ./scripts/release-ci.sh
           no_output_timeout: 20m
@@ -226,7 +225,7 @@ workflows:
       - release:
           context:
             - Tilt Slack Context
-            - Tilt Release CLI Context
+            - Tilt Github Context
             - Tilt Docker Login Context
             - Tilt Cloud Login Context
             - Tilt Deploy Context
