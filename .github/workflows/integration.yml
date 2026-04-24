@@ -75,8 +75,12 @@ jobs:
           git fetch origin master:refs/remotes/origin/master
           git branch -f master origin/master
 
-      - name: Clean Docker resources
-        run: docker system prune -af --volumes || true
+      - name: Docker login
+        continue-on-error: true
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          username: ${{ vars.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
 
       - name: Setup Kind cluster
         run: ctlptl create cluster kind --registry=ctlptl-registry
@@ -136,8 +140,12 @@ jobs:
           git fetch origin master:refs/remotes/origin/master
           git branch -f master origin/master
 
-      - name: Clean Docker resources
-        run: docker system prune -af --volumes || true
+      - name: Docker login
+        continue-on-error: true
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          username: ${{ vars.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
 
       - name: Setup Kind cluster
         run: ctlptl create cluster kind --registry=ctlptl-registry
