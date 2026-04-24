@@ -116,7 +116,6 @@ jobs:
       volumes:
         - /var/run/docker.sock:/var/run/docker.sock
     env:
-      GOBIN: /usr/local/bin
       PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
     steps:
       - name: Check docker sock permissions
@@ -149,6 +148,9 @@ jobs:
 
       - name: Setup Kind cluster
         run: ctlptl create cluster kind --registry=ctlptl-registry
+
+      - name: Add Go bin to PATH
+        run: echo "$HOME/go/bin" >> $GITHUB_PATH
 
       - name: Build and test extensions
         run: make build-js install test-extensions

@@ -17,8 +17,6 @@ jobs:
       options: --group-add 118
       volumes:
         - /var/run/docker.sock:/var/run/docker.sock
-    env:
-      GOBIN: /usr/local/bin
     steps:
       - name: Check docker sock permissions
         run: |
