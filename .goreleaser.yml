@@ -186,7 +186,6 @@ dockers:
     - tilt-linux-amd64
   image_templates:
     - "tiltdev/tilt:{{ .Tag }}-amd64"
-    - "docker/tilt:{{ .Tag }}-amd64"
   dockerfile: scripts/tilt.Dockerfile
   use: buildx
   build_flag_templates:
@@ -206,7 +205,6 @@ dockers:
     - tilt-linux-arm64
   image_templates:
     - "tiltdev/tilt:{{ .Tag }}-arm64"
-    - "docker/tilt:{{ .Tag }}-arm64"
   dockerfile: scripts/tilt.Dockerfile
   use: buildx
   build_flag_templates:
@@ -228,14 +226,6 @@ docker_manifests:
   image_templates:
   - tiltdev/{{ .ProjectName }}:{{ .Tag }}-amd64
   - tiltdev/{{ .ProjectName }}:{{ .Tag }}-arm64
-- name_template: docker/{{ .ProjectName }}:{{ .Tag }}
-  image_templates:
-  - docker/{{ .ProjectName }}:{{ .Tag }}-amd64
-  - docker/{{ .ProjectName }}:{{ .Tag }}-arm64
-- name_template: docker/{{ .ProjectName }}:latest
-  image_templates:
-  - docker/{{ .ProjectName }}:{{ .Tag }}-amd64
-  - docker/{{ .ProjectName }}:{{ .Tag }}-arm64
 scoops:
 - url_template: "https://github.com/tilt-dev/tilt/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
   repository:

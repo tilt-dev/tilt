@@ -10,7 +10,7 @@ jobs:
   build-linux:
     resource_class: medium+
     docker:
-      - image: docker/tilt-ci@sha256:3b83314ab36d9a529f5af8ca788b00d0926d16ed981a929317aab62696a88d77
+      - image: tiltdev/tilt-ci@sha256:fb737aaed8f1d44d56d4797c1c96046ec940cf2a238d76be29527da2784e8f1e
     # apiserver code generation scripts require being in GOPATH
     working_directory: /home/circleci/go/src/github.com/tilt-dev/tilt
     steps:
@@ -46,7 +46,7 @@ jobs:
           only_for_branches: master
   check-docs:
     docker:
-      - image: docker/tilt-ci@sha256:3b83314ab36d9a529f5af8ca788b00d0926d16ed981a929317aab62696a88d77
+      - image: tiltdev/tilt-ci@sha256:fb737aaed8f1d44d56d4797c1c96046ec940cf2a238d76be29527da2784e8f1e
     steps:
       - checkout
       - run: scripts/ci-has-go-changes.sh || circleci-agent step halt
@@ -99,7 +99,7 @@ jobs:
   build-integration:
     resource_class: medium+
     docker:
-      - image: docker/tilt-integration-ci@sha256:9821f02b3304ede7a09ec0564e0a68abea9375bf596b64f34aa683c613db69f4
+      - image: tiltdev/tilt-integration-ci@sha256:d0dd2ae941a5d67d8c194ce0f72feae4018c88b40ef5cbba89f98c1bf44e9e9c
     steps:
       - checkout
       - run: scripts/ci-has-go-changes.sh || circleci-agent step halt
@@ -153,7 +153,7 @@ jobs:
     resource_class: medium+
     docker:
       # keep image in sync with build.toast.yml
-      - image: "docker/tilt-releaser@sha256:304fa435c4b18d71d1aeae4578762625fc43ab69bc24656e20d150ee23dc2b2b"
+      - image: "tiltdev/tilt-releaser@sha256:8e9de835faefee4934c7a50271f927c410084bb4955d294c260418b09ade6cff"
     steps:
       - setup_remote_docker
       # https://discuss.circleci.com/t/arm-version-of-remote-docker/41624
@@ -169,7 +169,7 @@ jobs:
     resource_class: medium+
     docker:
       # keep image in sync with build.toast.yml
-      - image: "docker/tilt-releaser@sha256:304fa435c4b18d71d1aeae4578762625fc43ab69bc24656e20d150ee23dc2b2b"
+      - image: "tiltdev/tilt-releaser@sha256:8e9de835faefee4934c7a50271f927c410084bb4955d294c260418b09ade6cff"
     steps:
       - setup_remote_docker
       # https://discuss.circleci.com/t/arm-version-of-remote-docker/41624

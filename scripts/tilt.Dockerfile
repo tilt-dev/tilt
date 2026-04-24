@@ -12,7 +12,7 @@
 #
 # Built with goreleaser.
 
-FROM docker/tilt-ctlptl
+FROM tiltdev/ctlptl
 
 # Tilt's extension downloader requires git
 RUN apt update && apt install -y git
