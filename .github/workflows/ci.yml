@@ -14,10 +14,19 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: tiltdev/tilt-ci@sha256:fb737aaed8f1d44d56d4797c1c96046ec940cf2a238d76be29527da2784e8f1e
-      options: --group-add docker
+      options: --group-add 118
       volumes:
         - /var/run/docker.sock:/var/run/docker.sock
     steps:
+      - name: Check docker sock permissions
+        run: |
+          ls -n /var/run/docker.sock
+          gid=$(ls -n /var/run/docker.sock | awk '{print$4}')
+          if [ "$gid" -ne 118 ]; then
+            echo "::error::Unexpected Group ID ($gid) for Docker socket" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
