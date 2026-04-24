@@ -59,6 +59,9 @@ jobs:
           git fetch origin master:refs/remotes/origin/master
           git branch -f master origin/master
 
+      - name: Clean Docker resources
+        run: docker system prune -af --volumes || true
+
       - name: Setup Kind cluster
         run: ctlptl create cluster kind --registry=ctlptl-registry
 
@@ -118,6 +121,9 @@ jobs:
         run: |
           git fetch origin master:refs/remotes/origin/master
           git branch -f master origin/master
+
+      - name: Clean Docker resources
+        run: docker system prune -af --volumes || true
 
       - name: Setup Kind cluster
         run: ctlptl create cluster kind --registry=ctlptl-registry
