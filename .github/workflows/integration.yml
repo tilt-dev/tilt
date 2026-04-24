@@ -32,6 +32,22 @@ jobs:
     needs: check-changes
     if: needs.check-changes.outputs.has-go-changes == 'true'
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Group 1: Quick K8s tests (analytics, config, crash, crd, demo, env, event, etc.)
+          - name: quick
+            pattern: "Test(Opt|ConfigMap|Crash|CRD|TiltDemo|EnvInit|Event|Idempotent|Ignores|ImageTags|LocalResource|NamespaceFlag|TiltArgs|TiltCI|CLI_DockerPrune)"
+          # Group 2: Docker Compose tests
+          - name: docker-compose
+            pattern: "Test(DockerCompose|OneDockerCompose|DisableDC)"
+          # Group 3: Live Update tests
+          - name: live-update
+            pattern: "TestLiveUpdate"
+          # Group 4: K8s deployment tests (jobs, oneup, watch, etc.)
+          - name: k8s-deploy
+            pattern: "Test(Job|OneUp|OneWatch|WatchExec|K8sCustomDeploy|DisableK8s|RestartProcess|SameImg|Shortlived|TooMany|TTLJob)"
     container:
       image: tiltdev/tilt-integration-ci@sha256:d0dd2ae941a5d67d8c194ce0f72feae4018c88b40ef5cbba89f98c1bf44e9e9c
       options: --group-add 118
@@ -65,15 +81,13 @@ jobs:
       - name: Setup Kind cluster
         run: ctlptl create cluster kind --registry=ctlptl-registry
 
-      - name: Build and run integration tests
-        run: make build-js integration
+      - name: Build JS assets
+        run: make build-js
 
-      - name: Upload test results
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        if: always()
-        with:
-          name: integration-test-results
-          path: test-results/
+      - name: Run integration tests (${{ matrix.name }})
+        run: |
+          go test -mod vendor -v -count 1 -tags 'integration' -timeout 30m \
+            -run '${{ matrix.pattern }}' ./integration
 
       - name: Notify Slack on failure
         if: failure() && github.ref == 'refs/heads/master'
@@ -83,7 +97,7 @@ jobs:
           webhook-type: incoming-webhook
           payload: |
             {
-              "text": "build-integration failed on master: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+              "text": "build-integration (${{ matrix.name }}) failed on master: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
             }
 
   test-extensions:
