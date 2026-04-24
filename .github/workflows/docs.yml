@@ -26,22 +26,11 @@ jobs:
             echo "skip=true" >> $GITHUB_OUTPUT
           fi
 
-      - name: Generate GitHub App token
-        if: steps.changes.outputs.skip != 'true'
-        id: app-token
-        uses: actions/create-github-app-token@1b10c78c7865c340bc4f6099eb2f838309f1e8c3 # v3.1.1
-        with:
-          client-id: ${{ vars.TILT_GITHUB_CLIENT_ID }}
-          private-key: ${{ secrets.TILT_GITHUB_PRIVATE_KEY_BASE64 }}
-          owner: tilt-dev
-          repositories: tilt.build
-
       - name: Checkout tilt.build repo
         if: steps.changes.outputs.skip != 'true'
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           repository: tilt-dev/tilt.build
-          token: ${{ steps.app-token.outputs.token }}
           path: ../tilt.build
 
       - name: Build Tilt
