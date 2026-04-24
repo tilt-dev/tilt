@@ -6,7 +6,7 @@
 & { #enclose in scope to avoid leaking variables when ran through iex
 $ErrorActionPreference = 'Stop'
 try {        
-$version = "0.37.1"
+$version = "0.37.2"
 $url = "https://github.com/tilt-dev/tilt/releases/download/v" + $version + "/tilt." + $version + ".windows.x86_64.zip"
 $zip = "tilt-" + $version + ".zip"
 $extractDir = "tilt-" + $version
