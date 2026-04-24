@@ -31,8 +31,8 @@ jobs:
         id: app-token
         uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
         with:
-          app-id: ${{ vars.TILT_APP_ID }}
-          private-key: ${{ secrets.TILT_APP_PRIVATE_KEY }}
+          client-id: ${{ vars.TILT_GITHUB_CLIENT_ID }}
+          private-key: ${{ secrets.TILT_GITHUB_PRIVATE_KEY_BASE64 }}
           owner: tilt-dev
           repositories: tilt.build
 
