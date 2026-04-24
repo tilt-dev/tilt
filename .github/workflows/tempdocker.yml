@@ -1,0 +1,15 @@
+name: Temp Docker Inspection
+
+on:
+  pull_request:
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    container:
+      image: alpine
+      volumes:
+        - /var/run/docker.sock:/var/run/docker.sock
+    steps:
+      - name: Print docker sock permissions
+        run: ls -an /var/run/docker.sock
