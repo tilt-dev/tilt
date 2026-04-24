@@ -153,13 +153,14 @@ jobs:
     resource_class: medium+
     docker:
       # keep image in sync with build.toast.yml
-      - image: "tiltdev/tilt-releaser@sha256:8e9de835faefee4934c7a50271f927c410084bb4955d294c260418b09ade6cff"
+      - image: "tiltdev/tilt-releaser@sha256:fe043664aa543e4abd8aa6df29828c00bc3d3205d76296226e084f900a855016"
     steps:
       - setup_remote_docker
       # https://discuss.circleci.com/t/arm-version-of-remote-docker/41624
       - run: ssh remote-docker "sudo apt-get update; sudo apt-get install -y qemu-user-static binfmt-support"
       - checkout
       - run: make build-js
+      - run: echo "export GITHUB_TOKEN=$(./scripts/github-app-token.sh)" >> "$BASH_ENV"
       - run:
           command: goreleaser --verbose --clean --skip=publish --snapshot
           no_output_timeout: 20m
@@ -169,7 +170,7 @@ jobs:
     resource_class: medium+
     docker:
       # keep image in sync with build.toast.yml
-      - image: "tiltdev/tilt-releaser@sha256:8e9de835faefee4934c7a50271f927c410084bb4955d294c260418b09ade6cff"
+      - image: "tiltdev/tilt-releaser@sha256:fe043664aa543e4abd8aa6df29828c00bc3d3205d76296226e084f900a855016"
     steps:
       - setup_remote_docker
       # https://discuss.circleci.com/t/arm-version-of-remote-docker/41624
@@ -214,7 +215,9 @@ workflows:
           requires:
             - build-linux
       - release-dry-run:
-          context: Tilt Slack Context
+          context:
+            - Tilt Github Context
+            - Tilt Slack Context
           requires:
             - build-linux
           filters:

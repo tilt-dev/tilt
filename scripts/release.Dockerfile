@@ -22,6 +22,7 @@ RUN apt-get update && \
     curl \
     gnupg \
     lsb-release \
+    jq \
     gnupg-agent \
     clang \
     lld \
