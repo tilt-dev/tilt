@@ -84,7 +84,9 @@ jobs:
             }
 
   test-extensions:
-    needs: check-changes
+    needs:
+      - check-changes
+      - build-integration
     if: needs.check-changes.outputs.has-go-changes == 'true'
     runs-on: ubuntu-latest
     container:
@@ -93,6 +95,7 @@ jobs:
       volumes:
         - /var/run/docker.sock:/var/run/docker.sock
     env:
+      GOBIN: /usr/local/bin
       PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
     steps:
       - name: Check docker sock permissions
