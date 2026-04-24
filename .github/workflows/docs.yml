@@ -18,6 +18,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
+          path: tilt
 
       - name: Check for Go changes
         id: changes
@@ -25,21 +26,23 @@ jobs:
           if ! ./scripts/ci-has-go-changes.sh; then
             echo "skip=true" >> $GITHUB_OUTPUT
           fi
+        working-directory: tilt
 
       - name: Checkout tilt.build repo
         if: steps.changes.outputs.skip != 'true'
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           repository: tilt-dev/tilt.build
-          path: ../tilt.build
+          path: tilt.build
 
       - name: Build Tilt
         if: steps.changes.outputs.skip != 'true'
         run: make install
+        working-directory: tilt
 
       - name: Generate and verify docs
         if: steps.changes.outputs.skip != 'true'
-        working-directory: ../tilt.build
+        working-directory: tilt.build
         run: |
           tilt dump cli-docs --dir="./docs/cli"
           tilt dump api-docs --dir="./api"
