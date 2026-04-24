@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: tiltdev/tilt-ci@sha256:fb737aaed8f1d44d56d4797c1c96046ec940cf2a238d76be29527da2784e8f1e
-      # options: --user root
+      options: --group-add docker
       volumes:
         - /var/run/docker.sock:/var/run/docker.sock
     steps:

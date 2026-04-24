@@ -34,7 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: tiltdev/tilt-integration-ci@sha256:d0dd2ae941a5d67d8c194ce0f72feae4018c88b40ef5cbba89f98c1bf44e9e9c
-      # options: --privileged --user root
+      options: --group-add docker
       volumes:
         - /var/run/docker.sock:/var/run/docker.sock
     steps:
@@ -80,7 +80,7 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: docker/tilt-extensions-ci@sha256:c22a39c287c7c3afba182f4f46044475b43bd2d4e2bb89f41136eae7d4f4b94d
-      options: --privileged --user root
+      options: --group-add docker
       volumes:
         - /var/run/docker.sock:/var/run/docker.sock
     env:
