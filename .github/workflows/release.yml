@@ -16,7 +16,7 @@ jobs:
     if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     container:
-      image: tiltdev/tilt-releaser@sha256:8e9de835faefee4934c7a50271f927c410084bb4955d294c260418b09ade6cff
+      image: tiltdev/tilt-releaser@sha256:fe043664aa543e4abd8aa6df29828c00bc3d3205d76296226e084f900a855016
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -51,7 +51,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     container:
-      image: tiltdev/tilt-releaser@sha256:8e9de835faefee4934c7a50271f927c410084bb4955d294c260418b09ade6cff
+      image: tiltdev/tilt-releaser@sha256:fe043664aa543e4abd8aa6df29828c00bc3d3205d76296226e084f900a855016
     env:
       DOCKER_CLI_EXPERIMENTAL: enabled
     steps:
