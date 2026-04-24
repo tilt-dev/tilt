@@ -53,4 +53,4 @@ RUN go install gotest.tools/gotestsum@latest \
     && gotestsum --version
 
 # install ctlptl from the ctlptl release image
-COPY --from=docker/tilt-ctlptl /usr/local/bin/ctlptl /usr/local/bin/
+COPY --from=tiltdev/ctlptl /usr/local/bin/ctlptl /usr/local/bin/

@@ -14,7 +14,7 @@ DIR=$(dirname "$0")
 cd "$DIR/.."
 
 docker login
-docker pull docker/tilt-releaser
+docker pull tiltdev/tilt-releaser
 mkdir -p ~/.cache/tilt/release/go-build
 
 docker run --rm --privileged \
@@ -24,5 +24,5 @@ docker run --rm --privileged \
        -v ~/.cache/tilt/release/go-build:/root/.cache/go-build \
        -v "$PWD:/src/tilt:delegated" \
        -v /var/run/docker.sock:/var/run/docker.sock \
-       docker/tilt-releaser \
+       tiltdev/tilt-releaser \
        --clean

@@ -8,11 +8,11 @@ set -ex
 DIR=$(dirname "$0")
 cd "$DIR/.."
 
-docker buildx build --push --platform linux/amd64 -t docker/tilt-releaser -f scripts/release.Dockerfile scripts
+docker buildx build --push --platform linux/amd64 -t tiltdev/tilt-releaser -f scripts/release.Dockerfile scripts
 
 # add some bash code to pull the image and pull out the tag
-docker pull --platform linux/amd64 docker/tilt-releaser
-DIGEST="$(docker inspect --format '{{.RepoDigests}}' docker/tilt-releaser | tr -d '[]')"
+docker pull --platform linux/amd64 tiltdev/tilt-releaser
+DIGEST="$(docker inspect --format '{{.RepoDigests}}' tiltdev/tilt-releaser | tr -d '[]')"
 
 yq eval -i ".jobs.release-dry-run.docker[0].image = \"$DIGEST\"" .circleci/config.yml
 yq eval -i ".jobs.release.docker[0].image = \"$DIGEST\"" .circleci/config.yml
