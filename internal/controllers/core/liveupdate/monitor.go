@@ -34,6 +34,7 @@ type monitor struct {
 
 type monitorSource struct {
 	modTimeByPath   map[string]metav1.MicroTime
+	ignores         []v1alpha1.IgnoreDef
 	lastImageStatus *v1alpha1.ImageMapStatus
 	lastFileEvent   *v1alpha1.FileEvent
 }
@@ -42,6 +43,22 @@ type monitorContainerKey struct {
 	containerID string
 	podName     string
 	namespace   string
+}
+
+// needsInitialSync reports whether any container may still need an initial
+// sync. Returns true when no containers are tracked yet (first reconcile,
+// or after garbage collection) or when any tracked container has never
+// been synced.
+func (m *monitor) needsInitialSync() bool {
+	if len(m.containers) == 0 {
+		return true
+	}
+	for _, c := range m.containers {
+		if c.lastFileTimeSynced.IsZero() {
+			return true
+		}
+	}
+	return false
 }
 
 type monitorContainerStatus struct {

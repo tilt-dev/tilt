@@ -110,6 +110,13 @@ type LiveUpdateSpec struct {
 	//
 	// +optional
 	Restart LiveUpdateRestartStrategy `json:"restart,omitempty" protobuf:"bytes,7,opt,name=restart,casttype=LiveUpdateRestartStrategy"`
+
+	// InitialSync configures full file sync on container start/restart.
+	// When set, all files matching sync rules are uploaded when a container
+	// starts for the first time or restarts, bypassing the file-watch system.
+	//
+	// +optional
+	InitialSync *LiveUpdateInitialSync `json:"initialSync,omitempty" protobuf:"bytes,8,opt,name=initialSync"`
 }
 
 var _ resource.Object = &LiveUpdate{}
@@ -377,6 +384,9 @@ var (
 	// restarts, this will be an error.
 	LiveUpdateRestartStrategyAlways LiveUpdateRestartStrategy = "always"
 )
+
+// LiveUpdateInitialSync enables full file sync on container start/restart.
+type LiveUpdateInitialSync struct{}
 
 // LiveUpdateContainerStatus defines the observed state of
 // the live-update syncer for a particular container.

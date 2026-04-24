@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -27,6 +30,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/apis/configmap"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/liveupdate"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
+	"github.com/tilt-dev/tilt/internal/ignore"
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/ospath"
 	"github.com/tilt-dev/tilt/internal/sliceutils"
@@ -181,6 +185,16 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		monitor.hasChangesToSync = true
 	}
 
+	// When initial_sync is configured, enter maybeSync if there may be
+	// unsynced containers. This handles the case where tilt starts and
+	// finds an already-running container — no file changes or k8s changes
+	// are detected, but the container still needs its initial sync.
+	// Once all tracked containers have been synced, skip this to avoid
+	// unnecessary work on every reconcile.
+	if lu.Spec.InitialSync != nil && monitor.needsInitialSync() {
+		monitor.hasChangesToSync = true
+	}
+
 	if monitor.hasChangesToSync {
 		status := r.maybeSync(ctx, lu, monitor)
 		if status.Failed != nil {
@@ -307,12 +321,25 @@ func (r *Reconciler) reconcileOneSource(ctx context.Context, monitor *monitor, s
 	fwn := source.FileWatch
 	imn := source.ImageMap
 
+	var mSource *monitorSource
+	if fwn != "" {
+		var ok bool
+		mSource, ok = monitor.sources[fwn]
+		if !ok {
+			mSource = &monitorSource{
+				modTimeByPath: make(map[string]metav1.MicroTime),
+			}
+			monitor.sources[fwn] = mSource
+		}
+	}
+
 	var fw v1alpha1.FileWatch
 	if fwn != "" {
 		err := r.client.Get(ctx, types.NamespacedName{Name: fwn}, &fw)
 		if err != nil {
 			return false, err
 		}
+		mSource.ignores = append([]v1alpha1.IgnoreDef(nil), fw.Spec.Ignores...)
 	}
 
 	var im v1alpha1.ImageMap
@@ -326,14 +353,6 @@ func (r *Reconciler) reconcileOneSource(ctx context.Context, monitor *monitor, s
 	events := fw.Status.FileEvents
 	if len(events) == 0 || fwn == "" {
 		return false, nil
-	}
-
-	mSource, ok := monitor.sources[fwn]
-	if !ok {
-		mSource = &monitorSource{
-			modTimeByPath: make(map[string]metav1.MicroTime),
-		}
-		monitor.sources[fwn] = mSource
 	}
 
 	newImageStatus := im.Status
@@ -697,6 +716,29 @@ func (r *Reconciler) maybeSync(ctx context.Context, lu *v1alpha1.LiveUpdate, mon
 			}
 		}
 
+		// Initial sync: on new container, collect ALL files from sync paths.
+		// We collect the file list for trigger matching (BoilRuns), but the
+		// actual tar archive is built directly from directory-level sync
+		// mappings, avoiding a second walk into individual file mappings.
+		isInitialSync := lu.Spec.InitialSync != nil && (!ok || cStatus.lastFileTimeSynced.IsZero())
+		initialSyncFilter := model.EmptyMatcher
+		if isInitialSync {
+			initialSyncFilter = r.buildInitialSyncFilter(monitor)
+			var err error
+			filesChanged, err = r.collectAllSyncedFiles(ctx, lu.Spec, initialSyncFilter)
+			if err != nil {
+				status.Failed = createFailedState(lu, "InitialSyncError",
+					fmt.Sprintf("Failed to collect files for initial sync: %v", err))
+				status.Containers = nil
+				return true
+			}
+			newHighWaterMark = apis.NowMicro()
+			// Set low water mark to reconciler start time so that any file changes
+			// between startup and initial sync completion are re-processed on the
+			// next reconcile, ensuring no changes are missed.
+			newLowWaterMark = r.startedTime
+		}
+
 		// Sort the files so that they're deterministic.
 		filesChanged = sliceutils.DedupedAndSorted(filesChanged)
 		if len(filesChanged) > 0 {
@@ -778,6 +820,8 @@ func (r *Reconciler) maybeSync(ctx context.Context, lu *v1alpha1.LiveUpdate, mon
 				ChangedFiles:       plan.SyncPaths,
 				Containers:         []liveupdates.Container{c},
 				LastFileTimeSynced: newHighWaterMark,
+				InitialSync:        isInitialSync,
+				InitialSyncFilter:  initialSyncFilter,
 			})
 			filesApplied = true
 		}
@@ -906,27 +950,45 @@ func (r *Reconciler) applyInternal(
 		return result
 	}
 
-	// rm files from container
-	toRemove, toArchive, err := build.MissingLocalPaths(ctx, changedFiles)
-	if err != nil {
-		result.Failed = &v1alpha1.LiveUpdateStateFailed{
-			Reason:  "Invalid",
-			Message: fmt.Sprintf("Mapping paths: %v", err),
-		}
-		return result
-	}
-
-	if len(toRemove) > 0 {
-		l.Infof("Will delete %d file(s) from container%s: %s", len(toRemove), suffix, names)
-		for _, pm := range toRemove {
-			l.Infof("- '%s' (matched local path: '%s')", pm.ContainerPath, pm.LocalPath)
-		}
-	}
-
-	if len(toArchive) > 0 {
-		l.Infof("Will copy %d file(s) to container%s: %s", len(toArchive), suffix, names)
+	// For initial sync, build a tar directly from sync directories. This avoids
+	// the overhead of collecting all files into individual PathMappings and then
+	// re-walking them to build the tar.
+	var toRemove []build.PathMapping
+	var toArchive []build.PathMapping
+	archiveFilter := model.EmptyMatcher
+	if input.InitialSync {
+		// No files to remove during initial sync — all files exist locally.
+		toRemove = nil
+		toArchive = build.SyncsToPathMappings(liveupdate.SyncSteps(spec))
+		archiveFilter = input.InitialSyncFilter
+		l.Infof("Initial sync: will copy sync paths to container%s: %s", suffix, names)
 		for _, pm := range toArchive {
 			l.Infof("- %s", pm.PrettyStr())
+		}
+	} else {
+		// rm files from container
+		var err error
+		toRemove, toArchive, err = build.MissingLocalPaths(ctx, changedFiles)
+		if err != nil {
+			result.Failed = &v1alpha1.LiveUpdateStateFailed{
+				Reason:  "Invalid",
+				Message: fmt.Sprintf("Mapping paths: %v", err),
+			}
+			return result
+		}
+
+		if len(toRemove) > 0 {
+			l.Infof("Will delete %d file(s) from container%s: %s", len(toRemove), suffix, names)
+			for _, pm := range toRemove {
+				l.Infof("- '%s' (matched local path: '%s')", pm.ContainerPath, pm.LocalPath)
+			}
+		}
+
+		if len(toArchive) > 0 {
+			l.Infof("Will copy %d file(s) to container%s: %s", len(toArchive), suffix, names)
+			for _, pm := range toArchive {
+				l.Infof("- %s", pm.PrettyStr())
+			}
 		}
 	}
 
@@ -935,7 +997,7 @@ func (r *Reconciler) applyInternal(
 		// TODO(nick): We should try to distinguish between cases where the tar writer
 		// fails (which is recoverable) vs when the server-side unpacking
 		// fails (which may not be recoverable).
-		archive := build.TarArchiveForPaths(ctx, toArchive, nil)
+		archive := build.TarArchiveForPaths(ctx, toArchive, archiveFilter)
 		err = cu.UpdateContainer(ctx, cInfo, archive,
 			build.PathMappingsToContainerPaths(toRemove), boiledSteps, hotReload)
 		_ = archive.Close()
@@ -1133,4 +1195,70 @@ func indexLiveUpdate(obj ctrlclient.Object) []indexer.Key {
 		})
 	}
 	return result
+}
+
+func (r *Reconciler) buildInitialSyncFilter(monitor *monitor) model.PathMatcher {
+	if len(monitor.spec.Sources) == 0 {
+		return model.EmptyMatcher
+	}
+
+	var allIgnores []v1alpha1.IgnoreDef
+	for _, source := range monitor.spec.Sources {
+		mSource, ok := monitor.sources[source.FileWatch]
+		if !ok {
+			continue
+		}
+		allIgnores = append(allIgnores, mSource.ignores...)
+	}
+	return ignore.CreateFileChangeFilter(allIgnores)
+}
+
+// collectAllSyncedFiles walks all sync paths and collects all files.
+func (r *Reconciler) collectAllSyncedFiles(ctx context.Context, spec v1alpha1.LiveUpdateSpec, filter model.PathMatcher) ([]string, error) {
+	l := logger.Get(ctx)
+	var allFiles []string
+
+	if filter == nil {
+		filter = model.EmptyMatcher
+	}
+
+	for _, syncSpec := range spec.Syncs {
+		localPath := syncSpec.LocalPath
+		if !filepath.IsAbs(localPath) {
+			localPath = filepath.Join(spec.BasePath, localPath)
+		}
+
+		if _, err := os.Stat(localPath); os.IsNotExist(err) {
+			l.Warnf("initial_sync: sync path %q does not exist, skipping", localPath)
+			continue
+		} else if err != nil {
+			return nil, fmt.Errorf("stat %s: %w", localPath, err)
+		}
+
+		err := filepath.WalkDir(localPath, func(path string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if d.IsDir() {
+				if matches, err := filter.MatchesEntireDir(path); err != nil {
+					return err
+				} else if matches && path != localPath {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+			if matches, err := filter.Matches(path); err != nil {
+				return err
+			} else if matches {
+				return nil
+			}
+			allFiles = append(allFiles, path)
+			return nil
+		})
+		if err != nil {
+			return nil, fmt.Errorf("walking sync path %s: %w", localPath, err)
+		}
+	}
+
+	return allFiles, nil
 }

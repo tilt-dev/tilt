@@ -384,6 +384,7 @@ const (
 	helmN      = "helm"
 
 	// live update functions
+	initialSyncN      = "initial_sync"
 	fallBackOnN       = "fall_back_on"
 	syncN             = "sync"
 	runN              = "run"
@@ -564,6 +565,7 @@ func (s *tiltfileState) OnStart(e *starkit.Environment) error {
 		{kustomizeN, s.kustomize},
 		{helmN, s.helm},
 		{triggerModeN, s.triggerModeFn},
+		{initialSyncN, s.liveUpdateInitialSync},
 		{fallBackOnN, s.liveUpdateFallBackOn},
 		{syncN, s.liveUpdateSync},
 		{runN, s.liveUpdateRun},

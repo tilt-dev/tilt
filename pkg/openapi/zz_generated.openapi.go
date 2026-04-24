@@ -135,6 +135,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		v1alpha1.LiveUpdateContainerStatus{}.OpenAPIModelName():         schema_pkg_apis_core_v1alpha1_LiveUpdateContainerStatus(ref),
 		v1alpha1.LiveUpdateDockerComposeSelector{}.OpenAPIModelName():   schema_pkg_apis_core_v1alpha1_LiveUpdateDockerComposeSelector(ref),
 		v1alpha1.LiveUpdateExec{}.OpenAPIModelName():                    schema_pkg_apis_core_v1alpha1_LiveUpdateExec(ref),
+		v1alpha1.LiveUpdateInitialSync{}.OpenAPIModelName():             schema_pkg_apis_core_v1alpha1_LiveUpdateInitialSync(ref),
 		v1alpha1.LiveUpdateKubernetesSelector{}.OpenAPIModelName():      schema_pkg_apis_core_v1alpha1_LiveUpdateKubernetesSelector(ref),
 		v1alpha1.LiveUpdateList{}.OpenAPIModelName():                    schema_pkg_apis_core_v1alpha1_LiveUpdateList(ref),
 		v1alpha1.LiveUpdateSelector{}.OpenAPIModelName():                schema_pkg_apis_core_v1alpha1_LiveUpdateSelector(ref),
@@ -4906,6 +4907,17 @@ func schema_pkg_apis_core_v1alpha1_LiveUpdateExec(ref common.ReferenceCallback) 
 	}
 }
 
+func schema_pkg_apis_core_v1alpha1_LiveUpdateInitialSync(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "LiveUpdateInitialSync enables full file sync on container start/restart.",
+				Type:        []string{"object"},
+			},
+		},
+	}
+}
+
 func schema_pkg_apis_core_v1alpha1_LiveUpdateKubernetesSelector(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -5145,12 +5157,18 @@ func schema_pkg_apis_core_v1alpha1_LiveUpdateSpec(ref common.ReferenceCallback) 
 							Format:      "",
 						},
 					},
+					"initialSync": {
+						SchemaProps: spec.SchemaProps{
+							Description: "InitialSync configures full file sync on container start/restart. When set, all files matching sync rules are uploaded when a container starts for the first time or restarts, bypassing the file-watch system.",
+							Ref:         ref(v1alpha1.LiveUpdateInitialSync{}.OpenAPIModelName()),
+						},
+					},
 				},
 				Required: []string{"basePath", "selector"},
 			},
 		},
 		Dependencies: []string{
-			v1alpha1.LiveUpdateExec{}.OpenAPIModelName(), v1alpha1.LiveUpdateSelector{}.OpenAPIModelName(), v1alpha1.LiveUpdateSource{}.OpenAPIModelName(), v1alpha1.LiveUpdateSync{}.OpenAPIModelName()},
+			v1alpha1.LiveUpdateExec{}.OpenAPIModelName(), v1alpha1.LiveUpdateInitialSync{}.OpenAPIModelName(), v1alpha1.LiveUpdateSelector{}.OpenAPIModelName(), v1alpha1.LiveUpdateSource{}.OpenAPIModelName(), v1alpha1.LiveUpdateSync{}.OpenAPIModelName()},
 	}
 }
 

@@ -129,8 +129,38 @@ func (l liveUpdateRestartContainerStep) Hash() (uint32, error)  { return 0, nil 
 func (l liveUpdateRestartContainerStep) declarationPos() string { return l.position.String() }
 func (l liveUpdateRestartContainerStep) liveUpdateStep()        {}
 
+type liveUpdateInitialSyncStep struct {
+	position syntax.Position
+}
+
+var _ starlark.Value = liveUpdateInitialSyncStep{}
+var _ liveUpdateStep = liveUpdateInitialSyncStep{}
+
+func (l liveUpdateInitialSyncStep) String() string {
+	return "initial_sync step"
+}
+func (l liveUpdateInitialSyncStep) Type() string           { return "live_update_initial_sync_step" }
+func (l liveUpdateInitialSyncStep) Freeze()                {}
+func (l liveUpdateInitialSyncStep) Truth() starlark.Bool   { return true }
+func (l liveUpdateInitialSyncStep) Hash() (uint32, error)  { return 0, nil }
+func (l liveUpdateInitialSyncStep) declarationPos() string { return l.position.String() }
+func (l liveUpdateInitialSyncStep) liveUpdateStep()        {}
+
 func (s *tiltfileState) recordLiveUpdateStep(step liveUpdateStep) {
 	s.unconsumedLiveUpdateSteps[step.declarationPos()] = step
+}
+
+// initialSync creates a live update step that syncs all files on container start/restart.
+func (s *tiltfileState) liveUpdateInitialSync(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	if err := s.unpackArgs(fn.Name(), args, kwargs); err != nil {
+		return nil, err
+	}
+
+	ret := liveUpdateInitialSyncStep{
+		position: thread.CallFrame(1).Pos,
+	}
+	s.recordLiveUpdateStep(ret)
+	return ret, nil
 }
 
 func (s *tiltfileState) liveUpdateFallBackOn(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -220,10 +250,12 @@ func (s *tiltfileState) liveUpdateFromSteps(t *starlark.Thread, maybeSteps starl
 	}
 
 	stepSlice := starlarkValueOrSequenceToSlice(maybeSteps)
+
 	if len(stepSlice) == 0 {
 		return v1alpha1.LiveUpdateSpec{}, nil
 	}
 
+	seenInitialSync := false
 	noMoreFallbacks := false
 	noMoreSyncs := false
 	noMoreRuns := false
@@ -235,7 +267,16 @@ func (s *tiltfileState) liveUpdateFromSteps(t *starlark.Thread, maybeSteps starl
 
 		switch x := step.(type) {
 
+		case liveUpdateInitialSyncStep:
+			if seenInitialSync {
+				return v1alpha1.LiveUpdateSpec{}, fmt.Errorf("initial_sync must appear at most once, at the start of the list")
+			}
+			seenInitialSync = true
+
+			spec.InitialSync = &v1alpha1.LiveUpdateInitialSync{}
+
 		case liveUpdateFallBackOnStep:
+			seenInitialSync = true
 			if noMoreFallbacks {
 				return v1alpha1.LiveUpdateSpec{}, fmt.Errorf("fall_back_on steps must appear at the start of the list")
 			}
@@ -257,6 +298,7 @@ func (s *tiltfileState) liveUpdateFromSteps(t *starlark.Thread, maybeSteps starl
 			if noMoreSyncs {
 				return v1alpha1.LiveUpdateSpec{}, fmt.Errorf("all sync steps must precede all run steps")
 			}
+			seenInitialSync = true
 			noMoreFallbacks = true
 
 			localPath := x.localPath
@@ -275,6 +317,7 @@ func (s *tiltfileState) liveUpdateFromSteps(t *starlark.Thread, maybeSteps starl
 			if noMoreRuns {
 				return v1alpha1.LiveUpdateSpec{}, fmt.Errorf("restart container is only valid as the last step")
 			}
+			seenInitialSync = true
 			noMoreFallbacks = true
 			noMoreSyncs = true
 
@@ -285,6 +328,7 @@ func (s *tiltfileState) liveUpdateFromSteps(t *starlark.Thread, maybeSteps starl
 			})
 
 		case liveUpdateRestartContainerStep:
+			seenInitialSync = true
 			noMoreFallbacks = true
 			noMoreSyncs = true
 			noMoreRuns = true
