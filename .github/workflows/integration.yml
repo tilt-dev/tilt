@@ -33,8 +33,8 @@ jobs:
     if: needs.check-changes.outputs.has-go-changes == 'true'
     runs-on: ubuntu-latest
     container:
-      image: docker/tilt-integration-ci@sha256:9821f02b3304ede7a09ec0564e0a68abea9375bf596b64f34aa683c613db69f4
-      options: --privileged --user root
+      image: tiltdev/tilt-integration-ci@sha256:d0dd2ae941a5d67d8c194ce0f72feae4018c88b40ef5cbba89f98c1bf44e9e9c
+      # options: --privileged --user root
       volumes:
         - /var/run/docker.sock:/var/run/docker.sock
     steps:
