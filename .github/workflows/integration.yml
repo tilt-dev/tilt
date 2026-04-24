@@ -39,9 +39,16 @@ jobs:
         - /var/run/docker.sock:/var/run/docker.sock
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
 
       - name: Configure Git safe directory
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Fetch master branch
+        run: |
+          git fetch origin master:refs/remotes/origin/master
+          git branch -f master origin/master
 
       - name: Setup Kind cluster
         run: ctlptl create cluster kind --registry=ctlptl-registry
@@ -80,9 +87,16 @@ jobs:
       PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
 
       - name: Configure Git safe directory
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Fetch master branch
+        run: |
+          git fetch origin master:refs/remotes/origin/master
+          git branch -f master origin/master
 
       - name: Setup Kind cluster
         run: ctlptl create cluster kind --registry=ctlptl-registry

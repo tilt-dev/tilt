@@ -20,6 +20,15 @@ jobs:
           fetch-depth: 0
           path: tilt
 
+      - name: Configure Git safe directory
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE/tilt"
+
+      - name: Fetch master branch
+        run: |
+          git fetch origin master:refs/remotes/origin/master
+          git branch -f master origin/master
+        working-directory: tilt
+
       - name: Check for Go changes
         id: changes
         run: |
