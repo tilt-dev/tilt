@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
@@ -256,20 +257,22 @@ spec:
 func entitiesWithKinds(kinds []string) []K8sEntity {
 	entities := make([]K8sEntity, len(kinds))
 	for i, k := range kinds {
-		entities[i] = entityWithKind(k)
+		entities[i] = entityWithKindAndName(k, fmt.Sprintf("%s-%d", k, i))
 	}
 	return entities
 }
 
-func entityWithKind(kind string) K8sEntity {
+func entityWithKindAndName(kind, name string) K8sEntity {
 	return K8sEntity{
-		Obj: fakeObject{
-			kind: fakeKind(kind),
+		Obj: &fakeObject{
+			ObjectMeta: metav1.ObjectMeta{Name: name},
+			kind:       fakeKind(kind),
 		},
 	}
 }
 
 type fakeObject struct {
+	metav1.ObjectMeta
 	kind fakeKind
 }
 
@@ -363,6 +366,24 @@ func TestToParallelizableBatches(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestToParallelizableBatchesSplitsDuplicateObjectRefs(t *testing.T) {
+	input := entityList([]K8sEntity{
+		entityWithKindAndName("PodMonitor", "same"),
+		entityWithKindAndName("PodMonitor", "other"),
+		entityWithKindAndName("PodMonitor", "same"),
+		entityWithKindAndName("PodMonitor", "other"),
+	})
+
+	batches := input.toParallelizableBatches()
+	require.Len(t, batches, 2)
+	assertKindOrder(t, []string{"PodMonitor", "PodMonitor"}, batches[0], "batch 0")
+	assertKindOrder(t, []string{"PodMonitor", "PodMonitor"}, batches[1], "batch 1")
+	assert.Equal(t, "same", batches[0][0].Name())
+	assert.Equal(t, "other", batches[0][1].Name())
+	assert.Equal(t, "same", batches[1][0].Name())
+	assert.Equal(t, "other", batches[1][1].Name())
 }
 
 // TestFilterByMatchesPodTemplateSpecNamespace tests that Services are only matched

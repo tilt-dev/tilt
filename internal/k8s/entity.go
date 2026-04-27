@@ -57,12 +57,22 @@ func (l entityList) Swap(i, j int) { l[i], l[j] = l[j], l[i] }
 func (l entityList) toParallelizableBatches() [][]K8sEntity {
 	result := make([][]K8sEntity, 0)
 	batch := []K8sEntity{}
+	batchRefs := map[v1.ObjectReference]bool{}
 	for i, e := range l {
-		if i == 0 || l.TypeOrder(i-1) == l.TypeOrder(i) {
+		ref := e.ToObjectReference()
+		// Kubernetes create/update identity ignores server-assigned bookkeeping.
+		ref.UID = ""
+		ref.ResourceVersion = ""
+		ref.FieldPath = ""
+		sameTypeOrder := i == 0 || l.TypeOrder(i-1) == l.TypeOrder(i)
+		_, duplicateInBatch := batchRefs[ref]
+		if sameTypeOrder && !duplicateInBatch {
 			batch = append(batch, e)
+			batchRefs[ref] = true
 		} else {
 			result = append(result, batch)
 			batch = []K8sEntity{e}
+			batchRefs = map[v1.ObjectReference]bool{ref: true}
 		}
 	}
 	if len(batch) > 0 {

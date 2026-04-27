@@ -214,6 +214,58 @@ func TestUpsertIsParallelized(t *testing.T) {
 	})
 }
 
+func TestUpsertSerializesDuplicateObjectRefs(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		f := newClientTestFixture(t)
+		entities := mustParseYAML(t, `
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: same
+  namespace: default
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: other
+  namespace: default
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: same
+  namespace: default
+`)
+
+		var mu sync.Mutex
+		inFlight := map[v1.ObjectReference]bool{}
+		applyFn := func(target kube.ResourceList, ssa SSAOptions) (*kube.Result, error) {
+			require.Len(t, target, 1)
+			ref := NewK8sEntity(target[0].Object).ToObjectReference()
+
+			mu.Lock()
+			if inFlight[ref] {
+				mu.Unlock()
+				return nil, fmt.Errorf("%s %q already exists", ref.Kind, ref.Name)
+			}
+			inFlight[ref] = true
+			mu.Unlock()
+
+			time.Sleep(50 * time.Millisecond)
+
+			mu.Lock()
+			delete(inFlight, ref)
+			mu.Unlock()
+
+			return &kube.Result{Updated: target}, nil
+		}
+		f.resourceClient.applyFn = &applyFn
+
+		_, err := f.k8sUpsert(f.ctx, entities)
+		require.NoError(t, err)
+	})
+}
+
 // Even within resource types, objects should be returned in the same order they were provided.
 func TestUpsertMaintainsOrdering(t *testing.T) {
 	f := newClientTestFixture(t)
