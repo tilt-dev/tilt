@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"go.starlark.net/starlark"
-	v1 "k8s.io/api/core/v1"
 
 	"github.com/tilt-dev/tilt/internal/k8s"
 )
@@ -30,13 +29,13 @@ type ObjectSpec struct {
 
 // Keeps track of all the Kubernetes objects registered during Tiltfile Execution.
 type State struct {
-	ObjectSpecRefs  []v1.ObjectReference
-	ObjectSpecIndex map[v1.ObjectReference]ObjectSpec
+	ObjectSpecRefs  []k8s.ObjectAddress
+	ObjectSpecIndex map[k8s.ObjectAddress]ObjectSpec
 }
 
 func NewState() *State {
 	return &State{
-		ObjectSpecIndex: make(map[v1.ObjectReference]ObjectSpec),
+		ObjectSpecIndex: make(map[k8s.ObjectAddress]ObjectSpec),
 	}
 }
 
@@ -55,7 +54,7 @@ func (s *State) EntityCount() int {
 func (s *State) Append(t *starlark.Thread, entities []k8s.K8sEntity, dupesOK bool) error {
 	stackTrace := t.CallStack().String()
 	for _, e := range entities {
-		ref := e.ToObjectReference()
+		ref := e.ToObjectAddress()
 		old, exists := s.ObjectSpecIndex[ref]
 		if exists && !dupesOK {
 			humanRef := ""

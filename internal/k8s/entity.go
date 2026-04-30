@@ -29,6 +29,25 @@ func NewK8sEntity(obj runtime.Object) K8sEntity {
 	return K8sEntity{Obj: obj}
 }
 
+// ObjectAddress uniquely identifies a Kubernetes object for the purpose of upsert deduplication.
+type ObjectAddress struct {
+	Name       string
+	Namespace  string
+	Kind       string
+	APIVersion string
+}
+
+func (e K8sEntity) ToObjectAddress() ObjectAddress {
+	meta := e.Meta()
+	apiVersion, kind := e.GVK().ToAPIVersionAndKind()
+	return ObjectAddress{
+		Name:       meta.GetName(),
+		Namespace:  meta.GetNamespace(),
+		Kind:       kind,
+		APIVersion: apiVersion,
+	}
+}
+
 type entityList []K8sEntity
 
 func (l entityList) TypeOrder(i int) int {
@@ -57,22 +76,18 @@ func (l entityList) Swap(i, j int) { l[i], l[j] = l[j], l[i] }
 func (l entityList) toParallelizableBatches() [][]K8sEntity {
 	result := make([][]K8sEntity, 0)
 	batch := []K8sEntity{}
-	batchRefs := map[v1.ObjectReference]bool{}
+	batchIDs := map[ObjectAddress]bool{}
 	for i, e := range l {
-		ref := e.ToObjectReference()
-		// Kubernetes create/update identity ignores server-assigned bookkeeping.
-		ref.UID = ""
-		ref.ResourceVersion = ""
-		ref.FieldPath = ""
+		id := e.ToObjectAddress()
 		sameTypeOrder := i == 0 || l.TypeOrder(i-1) == l.TypeOrder(i)
-		_, duplicateInBatch := batchRefs[ref]
+		_, duplicateInBatch := batchIDs[id]
 		if sameTypeOrder && !duplicateInBatch {
 			batch = append(batch, e)
-			batchRefs[ref] = true
+			batchIDs[id] = true
 		} else {
 			result = append(result, batch)
 			batch = []K8sEntity{e}
-			batchRefs = map[v1.ObjectReference]bool{ref: true}
+			batchIDs = map[ObjectAddress]bool{id: true}
 		}
 	}
 	if len(batch) > 0 {
