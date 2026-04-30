@@ -134,6 +134,23 @@ def set_team(team_id: str) -> None:
   """
   pass
 
+def initial_sync() -> LiveUpdateStep:
+  """Sync all files to the container when it starts or restarts.
+
+  When included in a ``live_update``, Tilt performs a full sync of all files
+  matching the live update's ``sync`` rules the first time a container starts
+  (or whenever it restarts), without waiting for file-change events. This is
+  useful when using pre-built images that may not contain the latest local
+  source files.
+
+  ``initial_sync`` must appear at most once, and only at the start of the
+  step list (before any ``fall_back_on``, ``sync``, ``run``, or
+  ``restart_container`` steps).
+
+  For more info, see the `Live Update Reference <live_update_reference.html>`_.
+  """
+  pass
+
 def sync(local_path: str, remote_path: str) -> LiveUpdateStep:
   """Specify that any changes to `localPath` should be synced to `remotePath`
 
