@@ -160,6 +160,31 @@ func TestUpsertStatefulsetForbidden(t *testing.T) {
 	assert.Equal(t, 4, len(f.resourceClient.updates))
 }
 
+func TestUpsertApplyNotFoundRetries(t *testing.T) {
+	f := newClientTestFixture(t)
+	roleBinding := mustParseYAML(t, `
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: app-worker-discovery
+  namespace: default
+subjects:
+- kind: ServiceAccount
+  name: app-service-account
+roleRef:
+  kind: Role
+  name: app-worker-discovery
+  apiGroup: rbac.authorization.k8s.io
+`)
+
+	f.resourceClient.updateErr = errors.New(`rolebindings.rbac.authorization.k8s.io "app-worker-discovery" not found`)
+
+	_, err := f.k8sUpsert(f.ctx, roleBinding)
+	require.NoError(t, err)
+	require.Len(t, f.resourceClient.updates, 1)
+	assert.Equal(t, "app-worker-discovery", f.resourceClient.updates[0].Name)
+}
+
 func TestUpsertToTerminatingNamespaceForbidden(t *testing.T) {
 	f := newClientTestFixture(t)
 	postgres, err := ParseYAMLFromString(testyaml.SanchoYAML)
