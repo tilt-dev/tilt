@@ -450,17 +450,30 @@ func (j *JSONPath) evalFilter(input []Value, node *FilterNode) ([]Value, error) 
 		valueInner, _ := template.Indirect(value.Value)
 		value = Wrap(valueInner)
 
-		if value.Kind() != reflect.Array && value.Kind() != reflect.Slice {
-			return input, fmt.Errorf("%v is not array or slice and cannot be filtered", value)
+		var items []reflect.Value
+		switch value.Kind() {
+		case reflect.Array, reflect.Slice:
+			items = make([]reflect.Value, 0, value.Len())
+			for i := 0; i < value.Len(); i++ {
+				items = append(items, value.Index(i))
+			}
+		case reflect.Map:
+			items = make([]reflect.Value, 0, value.Len())
+			for _, key := range value.MapKeys() {
+				items = append(items, value.MapIndex(key))
+			}
+		default:
+			return input, fmt.Errorf("%v is not array, slice or map and cannot be filtered", value)
 		}
-		for i := 0; i < value.Len(); i++ {
-			temp := []Value{Wrap(value.Index(i))}
+
+		for _, item := range items {
+			temp := []Value{Wrap(item)}
 			lefts, err := j.evalList(temp, node.Left)
 
 			// case exists
 			if node.Operator == "exists" {
 				if len(lefts) > 0 {
-					results = append(results, Wrap(value.Index(i)))
+					results = append(results, Wrap(item))
 				}
 				continue
 			}
@@ -511,7 +524,7 @@ func (j *JSONPath) evalFilter(input []Value, node *FilterNode) ([]Value, error) 
 				return results, err
 			}
 			if pass {
-				results = append(results, Wrap(value.Index(i)))
+				results = append(results, Wrap(item))
 			}
 		}
 	}

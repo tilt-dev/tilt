@@ -171,6 +171,7 @@ func TestStructInput(t *testing.T) {
 		{"dict/", "{$.Employees.jason}", storeData, "manager", false},
 		{"dict/", "{$.Employees.dan}", storeData, "clerk", false},
 		{"dict-", "{.Labels.k8s-app}", storeData, "20", false},
+		{"dictfilter", "{.Book[?(@.Category == 'reference')].Title}", storeData, "Sayings of the Centurey", false},
 		{"nest", "{.Bicycle[*].Color}", storeData, "red green", false},
 		{"allarray", "{.Book[*].Author}", storeData, "Nigel Rees Evelyn Waugh Herman Melville", false},
 		{"allfileds", "{.Bicycle.*}", storeData, "{red 19.95 true} {green 20.01 false}", false},
