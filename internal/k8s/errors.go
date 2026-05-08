@@ -2,6 +2,7 @@ package k8s
 
 import (
 	"net/http"
+	"regexp"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -25,8 +26,11 @@ func isNotFoundError(err error) bool {
 	}
 	return apierrors.IsNotFound(err) ||
 		// Helm has it's own custom not found error.
-		strings.Contains(err.Error(), "object not found")
+		strings.Contains(err.Error(), "object not found") ||
+		kubernetesResourceNotFoundRe.MatchString(err.Error())
 }
+
+var kubernetesResourceNotFoundRe = regexp.MustCompile(`(?m)\b[a-z0-9.]+ "[^"]+" not found\b`)
 
 func isMissingKindError(err error) bool {
 	if err == nil {

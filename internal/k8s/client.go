@@ -431,7 +431,23 @@ func (k *K8sClient) applyEntity(ctx context.Context, entity K8sEntity, ssa SSAOp
 
 	result, err := k.resourceClient.Apply(resources, ssa)
 	if err != nil {
-		return nil, err
+		if !isNotFoundError(err) {
+			return nil, err
+		}
+
+		// The object might have been deleted between kubectl apply's read
+		// and patch/update steps, e.g. if a previous reload started an async
+		// ForceDelete. Rebuild the resource list so the retry sees the latest
+		// cluster state and can recreate the object if needed.
+		logger.Get(ctx).Infof("Resource %s was not found during apply. Retrying...", entity.Name())
+		resources, retryErr := k.prepareUpdateList(ctx, entity)
+		if retryErr != nil {
+			return nil, errors.Wrap(retryErr, "kubernetes apply retry")
+		}
+		result, err = k.resourceClient.Apply(resources, ssa)
+		if err != nil {
+			return nil, errors.Wrap(err, "kubernetes apply retry")
+		}
 	}
 
 	// Under rare circumstances, an apply() may result in a 3-way merge
