@@ -235,8 +235,7 @@ func TestKubernetes(t *testing.T) {
 		  "status":{
 			"capacity":{"cpu":"4"},
 			"ready": true,
-			"addresses":[{"type": "LegacyHostIP", "address":"127.0.0.1"}],
-			"unique": true
+			"addresses":[{"type": "LegacyHostIP", "address":"127.0.0.1"}]
 		  }
 		},
 		{
@@ -289,8 +288,6 @@ func TestKubernetes(t *testing.T) {
 		{"user password", `{.users[?(@.name=="e2e")].user.password}`, &nodesData, "secret", false},
 		{"hostname", `{.items[0].metadata.labels.kubernetes\.io/hostname}`, &nodesData, "127.0.0.1", false},
 		{"hostname filter", `{.items[?(@.metadata.labels.kubernetes\.io/hostname=="127.0.0.1")].kind}`, &nodesData, "None", false},
-		{"dict filter-found", `{.items[0][?(@.unique)].unique}`, &nodesData, "true", false},
-		{"dict filter-missing", `{.items[1][?(@.unique)].unique}`, &nodesData, "", false},
 		{"bool item", `{.items[?(@..ready==true)].metadata.name}`, &nodesData, "127.0.0.1", false},
 	}
 	testJSONPath(nodesTests, false, t)
@@ -654,4 +651,19 @@ func TestStep(t *testing.T) {
 		false,
 		t,
 	)
+}
+
+func TestDictPropertyFilter(t *testing.T) {
+	var input = []byte(`{
+        "withProp":    {"color": "blue", "size": 10},
+        "withoutProp": {"color": "red"}
+    }`)
+	var data interface{}
+	if err := json.Unmarshal(input, &data); err != nil {
+		t.Fatal(err)
+	}
+	testJSONPath([]jsonpathTest{
+		{"dict filter-found", `{[?(@.size)].color}`, data, "blue", false},
+		{"dict filter-missing", `{[?(@.missing)].color}`, data, "", false},
+	}, false, t)
 }
