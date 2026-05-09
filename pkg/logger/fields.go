@@ -7,6 +7,7 @@ type Fields map[string]string
 
 const FieldNameProgressID = "progressID"
 const FieldNameBuildEvent = "buildEvent"
+const FieldNameContainer = "container"
 
 // Most progress lines are optional. For example, if a bunch
 // of little upload updates come in, it's ok to skip some.
