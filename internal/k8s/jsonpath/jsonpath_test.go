@@ -289,7 +289,8 @@ func TestKubernetes(t *testing.T) {
 		{"user password", `{.users[?(@.name=="e2e")].user.password}`, &nodesData, "secret", false},
 		{"hostname", `{.items[0].metadata.labels.kubernetes\.io/hostname}`, &nodesData, "127.0.0.1", false},
 		{"hostname filter", `{.items[?(@.metadata.labels.kubernetes\.io/hostname=="127.0.0.1")].kind}`, &nodesData, "None", false},
-		{"dict filter", `{.items[0][?(@.unique)].unique}`, &nodesData, "true", false},
+		{"dict filter-found", `{.items[0][?(@.unique)].unique}`, &nodesData, "true", false},
+		{"dict filter-missing", `{.items[1][?(@.unique)].unique}`, &nodesData, "", false},
 		{"bool item", `{.items[?(@..ready==true)].metadata.name}`, &nodesData, "127.0.0.1", false},
 	}
 	testJSONPath(nodesTests, false, t)
