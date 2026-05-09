@@ -171,7 +171,6 @@ func TestStructInput(t *testing.T) {
 		{"dict/", "{$.Employees.jason}", storeData, "manager", false},
 		{"dict/", "{$.Employees.dan}", storeData, "clerk", false},
 		{"dict-", "{.Labels.k8s-app}", storeData, "20", false},
-		{"dictfilter", "{.Book[?(@.Category == 'reference')].Title}", storeData, "Sayings of the Centurey", false},
 		{"nest", "{.Bicycle[*].Color}", storeData, "red green", false},
 		{"allarray", "{.Book[*].Author}", storeData, "Nigel Rees Evelyn Waugh Herman Melville", false},
 		{"allfileds", "{.Bicycle.*}", storeData, "{red 19.95 true} {green 20.01 false}", false},
@@ -236,7 +235,8 @@ func TestKubernetes(t *testing.T) {
 		  "status":{
 			"capacity":{"cpu":"4"},
 			"ready": true,
-			"addresses":[{"type": "LegacyHostIP", "address":"127.0.0.1"}]
+			"addresses":[{"type": "LegacyHostIP", "address":"127.0.0.1"}],
+			"unique": true
 		  }
 		},
 		{
@@ -289,6 +289,7 @@ func TestKubernetes(t *testing.T) {
 		{"user password", `{.users[?(@.name=="e2e")].user.password}`, &nodesData, "secret", false},
 		{"hostname", `{.items[0].metadata.labels.kubernetes\.io/hostname}`, &nodesData, "127.0.0.1", false},
 		{"hostname filter", `{.items[?(@.metadata.labels.kubernetes\.io/hostname=="127.0.0.1")].kind}`, &nodesData, "None", false},
+		{"dict filter", `{.items[0][?(@.unique)].unique}`, &nodesData, "true", false},
 		{"bool item", `{.items[?(@..ready==true)].metadata.name}`, &nodesData, "127.0.0.1", false},
 	}
 	testJSONPath(nodesTests, false, t)
