@@ -652,3 +652,18 @@ func TestStep(t *testing.T) {
 		t,
 	)
 }
+
+func TestDictPropertyFilter(t *testing.T) {
+	var input = []byte(`{
+        "withProp":    {"color": "blue", "size": 10},
+        "withoutProp": {"color": "red"}
+    }`)
+	var data interface{}
+	if err := json.Unmarshal(input, &data); err != nil {
+		t.Fatal(err)
+	}
+	testJSONPath([]jsonpathTest{
+		{"dict filter-found", `{[?(@.size)].color}`, data, "blue", false},
+		{"dict filter-missing", `{[?(@.missing)].color}`, data, "", false},
+	}, false, t)
+}
