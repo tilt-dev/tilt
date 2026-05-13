@@ -49,6 +49,13 @@ func TestNotEmptyNamespace(t *testing.T) {
 	assert.Equal(t, "x", ns.String())
 }
 
+func TestTimeoutErrorMessage(t *testing.T) {
+	entities := MustParseYAMLFromString(t, testyaml.SanchoYAML)
+	err := timeoutError(10*time.Second, entities[0])
+	assert.Contains(t, err.Error(), "10s")
+	assert.Contains(t, err.Error(), "Deployment/sancho")
+}
+
 func TestUpsert(t *testing.T) {
 	f := newClientTestFixture(t)
 	postgres, err := ParseYAMLFromString(testyaml.PostgresYAML)
