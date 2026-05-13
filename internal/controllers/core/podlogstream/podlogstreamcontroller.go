@@ -353,6 +353,13 @@ func (c *Controller) consumeLogs(watch *podLogWatch, st store.RStore) {
 
 	ns := watch.namespace
 	startReadTime := watch.startWatchTime
+
+	// Stamp every log line with the container name as a structured field so the
+	// frontend can filter by container without parsing log text.
+	ctx = logger.WithLogger(ctx, logger.Get(ctx).WithFields(logger.Fields{
+		logger.FieldNameContainer: string(watch.cName),
+	}))
+
 	if watch.shouldPrefix {
 		prefix := fmt.Sprintf("[%s] ", watch.cName)
 		ctx = logger.WithLogger(ctx, logger.NewPrefixedLogger(prefix, logger.Get(ctx)))

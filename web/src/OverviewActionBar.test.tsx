@@ -11,7 +11,12 @@ import { useLocation } from "react-router-dom"
 import { SnackbarProvider } from "notistack"
 import React from "react"
 import { ButtonSet } from "./ApiButton"
-import { EMPTY_FILTER_TERM, FilterLevel, FilterSource } from "./logfilters"
+import {
+  EMPTY_FILTER_TERM,
+  FilterLevel,
+  FilterSet,
+  FilterSource,
+} from "./logfilters"
 import OverviewActionBar, {
   createLogSearch,
   FILTER_INPUT_DEBOUNCE,
@@ -19,10 +24,11 @@ import OverviewActionBar, {
 import { EmptyBar, FullBar } from "./OverviewActionBar.stories"
 import { disableButton, oneResource, oneUIButton } from "./testdata"
 
-const DEFAULT_FILTER_SET = {
+const DEFAULT_FILTER_SET: FilterSet = {
   level: FilterLevel.all,
   source: FilterSource.all,
   term: EMPTY_FILTER_TERM,
+  containers: [],
 }
 
 let location: any = window.location
@@ -257,6 +263,125 @@ describe("OverviewActionBar", () => {
     })
   })
 
+  describe("FilterContainerMenu", () => {
+    const containers = ["app", "istio-proxy", "daprd"]
+
+    it("does not render when no containers are present", () => {
+      customRender(
+        <OverviewActionBar filterSet={DEFAULT_FILTER_SET} logContainers={[]} />
+      )
+      expect(
+        screen.queryByLabelText(/select containers to filter logs/i)
+      ).toBeNull()
+    })
+
+    it("renders as disabled when exactly 1 container is present", () => {
+      customRender(
+        <OverviewActionBar
+          filterSet={DEFAULT_FILTER_SET}
+          logContainers={["app"]}
+        />
+      )
+      expect(
+        screen.getByLabelText(/select containers to filter logs/i)
+      ).toBeDisabled()
+    })
+
+    it("shows the single container name in the right pill when disabled", () => {
+      customRender(
+        <OverviewActionBar
+          filterSet={DEFAULT_FILTER_SET}
+          logContainers={["app"]}
+        />
+      )
+      expect(
+        screen.getByLabelText(/select containers to filter logs/i)
+      ).toHaveTextContent("app")
+    })
+
+    it("renders as enabled when 2 or more containers are present", () => {
+      customRender(
+        <OverviewActionBar
+          filterSet={DEFAULT_FILTER_SET}
+          logContainers={["app", "istio-proxy"]}
+        />
+      )
+      expect(
+        screen.getByLabelText(/select containers to filter logs/i)
+      ).not.toBeDisabled()
+    })
+
+    it("shows the container name in the right pill when 1 container is selected", () => {
+      customRender(
+        <OverviewActionBar
+          filterSet={{ ...DEFAULT_FILTER_SET, containers: ["app"] }}
+          logContainers={containers}
+        />
+      )
+      expect(
+        screen.getByLabelText(/select containers to filter logs/i)
+      ).toHaveTextContent("app")
+    })
+
+    it("shows a count in the right pill when 2+ containers are selected", () => {
+      customRender(
+        <OverviewActionBar
+          filterSet={{
+            ...DEFAULT_FILTER_SET,
+            containers: ["app", "istio-proxy"],
+          }}
+          logContainers={containers}
+        />
+      )
+      expect(
+        screen.getByLabelText(/select containers to filter logs/i)
+      ).toHaveTextContent("2")
+    })
+
+    it("updates the URL when a container is toggled on", () => {
+      customRender(
+        <OverviewActionBar
+          filterSet={DEFAULT_FILTER_SET}
+          logContainers={containers}
+        />
+      )
+      userEvent.click(
+        screen.getByLabelText(/select containers to filter logs/i)
+      )
+      userEvent.click(screen.getByRole("menuitemcheckbox", { name: /app/i }))
+      expect(getSearch()).toContain("containers=")
+      expect(new URLSearchParams(getSearch()).get("containers")).toBe("app")
+    })
+
+    it("removes a container from the URL when it is toggled off", () => {
+      customRender(
+        <OverviewActionBar
+          filterSet={{ ...DEFAULT_FILTER_SET, containers: ["app"] }}
+          logContainers={containers}
+        />
+      )
+      userEvent.click(
+        screen.getByLabelText(/select containers to filter logs/i)
+      )
+      userEvent.click(screen.getByRole("menuitemcheckbox", { name: /app/i }))
+      expect(new URLSearchParams(getSearch()).get("containers")).toBeNull()
+    })
+
+    it("clears the containers filter when 'All Containers' is clicked", () => {
+      customRender(
+        <OverviewActionBar
+          filterSet={{ ...DEFAULT_FILTER_SET, containers: ["app"] }}
+          logContainers={containers}
+        />
+      )
+      userEvent.click(
+        screen.getByLabelText(/select containers to filter logs/i)
+      )
+      userEvent.click(screen.getByRole("menuitem", { name: /all containers/i }))
+      expect(new URLSearchParams(getSearch()).get("containers")).toBeNull()
+    })
+  })
+
   describe("createLogSearch", () => {
     let currentSearch: URLSearchParams
     beforeEach(() => (currentSearch = new URLSearchParams()))
@@ -310,6 +435,32 @@ describe("OverviewActionBar", () => {
           term: "test",
         }).toString()
       ).toBe("source=build&term=test")
+    })
+
+    it("sets the containers param when a non-empty array is passed", () => {
+      expect(
+        createLogSearch(currentSearch.toString(), {
+          containers: ["app", "istio"],
+        }).get("containers")
+      ).toBe("app,istio")
+    })
+
+    it("removes the containers param when an empty array is passed", () => {
+      currentSearch.set("containers", "app,istio")
+      expect(
+        createLogSearch(currentSearch.toString(), { containers: [] }).get(
+          "containers"
+        )
+      ).toBeNull()
+    })
+
+    it("preserves an existing containers param when containers is undefined", () => {
+      currentSearch.set("containers", "app")
+      expect(
+        createLogSearch(currentSearch.toString(), { term: "test" }).get(
+          "containers"
+        )
+      ).toBe("app")
     })
   })
 })
