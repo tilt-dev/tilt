@@ -154,7 +154,10 @@ export namespace Glow {
       background-color: ${ColorRGBA(ColorRGB.white, ColorAlpha.translucent)};
     }
     50% {
-      background-color: ${ColorRGBA(ColorRGB.white, ColorAlpha.almostTransparent)};
+      background-color: ${ColorRGBA(
+        ColorRGB.white,
+        ColorAlpha.almostTransparent
+      )};
     }
   `
 

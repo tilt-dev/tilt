@@ -289,7 +289,9 @@ export function GlobalNav(props: GlobalNavProps) {
           aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
           role="menuitem"
         >
-          <ThemeToggleIcon>{theme === "dark" ? "\u263D" : "\u2600"}</ThemeToggleIcon>
+          <ThemeToggleIcon>
+            {theme === "dark" ? "\u263D" : "\u2600"}
+          </ThemeToggleIcon>
         </MenuButton>
       </MenuButtonLabeled>
 

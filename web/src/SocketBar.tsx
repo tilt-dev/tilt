@@ -35,7 +35,8 @@ let Bar = styled.div`
   margin-top: 64px;
   padding: 8px 16px;
   border-radius: 3px;
-  box-shadow: -5px 5px 0 0 ${ColorRGBA(ColorRGB.gray10, ColorAlpha.almostOpaque)};
+  box-shadow: -5px 5px 0 0
+    ${ColorRGBA(ColorRGB.gray10, ColorAlpha.almostOpaque)};
   text-align: center;
   animation: ${pulse} 3s ease infinite;
 `
