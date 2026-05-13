@@ -1,0 +1,74 @@
+name: Windows
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      has-go-changes: ${{ steps.check.outputs.go-changes }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Check for Go changes
+        id: check
+        run: |
+          if ./scripts/ci-has-go-changes.sh; then
+            echo "go-changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "go-changes=false" >> $GITHUB_OUTPUT
+          fi
+
+  build-windows:
+    needs: check-changes
+    if: needs.check-changes.outputs.has-go-changes == 'true'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version: '1.25'
+
+      - name: Install dependencies
+        run: |
+          choco install make -y
+          choco install kustomize -y
+          choco install kubernetes-helm -y
+          choco install docker-compose -y
+          choco install mingw --version=12.2.0.03042023 -y
+
+      - name: Install gotestsum
+        run: go install gotest.tools/gotestsum@latest
+
+      - name: Build Windows binary
+        run: go install -mod vendor ./cmd/tilt
+        env:
+          CGO_ENABLED: 1
+          CGO_LDFLAGS: -static
+
+      - name: Run tests
+        run: make shorttest-ci
+        env:
+          CGO_ENABLED: 1
+          CGO_LDFLAGS: -static
+
+      - name: Test PowerShell installer
+        run: ./scripts/install.ps1
+        shell: pwsh
+
+      - name: Upload test results
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: windows-test-results
+          path: test-results/

@@ -86,7 +86,7 @@ func TestProcessExecer_Run_ProcessGroup(t *testing.T) {
 		childProcStopped := assert.Eventually(t, func() bool {
 			err = proc.Signal(syscall.Signal(0))
 			return errors.Is(err, os.ErrProcessDone)
-		}, time.Second, 50*time.Millisecond, "Child process was still running")
+		}, 5*time.Second, 50*time.Millisecond, "Child process was still running")
 		if !childProcStopped {
 			_ = proc.Kill()
 		}
