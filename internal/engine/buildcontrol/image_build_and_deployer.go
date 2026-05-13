@@ -13,6 +13,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/core/cmdimage"
 	"github.com/tilt-dev/tilt/internal/controllers/core/dockerimage"
 	"github.com/tilt-dev/tilt/internal/controllers/core/kubernetesapply"
+	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/k8sconv"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -81,17 +82,17 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 		numStages++
 	}
 
-	hasDeleteStep := stateSet.FullBuildTriggered()
-	if hasDeleteStep {
+	hasForceUpdateStep := stateSet.FullBuildTriggered()
+	if hasForceUpdateStep {
 		numStages++
 	}
 
 	ps := build.NewPipelineState(ctx, numStages, ibd.clock)
 	defer func() { ps.End(ctx, err) }()
 
-	if hasDeleteStep {
+	if hasForceUpdateStep {
 		ps.StartPipelineStep(ctx, "Force update")
-		err = ibd.delete(ps.AttachLogger(ctx), kTarget, kCluster)
+		kTarget, err = ibd.prepareForceUpdate(ps.AttachLogger(ctx), kTarget, kCluster)
 		if err != nil {
 			return store.BuildResultSet{}, WrapDontFallBackError(err)
 		}
@@ -197,9 +198,42 @@ func (ibd *ImageBuildAndDeployer) deploy(
 	return store.NewK8sDeployResult(kTargetID, filter), nil
 }
 
-// Delete all the resources in the Kubernetes target, to ensure that they restart when
-// we re-apply them.
-func (ibd *ImageBuildAndDeployer) delete(ctx context.Context, k8sTarget model.K8sTarget, cluster *v1alpha1.Cluster) error {
-	kTargetNN := types.NamespacedName{Name: k8sTarget.ID().Name.String()}
-	return ibd.r.ForceDelete(ctx, kTargetNN, k8sTarget.KubernetesApplySpec, cluster, "force update")
+// prepareForceUpdate rewrites the target's rendered YAML for a
+// `tilt trigger` / force-refresh apply pass. Workload controllers get
+// a kubectl.kubernetes.io/restartedAt stamp so the apply triggers a
+// rolling restart; Jobs and standalone Pods are force-deleted here and
+// recreated by the apply; everything else passes through so the apply
+// pipeline updates it in place. Specs with a custom DeleteCmd keep the
+// legacy blanket-delete path via Reconciler.ForceDelete.
+func (ibd *ImageBuildAndDeployer) prepareForceUpdate(ctx context.Context, kTarget model.K8sTarget, cluster *v1alpha1.Cluster) (model.K8sTarget, error) {
+	spec := kTarget.KubernetesApplySpec
+	kTargetNN := types.NamespacedName{Name: kTarget.ID().Name.String()}
+
+	if spec.YAML == "" {
+		if spec.DeleteCmd != nil {
+			return kTarget, ibd.r.ForceDelete(ctx, kTargetNN, spec, cluster, "force update")
+		}
+		return kTarget, nil
+	}
+
+	entities, err := k8s.ParseYAMLFromString(spec.YAML)
+	if err != nil {
+		return kTarget, fmt.Errorf("force update: parsing YAML: %v", err)
+	}
+
+	toApply, toRecreate, err := kubernetesapply.PrepareTriggerEntities(entities, ibd.clock.Now())
+	if err != nil {
+		return kTarget, fmt.Errorf("force update: preparing entities: %v", err)
+	}
+
+	if err := ibd.r.ForceDeleteEntities(ctx, kTargetNN, cluster, toRecreate, "force update (recreate)"); err != nil {
+		return kTarget, fmt.Errorf("force update: deleting ephemeral entities: %v", err)
+	}
+
+	rewritten, err := k8s.SerializeSpecYAML(toApply)
+	if err != nil {
+		return kTarget, fmt.Errorf("force update: serializing rewritten YAML: %v", err)
+	}
+	kTarget.KubernetesApplySpec.YAML = rewritten
+	return kTarget, nil
 }

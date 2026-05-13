@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/pkg/errors"
 	batchv1 "k8s.io/api/batch/v1"
@@ -848,6 +849,91 @@ func (r *Reconciler) ForceDelete(ctx context.Context, nn types.NamespacedName,
 	r.recordDelete(nn)
 	r.bestEffortDelete(ctx, nn, toDelete, reason)
 	r.requeuer.Add(nn)
+	return nil
+}
+
+// triggerRestartSet is the set of workload-controller GVKs whose pod
+// template we stamp with kubectl.kubernetes.io/restartedAt on trigger
+// to force a rolling restart — the same mechanism `kubectl rollout
+// restart` uses.
+var triggerRestartSet = map[schema.GroupKind]bool{
+	{Group: "apps", Kind: "Deployment"}:  true,
+	{Group: "apps", Kind: "StatefulSet"}: true,
+	{Group: "apps", Kind: "DaemonSet"}:   true,
+}
+
+// triggerRecreateSet is the set of GVKs whose spec is immutable or
+// whose "run" IS the object (Jobs, standalone Pods). Trigger on a
+// resource containing these force-deletes the specific entity; the
+// apply pass then recreates it.
+var triggerRecreateSet = map[schema.GroupKind]bool{
+	{Group: "batch", Kind: "Job"}: true,
+	{Group: "", Kind: "Pod"}:      true,
+}
+
+// PrepareTriggerEntities partitions the rendered entities of a
+// KubernetesApply for a `tilt trigger` / force-refresh apply pass.
+// Workload controllers receive a kubectl.kubernetes.io/restartedAt
+// stamp on their pod template so the apply triggers a rolling
+// restart; Jobs and standalone Pods are returned in toRecreate for
+// per-entity force-delete before apply; everything else passes
+// through unchanged. Ordering is preserved.
+func PrepareTriggerEntities(entities []k8s.K8sEntity, now time.Time) (toApply []k8s.K8sEntity, toRecreate []k8s.K8sEntity, err error) {
+	stamp := now.UTC().Format(time.RFC3339)
+	toApply = make([]k8s.K8sEntity, 0, len(entities))
+	for _, e := range entities {
+		gk := e.GVK().GroupKind()
+		switch {
+		case triggerRecreateSet[gk]:
+			toRecreate = append(toRecreate, e)
+			toApply = append(toApply, e)
+		case triggerRestartSet[gk]:
+			stamped, rerr := withPodTemplateRestartedAt(e, stamp)
+			if rerr != nil {
+				return nil, nil, fmt.Errorf("stamping restartedAt on %s/%s: %v",
+					e.GVK().Kind, e.Name(), rerr)
+			}
+			toApply = append(toApply, stamped)
+		default:
+			toApply = append(toApply, e)
+		}
+	}
+	return toApply, toRecreate, nil
+}
+
+func withPodTemplateRestartedAt(e k8s.K8sEntity, stamp string) (k8s.K8sEntity, error) {
+	const annKey = "kubectl.kubernetes.io/restartedAt"
+	out := e.DeepCopy()
+	templates, err := k8s.ExtractPodTemplateSpec(out)
+	if err != nil {
+		return k8s.K8sEntity{}, err
+	}
+	if len(templates) == 0 {
+		return k8s.K8sEntity{}, fmt.Errorf("no pod template on %s/%s", e.GVK().Kind, e.Name())
+	}
+	for _, t := range templates {
+		if t.Annotations == nil {
+			t.Annotations = map[string]string{}
+		}
+		t.Annotations[annKey] = stamp
+	}
+	return out, nil
+}
+
+// ForceDeleteEntities deletes a pre-filtered list of entities in
+// reverse dependency order. Used by the trigger path to recreate Jobs
+// and standalone Pods after PrepareTriggerEntities has partitioned the
+// rendered set.
+func (r *Reconciler) ForceDeleteEntities(ctx context.Context, nn types.NamespacedName,
+	cluster *v1alpha1.Cluster, entities []k8s.K8sEntity, reason string) error {
+	if len(entities) == 0 {
+		return nil
+	}
+	r.recordDelete(nn)
+	r.bestEffortDelete(ctx, nn, deleteSpec{
+		cluster:  cluster,
+		entities: k8s.ReverseSortedEntities(entities),
+	}, reason)
 	return nil
 }
 
