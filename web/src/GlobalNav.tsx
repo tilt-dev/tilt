@@ -17,6 +17,7 @@ import {
   mixinResetButtonStyle,
   SizeUnit,
 } from "./style-helpers"
+import { useTheme } from "./ThemeContext"
 import { Cluster } from "./types"
 import UpdateDialog from "./UpdateDialog"
 import type { TiltBuild } from "./core"
@@ -181,6 +182,11 @@ enum NavDialog {
   Update = "update",
 }
 
+const ThemeToggleIcon = styled.span`
+  font-size: 18px;
+  line-height: 24px;
+`
+
 export function GlobalNav(props: GlobalNavProps) {
   const helpButton = useRef<HTMLButtonElement | null>(null)
   const accountButton = useRef<HTMLButtonElement | null>(null)
@@ -189,6 +195,7 @@ export function GlobalNav(props: GlobalNavProps) {
   const snapshotButton = useRef<HTMLButtonElement | null>(null)
 
   const [openDialog, setOpenDialog] = useState<NavDialog | null>(null)
+  const { theme, toggleTheme } = useTheme()
 
   const features = useFeatures()
 
@@ -275,6 +282,16 @@ export function GlobalNav(props: GlobalNavProps) {
       </MenuButtonLabeled>
 
       {snapshotMenuItem}
+
+      <MenuButtonLabeled label="Theme">
+        <MenuButton
+          onClick={toggleTheme}
+          aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
+          role="menuitem"
+        >
+          <ThemeToggleIcon>{theme === "dark" ? "\u263D" : "\u2600"}</ThemeToggleIcon>
+        </MenuButton>
+      </MenuButtonLabeled>
 
       <MenuButtonLabeled label="Help">
         <MenuButton
