@@ -182,7 +182,7 @@ func (e *subscriberEntry) movePendingToActive() *ChangeSummary {
 // e.g. "engine/uiresource.Subscriber"
 func subscriberName(sub Subscriber) string {
 	typ := reflect.TypeOf(sub)
-	if typ.Kind() == reflect.Ptr {
+	if typ.Kind() == reflect.Pointer {
 		typ = typ.Elem()
 	}
 	return fmt.Sprintf("%s.%s", strings.TrimPrefix(typ.PkgPath(), "github.com/tilt-dev/tilt/internal/"), typ.Name())

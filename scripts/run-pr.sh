@@ -71,7 +71,7 @@ WORKDIR /tilt/web
 RUN corepack enable && yarn install --immutable && yarn build
 
 # --- Stage 2: build tilt binary with Go ---
-FROM golang:1.25
+FROM golang:1.26
 RUN apt-get update && apt-get install -y socat && rm -rf /var/lib/apt/lists/*
 RUN git clone ${CLONE_URL} /tilt
 WORKDIR /tilt
