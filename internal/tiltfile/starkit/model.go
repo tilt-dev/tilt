@@ -45,7 +45,7 @@ func (m Model) createInitState(ext StatefulPlugin) error {
 
 func (m Model) Load(ptr interface{}) error {
 	ptrVal := reflect.ValueOf(ptr)
-	if ptrVal.Kind() != reflect.Ptr {
+	if ptrVal.Kind() != reflect.Pointer {
 		return fmt.Errorf("Cannot load %T", ptr)
 	}
 	val := ptrVal.Elem()

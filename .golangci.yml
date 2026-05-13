@@ -1,6 +1,6 @@
 version: "2"
 run:
-  go: "1.25"
+  go: "1.26"
   build-tags:
     - integration
   modules-download-mode: vendor
@@ -36,6 +36,8 @@ linters:
         - "SA6*" # performance issues
         - "SA9*" # dubious constructs
     govet:
+      disable:
+        - inline
       settings:
         printf:
           funcs:
@@ -68,6 +70,7 @@ linters:
       - third_party$
       - builtin$
       - examples$
+      - web/node_modules
 formatters:
   enable:
     - goimports
@@ -83,3 +86,4 @@ formatters:
       - third_party$
       - builtin$
       - examples$
+      - web/node_modules

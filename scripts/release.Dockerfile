@@ -7,13 +7,13 @@
 # osxcross contains the MacOSX cross toolchain for xx
 FROM crazymax/osxcross:12.3-debian AS osxcross
 
-FROM golang:1.25-trixie AS musl-cross
+FROM golang:1.26-trixie AS musl-cross
 WORKDIR /musl
 # https://more.musl.cc/GCC-MAJOR-VERSION/HOST-ARCH-linux-musl/CROSS-ARCH-linux-musl-cross.tgz
 RUN curl -sf https://more.musl.cc/11/x86_64-linux-musl/aarch64-linux-musl-cross.tgz | tar zxf -
 RUN curl -sf https://more.musl.cc/11/x86_64-linux-musl/x86_64-linux-musl-cross.tgz | tar zxf -
 
-FROM golang:1.25-trixie
+FROM golang:1.26-trixie
 
 RUN apt-get update && \
     apt-get install -y -q --no-install-recommends \

@@ -136,7 +136,7 @@ func isNil(v commonTime) bool {
 	// K8s types will come back with typed nils, so we need to use reflection
 	// to handle them properly
 	x := reflect.ValueOf(v)
-	if x.Kind() == reflect.Ptr && x.IsNil() {
+	if x.Kind() == reflect.Pointer && x.IsNil() {
 		return true
 	}
 

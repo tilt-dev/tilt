@@ -119,7 +119,7 @@ func allowLabelChangesInOptionalSelector(obj runtime.Object) {
 	// 1) A Selector field of type metav1.LabelSelector
 	// 2) A Template field of type v1.PodTemplateSpec
 	objPtrV := reflect.ValueOf(obj)
-	if objPtrV.Kind() != reflect.Ptr {
+	if objPtrV.Kind() != reflect.Pointer {
 		return
 	}
 
