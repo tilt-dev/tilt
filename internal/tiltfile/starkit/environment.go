@@ -301,6 +301,12 @@ func (e *Environment) doLoad(t *starlark.Thread, localPath string) (starlark.Str
 	}
 	predeclared["__file__"] = starlark.String(localPath)
 
+	if e.startTf != nil && e.startTf.Spec.Path == localPath {
+		predeclared["__name__"] = starlark.String("__main__")
+	} else {
+		predeclared["__name__"] = starlark.String(filepath.Base(localPath))
+	}
+
 	return starlark.ExecFileOptions(fileOptions, t, localPath, bytes, predeclared)
 }
 
