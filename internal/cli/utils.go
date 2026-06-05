@@ -7,6 +7,10 @@ import (
 	"net/http"
 	"os"
 	"strings"
+
+	"github.com/tilt-dev/tilt/internal/hud/server"
+	"github.com/tilt-dev/tilt/internal/token"
+	"github.com/tilt-dev/wmclient/pkg/dirs"
 )
 
 func apiHost() string {
@@ -18,9 +22,26 @@ func apiURL(path string) string {
 	return fmt.Sprintf("http://%s:%d/api/%s", provideWebHost(), provideWebPort(), path)
 }
 
+func loadToken() string {
+	dir, err := dirs.UseTiltDevDir()
+	if err != nil {
+		return ""
+	}
+	t, err := token.GetOrCreateToken(dir)
+	if err != nil {
+		return ""
+	}
+	return t.String()
+}
+
 func apiGet(path string) (body io.ReadCloser) {
 	url := apiURL(path)
-	res, err := http.Get(url)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		cmdFail(fmt.Errorf("Could not build request for %s: %v", url, err))
+	}
+	req.Header.Set(server.TiltTokenHeaderName, loadToken())
+	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		cmdFail(fmt.Errorf("Could not connect to Tilt at %s: %v", url, err))
 	}
@@ -33,7 +54,13 @@ func apiGet(path string) (body io.ReadCloser) {
 
 func apiPostJson(path string, payload []byte) (body io.ReadCloser, status int) {
 	url := apiURL(path)
-	res, err := http.Post(url, "application/json", bytes.NewBuffer(payload))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(payload))
+	if err != nil {
+		cmdFail(fmt.Errorf("Could not build request for %s: %v", url, err))
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set(server.TiltTokenHeaderName, loadToken())
+	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		cmdFail(fmt.Errorf("Could not connect to Tilt at %s: %v", url, err))
 	}

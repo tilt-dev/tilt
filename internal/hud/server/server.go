@@ -30,6 +30,7 @@ import (
 )
 
 const TiltTokenCookieName = "Tilt-Token"
+const TiltTokenHeaderName = "X-Tilt-Token"
 
 // CSRF token to protect the websocket. See:
 // https://dev.solita.fi/2018/11/07/securing-websocket-endpoints.html
@@ -83,8 +84,8 @@ func ProvideHeadsUpServer(
 		ctrlClient: ctrlClient,
 	}
 
-	r.HandleFunc("/api/view", s.ViewJSON)
-	r.HandleFunc("/api/dump/engine", s.DumpEngineJSON)
+	r.Handle("/api/view", s.requireToken(http.HandlerFunc(s.ViewJSON)))
+	r.Handle("/api/dump/engine", s.requireToken(http.HandlerFunc(s.DumpEngineJSON)))
 	r.Handle("/api/analytics", s.requireToken(http.HandlerFunc(s.HandleAnalytics)))
 	r.Handle("/api/analytics_opt", s.requireToken(http.HandlerFunc(s.HandleAnalyticsOpt)))
 	r.Handle("/api/trigger", s.requireToken(http.HandlerFunc(s.HandleTrigger)))
@@ -142,13 +143,17 @@ func (s *HeadsUpServer) cookieWrapper(handler http.Handler) http.Handler {
 
 func (s *HeadsUpServer) requireToken(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		cookie, err := r.Cookie(TiltTokenCookieName)
-		if err != nil {
-			http.Error(w, "missing session token", http.StatusForbidden)
-			return
+		candidate := r.Header.Get(TiltTokenHeaderName)
+		if candidate == "" {
+			cookie, err := r.Cookie(TiltTokenCookieName)
+			if err != nil {
+				http.Error(w, "missing session token", http.StatusForbidden)
+				return
+			}
+			candidate = cookie.Value
 		}
 		state := s.store.RLockState()
-		valid := cookie.Value == string(state.Token)
+		valid := candidate == string(state.Token)
 		s.store.RUnlockState()
 		if !valid {
 			http.Error(w, "invalid session token", http.StatusForbidden)
