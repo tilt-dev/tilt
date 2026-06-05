@@ -83,15 +83,15 @@ func ProvideHeadsUpServer(
 
 	r.HandleFunc("/api/view", s.ViewJSON)
 	r.HandleFunc("/api/dump/engine", s.DumpEngineJSON)
-	r.HandleFunc("/api/analytics", s.HandleAnalytics)
-	r.HandleFunc("/api/analytics_opt", s.HandleAnalyticsOpt)
-	r.HandleFunc("/api/trigger", s.HandleTrigger)
-	r.HandleFunc("/api/override/trigger_mode", s.HandleOverrideTriggerMode)
+	r.Handle("/api/analytics", s.requireToken(http.HandlerFunc(s.HandleAnalytics)))
+	r.Handle("/api/analytics_opt", s.requireToken(http.HandlerFunc(s.HandleAnalyticsOpt)))
+	r.Handle("/api/trigger", s.requireToken(http.HandlerFunc(s.HandleTrigger)))
+	r.Handle("/api/override/trigger_mode", s.requireToken(http.HandlerFunc(s.HandleOverrideTriggerMode)))
 	// this endpoint is only used for testing snapshots in development
 	r.HandleFunc("/api/snapshot/{snapshot_id}", s.SnapshotJSON)
 	r.HandleFunc("/api/websocket_token", s.WebsocketToken)
 	r.HandleFunc("/ws/view", s.ViewWebsocket)
-	r.HandleFunc("/api/set_tiltfile_args", s.HandleSetTiltfileArgs).Methods("POST")
+	r.Handle("/api/set_tiltfile_args", s.requireToken(http.HandlerFunc(s.HandleSetTiltfileArgs))).Methods("POST")
 
 	r.PathPrefix("/").Handler(s.cookieWrapper(assetServer))
 
@@ -109,10 +109,33 @@ func (fh funcHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (s *HeadsUpServer) cookieWrapper(handler http.Handler) http.Handler {
 	return funcHandler{f: func(w http.ResponseWriter, r *http.Request) {
 		state := s.store.RLockState()
-		http.SetCookie(w, &http.Cookie{Name: TiltTokenCookieName, Value: string(state.Token), Path: "/"})
+		http.SetCookie(w, &http.Cookie{
+			Name:     TiltTokenCookieName,
+			Value:    string(state.Token),
+			Path:     "/",
+			SameSite: http.SameSiteStrictMode,
+		})
 		s.store.RUnlockState()
 		handler.ServeHTTP(w, r)
 	}}
+}
+
+func (s *HeadsUpServer) requireToken(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		cookie, err := r.Cookie(TiltTokenCookieName)
+		if err != nil {
+			http.Error(w, "missing session token", http.StatusForbidden)
+			return
+		}
+		state := s.store.RLockState()
+		valid := cookie.Value == string(state.Token)
+		s.store.RUnlockState()
+		if !valid {
+			http.Error(w, "invalid session token", http.StatusForbidden)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 func (s *HeadsUpServer) Router() http.Handler {
