@@ -15,7 +15,6 @@ import (
 	"k8s.io/client-go/util/workqueue"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/tilt-dev/tilt/internal/hud/server/gorilla"
 	"github.com/tilt-dev/tilt/internal/hud/webview"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -52,7 +51,7 @@ var upgrader = websocket.Upgrader{
 		}
 
 		// If the CSRF check fails, fallback to an origin check.
-		return gorilla.CheckSameOrigin(req)
+		return originCheck(req)
 	},
 }
 

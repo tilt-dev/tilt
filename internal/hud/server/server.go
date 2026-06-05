@@ -109,20 +109,30 @@ func (fh funcHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	fh.f(w, r)
 }
 
+// originCheck returns true if the Origin header is missing/empty or host
+// matches the request host.
+func originCheck(r *http.Request) bool {
+	origin := r.Header.Get("Origin")
+	if origin != "" {
+		u, err := url.Parse(origin)
+		if err != nil || u.Host != r.Host {
+			return false
+		}
+	}
+	return true
+}
+
 // originCheckMiddleware rejects requests whose Origin header is present but does
 // not match the Host the client connected to. Browsers always include Origin on
 // cross-origin requests, so this blocks CSRF from network-reachable attackers
 // without affecting same-origin browser traffic or CLI tools (which omit Origin).
 func originCheckMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		origin := r.Header.Get("Origin")
-		if origin != "" {
-			u, err := url.Parse(origin)
-			if err != nil || u.Host != r.Host {
-				http.Error(w, "cross-origin request forbidden", http.StatusForbidden)
-				return
-			}
+		if !originCheck(r) {
+			http.Error(w, "cross-origin request forbidden", http.StatusForbidden)
+			return
 		}
+
 		next.ServeHTTP(w, r)
 	})
 }
