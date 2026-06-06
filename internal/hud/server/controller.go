@@ -161,7 +161,7 @@ func (s *HeadsUpServerController) setUpHelper(ctx context.Context, st store.RSto
 	webRouter.PathPrefix("/debug").Handler(loopbackOnly(http.DefaultServeMux)) // for /debug/pprof
 	// the path prefix here must be kept in sync with the prefix configured in the proxy handler
 	// (it needs to know what to strip before forwarding the request)
-	webRouter.PathPrefix(apiServerProxyPrefix).Handler(proxyHandler)
+	webRouter.PathPrefix(apiServerProxyPrefix).Handler(s.hudServer.requireToken(proxyHandler))
 	webRouter.PathPrefix("/").Handler(s.hudServer.Router())
 
 	s.webServer = &http.Server{

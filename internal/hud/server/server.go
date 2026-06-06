@@ -91,9 +91,8 @@ func ProvideHeadsUpServer(
 	r.Handle("/api/analytics_opt", s.requireToken(http.HandlerFunc(s.HandleAnalyticsOpt)))
 	r.Handle("/api/trigger", s.requireToken(http.HandlerFunc(s.HandleTrigger)))
 	r.Handle("/api/override/trigger_mode", s.requireToken(http.HandlerFunc(s.HandleOverrideTriggerMode)))
-	// this endpoint is only used for testing snapshots in development
-	r.HandleFunc("/api/snapshot/{snapshot_id}", s.SnapshotJSON)
-	r.HandleFunc("/api/websocket_token", s.WebsocketToken)
+	r.Handle("/api/snapshot/{snapshot_id}", s.requireToken(http.HandlerFunc(s.SnapshotJSON)))
+	r.Handle("/api/websocket_token", s.requireToken(http.HandlerFunc(s.WebsocketToken)))
 	r.HandleFunc("/ws/view", s.ViewWebsocket)
 	r.Handle("/api/set_tiltfile_args", s.requireToken(http.HandlerFunc(s.HandleSetTiltfileArgs))).Methods("POST")
 
