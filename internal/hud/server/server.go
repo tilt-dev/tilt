@@ -8,6 +8,7 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"net/url"
+	"os"
 	"time"
 
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -151,8 +152,17 @@ func (s *HeadsUpServer) cookieWrapper(handler http.Handler) http.Handler {
 	}}
 }
 
+// requireToken validates the Tilt-Token header or cookie against the current
+// session token. The middleware is bypassed when TILT_DISABLE_HUD_AUTH=1 is
+// set — intended for deployments that authenticate at a reverse-proxy or
+// load-balancer layer, NOT for general use. The env var is read per request
+// so it can be flipped at runtime (and so tests can use t.Setenv).
 func (s *HeadsUpServer) requireToken(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if os.Getenv("TILT_DISABLE_HUD_AUTH") == "1" {
+			next.ServeHTTP(w, r)
+			return
+		}
 		candidate := r.Header.Get(TiltTokenHeaderName)
 		if candidate == "" {
 			cookie, err := r.Cookie(TiltTokenCookieName)
