@@ -490,3 +490,51 @@ func TestDumpEngineTokenHeaderAccepted(t *testing.T) {
 	})
 	require.Equal(t, http.StatusOK, status)
 }
+
+func TestSnapshotRequiresToken(t *testing.T) {
+	f := newTestFixture(t)
+	f.setToken(testToken)
+
+	status, body := f.routerReq(http.MethodGet, "/api/snapshot/test-id", nil)
+	require.Equal(t, http.StatusForbidden, status)
+	require.Contains(t, body, "missing session token")
+}
+
+func TestSnapshotTokenHeaderAccepted(t *testing.T) {
+	f := newTestFixture(t)
+	f.setToken(testToken)
+
+	status, _ := f.routerReq(http.MethodGet, "/api/snapshot/test-id", func(r *http.Request) {
+		r.Header.Set(server.TiltTokenHeaderName, testToken)
+	})
+	require.Equal(t, http.StatusOK, status)
+}
+
+func TestWebsocketTokenRequiresToken(t *testing.T) {
+	f := newTestFixture(t)
+	f.setToken(testToken)
+
+	status, body := f.routerReq(http.MethodGet, "/api/websocket_token", nil)
+	require.Equal(t, http.StatusForbidden, status)
+	require.Contains(t, body, "missing session token")
+}
+
+func TestWebsocketTokenAccepted(t *testing.T) {
+	f := newTestFixture(t)
+	f.setToken(testToken)
+
+	status, _ := f.routerReq(http.MethodGet, "/api/websocket_token", func(r *http.Request) {
+		r.Header.Set(server.TiltTokenHeaderName, testToken)
+	})
+	require.Equal(t, http.StatusOK, status)
+}
+
+func TestRequireTokenBypassedWhenDisabled(t *testing.T) {
+	t.Setenv("TILT_DISABLE_HUD_AUTH", "1")
+	f := newTestFixture(t)
+	f.setToken(testToken)
+
+	// No token sent; auth is disabled via env var, so request should pass.
+	status, _ := f.routerReq(http.MethodGet, "/api/view", nil)
+	require.Equal(t, http.StatusOK, status)
+}
