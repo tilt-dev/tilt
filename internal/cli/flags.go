@@ -63,13 +63,13 @@ func addConnectServerFlags(cmd *cobra.Command) {
 // For commands that start a web server.
 func addStartServerFlags(cmd *cobra.Command) {
 	cmd.Flags().IntVar(&webPortFlag, "port", defaultWebPort, "Port for the Tilt HTTP server. Set to 0 to disable. Overrides TILT_PORT env variable.")
-	cmd.Flags().StringVar(&webHostFlag, "host", defaultWebHost, "Host for the Tilt HTTP server and default host for any port-forwards. Set to 0.0.0.0 to listen on all interfaces. Overrides TILT_HOST env variable.")
+	cmd.Flags().StringVar(&webHostFlag, "host", defaultWebHost, "Host for the Tilt HTTP server and default host for any port-forwards. Defaults to localhost; only change this if you need remote access and understand the security implications. Overrides TILT_HOST env variable.")
 }
 
 // For commands that start a random snapshot view web server.
 func addStartSnapshotViewServerFlags(cmd *cobra.Command) {
 	cmd.Flags().IntVar(&snapshotViewPortFlag, "port", 0, "Port for the HTTP server. Defaults to a random port.")
-	cmd.Flags().StringVar(&webHostFlag, "host", defaultWebHost, "Host for the HTTP server and default host for any port-forwards. Set to 0.0.0.0 to listen on all interfaces. Overrides TILT_HOST env variable.")
+	cmd.Flags().StringVar(&webHostFlag, "host", defaultWebHost, "Host for the HTTP server and default host for any port-forwards. Defaults to localhost; only change this if you need remote access and understand the security implications. Overrides TILT_HOST env variable.")
 }
 
 func addDevServerFlags(cmd *cobra.Command) {
