@@ -8,6 +8,7 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"net/url"
+	"os"
 	"time"
 
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -90,9 +91,8 @@ func ProvideHeadsUpServer(
 	r.Handle("/api/analytics_opt", s.requireToken(http.HandlerFunc(s.HandleAnalyticsOpt)))
 	r.Handle("/api/trigger", s.requireToken(http.HandlerFunc(s.HandleTrigger)))
 	r.Handle("/api/override/trigger_mode", s.requireToken(http.HandlerFunc(s.HandleOverrideTriggerMode)))
-	// this endpoint is only used for testing snapshots in development
-	r.HandleFunc("/api/snapshot/{snapshot_id}", s.SnapshotJSON)
-	r.HandleFunc("/api/websocket_token", s.WebsocketToken)
+	r.Handle("/api/snapshot/{snapshot_id}", s.requireToken(http.HandlerFunc(s.SnapshotJSON)))
+	r.Handle("/api/websocket_token", s.requireToken(http.HandlerFunc(s.WebsocketToken)))
 	r.HandleFunc("/ws/view", s.ViewWebsocket)
 	r.Handle("/api/set_tiltfile_args", s.requireToken(http.HandlerFunc(s.HandleSetTiltfileArgs))).Methods("POST")
 
@@ -151,8 +151,17 @@ func (s *HeadsUpServer) cookieWrapper(handler http.Handler) http.Handler {
 	}}
 }
 
+// requireToken validates the Tilt-Token header or cookie against the current
+// session token. The middleware is bypassed when TILT_DISABLE_HUD_AUTH=1 is
+// set — intended for deployments that authenticate at a reverse-proxy or
+// load-balancer layer, NOT for general use. The env var is read per request
+// so it can be flipped at runtime (and so tests can use t.Setenv).
 func (s *HeadsUpServer) requireToken(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if os.Getenv("TILT_DISABLE_HUD_AUTH") == "1" {
+			next.ServeHTTP(w, r)
+			return
+		}
 		candidate := r.Header.Get(TiltTokenHeaderName)
 		if candidate == "" {
 			cookie, err := r.Cookie(TiltTokenCookieName)
