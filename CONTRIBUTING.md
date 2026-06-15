@@ -307,10 +307,17 @@ git tag -a v0.x.y -m "v0.x.y"
 git push origin v0.x.y
 ```
 
-CircleCI will automatically start building your release, and notify the
-#notify-circleci slack channel when it's done. The releaser generates a release on
-at https://github.com/tilt-dev/tilt/releases, with a Changelog prepopulated automatically.
-(Give it a few moments. It appears as a tag first, before turning into a full release.)
+CircleCI will automatically start building your release.
+It will email you when it's done.
+
+After the release finishes, manually run:
+
+```
+./scripts/release-update-homebrew-core.sh v0.x.y
+```
+
+This opens a bump PR with upstream Homewbrew.
+(Our release bot only has permissions in our org, and can't open PRs upstream.)
 
 ### Verifying
 You can build from source locally using the same toolchain as CI by running:
