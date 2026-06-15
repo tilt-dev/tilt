@@ -45,5 +45,8 @@ goreleaser --clean
 ./scripts/release-update-tilt-repo.sh "$VERSION"
 ./scripts/release-update-tilt-docs-repo.sh "$VERSION"
 ./scripts/record-release.sh "$VERSION"
-./scripts/release-update-homebrew-core.sh "$VERSION"
+
+# No longer works with our release process - run this manually.
+#./scripts/release-update-homebrew-core.sh "$VERSION"
+
 ./scripts/release-update-extension-repo.sh "$VERSION"
