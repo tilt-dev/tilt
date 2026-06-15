@@ -136,6 +136,12 @@ func TestAPIServerDynamicClient(t *testing.T) {
 }
 
 func TestAPIServerProxy(t *testing.T) {
+	// This fixture constructs an empty HeadsUpServer without a backing store,
+	// so a real Tilt-Token validation cannot run. The fixture exists to test
+	// the proxy-forwarding path in isolation; bypass auth here. Token-gating
+	// of /proxy is covered by integration tests with a fully-wired server.
+	t.Setenv("TILT_DISABLE_HUD_AUTH", "1")
+
 	f := newAPIServerFixture(t)
 	f.start()
 

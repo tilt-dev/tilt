@@ -7,6 +7,8 @@ import (
 	"log"
 	"net/http"
 	_ "net/http/pprof"
+	"net/url"
+	"os"
 	"time"
 
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -29,6 +31,7 @@ import (
 )
 
 const TiltTokenCookieName = "Tilt-Token"
+const TiltTokenHeaderName = "X-Tilt-Token"
 
 // CSRF token to protect the websocket. See:
 // https://dev.solita.fi/2018/11/07/securing-websocket-endpoints.html
@@ -72,6 +75,7 @@ func ProvideHeadsUpServer(
 	wsList *WebsocketList,
 	ctrlClient ctrlclient.Client) (*HeadsUpServer, error) {
 	r := mux.NewRouter().UseEncodedPath()
+	r.Use(originCheckMiddleware)
 	s := &HeadsUpServer{
 		ctx:        ctx,
 		store:      store,
@@ -81,17 +85,16 @@ func ProvideHeadsUpServer(
 		ctrlClient: ctrlClient,
 	}
 
-	r.HandleFunc("/api/view", s.ViewJSON)
-	r.HandleFunc("/api/dump/engine", s.DumpEngineJSON)
-	r.HandleFunc("/api/analytics", s.HandleAnalytics)
-	r.HandleFunc("/api/analytics_opt", s.HandleAnalyticsOpt)
-	r.HandleFunc("/api/trigger", s.HandleTrigger)
-	r.HandleFunc("/api/override/trigger_mode", s.HandleOverrideTriggerMode)
-	// this endpoint is only used for testing snapshots in development
-	r.HandleFunc("/api/snapshot/{snapshot_id}", s.SnapshotJSON)
-	r.HandleFunc("/api/websocket_token", s.WebsocketToken)
+	r.Handle("/api/view", s.requireToken(http.HandlerFunc(s.ViewJSON)))
+	r.Handle("/api/dump/engine", s.requireToken(http.HandlerFunc(s.DumpEngineJSON)))
+	r.Handle("/api/analytics", s.requireToken(http.HandlerFunc(s.HandleAnalytics)))
+	r.Handle("/api/analytics_opt", s.requireToken(http.HandlerFunc(s.HandleAnalyticsOpt)))
+	r.Handle("/api/trigger", s.requireToken(http.HandlerFunc(s.HandleTrigger)))
+	r.Handle("/api/override/trigger_mode", s.requireToken(http.HandlerFunc(s.HandleOverrideTriggerMode)))
+	r.Handle("/api/snapshot/{snapshot_id}", s.requireToken(http.HandlerFunc(s.SnapshotJSON)))
+	r.Handle("/api/websocket_token", s.requireToken(http.HandlerFunc(s.WebsocketToken)))
 	r.HandleFunc("/ws/view", s.ViewWebsocket)
-	r.HandleFunc("/api/set_tiltfile_args", s.HandleSetTiltfileArgs).Methods("POST")
+	r.Handle("/api/set_tiltfile_args", s.requireToken(http.HandlerFunc(s.HandleSetTiltfileArgs))).Methods("POST")
 
 	r.PathPrefix("/").Handler(s.cookieWrapper(assetServer))
 
@@ -106,13 +109,77 @@ func (fh funcHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	fh.f(w, r)
 }
 
+// originCheck returns true if the Origin header is missing/empty or host
+// matches the request host.
+func originCheck(r *http.Request) bool {
+	origin := r.Header.Get("Origin")
+	if origin != "" {
+		u, err := url.Parse(origin)
+		if err != nil || u.Host != r.Host {
+			return false
+		}
+	}
+	return true
+}
+
+// originCheckMiddleware rejects requests whose Origin header is present but does
+// not match the Host the client connected to. Browsers always include Origin on
+// cross-origin requests, so this blocks CSRF from network-reachable attackers
+// without affecting same-origin browser traffic or CLI tools (which omit Origin).
+func originCheckMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !originCheck(r) {
+			http.Error(w, "cross-origin request forbidden", http.StatusForbidden)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
 func (s *HeadsUpServer) cookieWrapper(handler http.Handler) http.Handler {
 	return funcHandler{f: func(w http.ResponseWriter, r *http.Request) {
 		state := s.store.RLockState()
-		http.SetCookie(w, &http.Cookie{Name: TiltTokenCookieName, Value: string(state.Token), Path: "/"})
+		http.SetCookie(w, &http.Cookie{
+			Name:     TiltTokenCookieName,
+			Value:    string(state.Token),
+			Path:     "/",
+			SameSite: http.SameSiteStrictMode,
+		})
 		s.store.RUnlockState()
 		handler.ServeHTTP(w, r)
 	}}
+}
+
+// requireToken validates the Tilt-Token header or cookie against the current
+// session token. The middleware is bypassed when TILT_DISABLE_HUD_AUTH=1 is
+// set — intended for deployments that authenticate at a reverse-proxy or
+// load-balancer layer, NOT for general use. The env var is read per request
+// so it can be flipped at runtime (and so tests can use t.Setenv).
+func (s *HeadsUpServer) requireToken(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if os.Getenv("TILT_DISABLE_HUD_AUTH") == "1" {
+			next.ServeHTTP(w, r)
+			return
+		}
+		candidate := r.Header.Get(TiltTokenHeaderName)
+		if candidate == "" {
+			cookie, err := r.Cookie(TiltTokenCookieName)
+			if err != nil {
+				http.Error(w, "missing session token", http.StatusForbidden)
+				return
+			}
+			candidate = cookie.Value
+		}
+		state := s.store.RLockState()
+		valid := candidate == string(state.Token)
+		s.store.RUnlockState()
+		if !valid {
+			http.Error(w, "invalid session token", http.StatusForbidden)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 func (s *HeadsUpServer) Router() http.Handler {

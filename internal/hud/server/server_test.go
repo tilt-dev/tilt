@@ -25,6 +25,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/sliceutils"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils"
+	"github.com/tilt-dev/tilt/internal/token"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/assets"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -410,4 +411,130 @@ func (f *serverFixture) assertIncrement(name string, count int) {
 	}
 
 	assert.Equalf(f.t, count, runningCount, "Expected the total count to be %d, got %d", count, runningCount)
+}
+
+const testToken = "test-token-abc123"
+
+func (f *serverFixture) setToken(t string) {
+	state := f.st.LockMutableStateForTesting()
+	state.Token = token.Token(t)
+	f.st.UnlockMutableState()
+}
+
+func (f *serverFixture) routerReq(method, path string, addToken func(*http.Request)) (int, string) {
+	req, err := http.NewRequest(method, path, nil)
+	require.NoError(f.t, err)
+	if addToken != nil {
+		addToken(req)
+	}
+	rr := httptest.NewRecorder()
+	f.serv.Router().ServeHTTP(rr, req)
+	return rr.Code, rr.Body.String()
+}
+
+func TestRequireTokenMissingForbidden(t *testing.T) {
+	f := newTestFixture(t)
+	f.setToken(testToken)
+
+	status, body := f.routerReq(http.MethodGet, "/api/view", nil)
+	require.Equal(t, http.StatusForbidden, status)
+	require.Contains(t, body, "missing session token")
+}
+
+func TestRequireTokenInvalidForbidden(t *testing.T) {
+	f := newTestFixture(t)
+	f.setToken(testToken)
+
+	status, body := f.routerReq(http.MethodGet, "/api/view", func(r *http.Request) {
+		r.Header.Set(server.TiltTokenHeaderName, "wrong-token")
+	})
+	require.Equal(t, http.StatusForbidden, status)
+	require.Contains(t, body, "invalid session token")
+}
+
+func TestRequireTokenHeaderAccepted(t *testing.T) {
+	f := newTestFixture(t)
+	f.setToken(testToken)
+
+	status, _ := f.routerReq(http.MethodGet, "/api/view", func(r *http.Request) {
+		r.Header.Set(server.TiltTokenHeaderName, testToken)
+	})
+	require.Equal(t, http.StatusOK, status)
+}
+
+func TestRequireTokenCookieAccepted(t *testing.T) {
+	f := newTestFixture(t)
+	f.setToken(testToken)
+
+	status, _ := f.routerReq(http.MethodGet, "/api/view", func(r *http.Request) {
+		r.AddCookie(&http.Cookie{Name: server.TiltTokenCookieName, Value: testToken})
+	})
+	require.Equal(t, http.StatusOK, status)
+}
+
+func TestDumpEngineRequiresToken(t *testing.T) {
+	f := newTestFixture(t)
+	f.setToken(testToken)
+
+	status, body := f.routerReq(http.MethodGet, "/api/dump/engine", nil)
+	require.Equal(t, http.StatusForbidden, status)
+	require.Contains(t, body, "missing session token")
+}
+
+func TestDumpEngineTokenHeaderAccepted(t *testing.T) {
+	f := newTestFixture(t)
+	f.setToken(testToken)
+
+	status, _ := f.routerReq(http.MethodGet, "/api/dump/engine", func(r *http.Request) {
+		r.Header.Set(server.TiltTokenHeaderName, testToken)
+	})
+	require.Equal(t, http.StatusOK, status)
+}
+
+func TestSnapshotRequiresToken(t *testing.T) {
+	f := newTestFixture(t)
+	f.setToken(testToken)
+
+	status, body := f.routerReq(http.MethodGet, "/api/snapshot/test-id", nil)
+	require.Equal(t, http.StatusForbidden, status)
+	require.Contains(t, body, "missing session token")
+}
+
+func TestSnapshotTokenHeaderAccepted(t *testing.T) {
+	f := newTestFixture(t)
+	f.setToken(testToken)
+
+	status, _ := f.routerReq(http.MethodGet, "/api/snapshot/test-id", func(r *http.Request) {
+		r.Header.Set(server.TiltTokenHeaderName, testToken)
+	})
+	require.Equal(t, http.StatusOK, status)
+}
+
+func TestWebsocketTokenRequiresToken(t *testing.T) {
+	f := newTestFixture(t)
+	f.setToken(testToken)
+
+	status, body := f.routerReq(http.MethodGet, "/api/websocket_token", nil)
+	require.Equal(t, http.StatusForbidden, status)
+	require.Contains(t, body, "missing session token")
+}
+
+func TestWebsocketTokenAccepted(t *testing.T) {
+	f := newTestFixture(t)
+	f.setToken(testToken)
+
+	status, _ := f.routerReq(http.MethodGet, "/api/websocket_token", func(r *http.Request) {
+		r.Header.Set(server.TiltTokenHeaderName, testToken)
+	})
+	require.Equal(t, http.StatusOK, status)
+}
+
+func TestRequireTokenBypassedWhenDisabled(t *testing.T) {
+	t.Setenv("TILT_DISABLE_HUD_AUTH", "1")
+	f := newTestFixture(t)
+	f.setToken(testToken)
+
+	// No token sent; auth is disabled via env var, so request should pass.
+	status, _ := f.routerReq(http.MethodGet, "/api/view", nil)
+	require.Equal(t, http.StatusOK, status)
 }

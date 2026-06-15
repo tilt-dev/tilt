@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"regexp"
 
@@ -141,7 +142,7 @@ func (s *HeadsUpServerController) setUpHelper(ctx context.Context, st store.RSto
 	apiRouter.PathPrefix("/readyz").Handler(apiserverHandler)
 	apiRouter.PathPrefix("/swagger").Handler(apiserverHandler)
 	apiRouter.PathPrefix("/version").Handler(apiserverHandler)
-	apiRouter.PathPrefix("/debug").Handler(http.DefaultServeMux) // for /debug/pprof
+	apiRouter.PathPrefix("/debug").Handler(loopbackOnly(http.DefaultServeMux)) // for /debug/pprof
 
 	var apiTLSConfig *tls.Config
 	if serving.Cert != nil {
@@ -157,10 +158,10 @@ func (s *HeadsUpServerController) setUpHelper(ctx context.Context, st store.RSto
 	}
 
 	webRouter := mux.NewRouter()
-	webRouter.PathPrefix("/debug").Handler(http.DefaultServeMux) // for /debug/pprof
+	webRouter.PathPrefix("/debug").Handler(loopbackOnly(http.DefaultServeMux)) // for /debug/pprof
 	// the path prefix here must be kept in sync with the prefix configured in the proxy handler
 	// (it needs to know what to strip before forwarding the request)
-	webRouter.PathPrefix(apiServerProxyPrefix).Handler(proxyHandler)
+	webRouter.PathPrefix(apiServerProxyPrefix).Handler(s.hudServer.requireToken(proxyHandler))
 	webRouter.PathPrefix("/").Handler(s.hudServer.Router())
 
 	s.webServer = &http.Server{
@@ -290,6 +291,19 @@ func newAPIServerProxyHandler(config *rest.Config) (http.Handler, error) {
 
 	// the prefix here must be kept in sync with the route definition on the mux
 	return proxy.NewProxyHandler(apiServerProxyPrefix, fs, config, 0, false)
+}
+
+// loopbackOnly rejects requests from non-loopback addresses, preventing remote
+// access to sensitive endpoints like /debug/pprof.
+func loopbackOnly(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		host, _, err := net.SplitHostPort(r.RemoteAddr)
+		if err != nil || !net.ParseIP(host).IsLoopback() {
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 var _ store.SetUpper = &HeadsUpServerController{}
