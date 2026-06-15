@@ -15,7 +15,6 @@ import (
 	"k8s.io/client-go/util/workqueue"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/tilt-dev/tilt/internal/hud/server/gorilla"
 	"github.com/tilt-dev/tilt/internal/hud/webview"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -38,21 +37,16 @@ var upgrader = websocket.Upgrader{
 	// a mobile network.
 	EnableCompression: false,
 
-	// Allow the connection if either:
+	// Only allow the upgrade when the client presents the CSRF token.
 	//
-	// 1) The client has a CSRF token, or
-	// 2) The origin matches what we expect.
-	//
-	// Once a few releases have gone by we should remove the origin check.
-	// (since we know some tilt users expect tabs to stay open
-	// across releases).
+	// The token is served exclusively by /api/websocket_token, which is gated
+	// behind requireToken, so only a caller already holding the session token
+	// can obtain it. We deliberately do NOT fall back to an origin check: the
+	// previous fallback accepted any request whose Origin header was absent
+	// (originCheck returns true on missing Origin), which let a non-browser
+	// client open this socket and read the full HUD stream with no token.
 	CheckOrigin: func(req *http.Request) bool {
-		if websocketCSRFToken.String() == req.URL.Query().Get("csrf") {
-			return true
-		}
-
-		// If the CSRF check fails, fallback to an origin check.
-		return gorilla.CheckSameOrigin(req)
+		return websocketCSRFToken.String() == req.URL.Query().Get("csrf")
 	},
 }
 
