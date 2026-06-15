@@ -9,7 +9,7 @@
     "@types/file-saver": "^2.0.5",
     "file-saver": "^2.0.5",
     "history": "^4.9.0",
-    "js-cookie": "^2.2.1",
+    "js-cookie": "^3.0.7",
     "moment": "^2.29.4",
     "notistack": "^1.0.10",
     "react": "^17.0.2",
