@@ -29,7 +29,7 @@ test-go-ci:
 ifneq ($(CIRCLECI),true)
 	@if scripts/ci-has-go-changes.sh; then gotestsum -- -mod vendor -timeout 100s ./...; else echo "No Go changes, skipping tests"; fi
 else
-	@if scripts/ci-has-go-changes.sh; then mkdir -p test-results && gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- ./... -mod vendor -timeout 100s; else echo "No Go changes, skipping tests"; fi
+	@if scripts/ci-has-go-changes.sh; then mkdir -p test-results && GOMAXPROCS=3 gotestsum --format standard-quiet --junitfile test-results/unit-tests.xml -- ./... -mod vendor -timeout 100s; else echo "No Go changes, skipping tests"; fi
 endif
 
 test: test-go test-js
