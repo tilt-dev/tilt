@@ -117,7 +117,15 @@ import (
 
 var originalWD string
 
-const stdTimeout = 2 * time.Second
+// stdTimeout is how long "wait until X happens" helpers wait before failing.
+// These helpers return as soon as the condition is met, so a generous timeout
+// is free for passing tests and only buys slack against CI load (the build
+// controller can take >2s to start its first build on a busy machine).
+const stdTimeout = 5 * time.Second
+
+// nonExitTimeout is for "assert X does NOT happen" helpers, which always block
+// for the full duration. Keep it short so those tests stay fast.
+const nonExitTimeout = 2 * time.Second
 
 type buildCompletionChannel chan bool
 
@@ -3494,7 +3502,7 @@ func (f *testFixture) WaitForExit() error {
 
 func (f *testFixture) WaitForNoExit() error {
 	select {
-	case <-time.After(stdTimeout):
+	case <-time.After(nonExitTimeout):
 		return nil
 	case err := <-f.upperInitResult:
 		f.T().Fatalf("upper exited when it shouldn't have")
