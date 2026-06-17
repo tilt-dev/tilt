@@ -28,4 +28,5 @@ if ! [[ $VERSION =~ $VERSION_PATTERN ]]; then
 fi
 
 # send the brew team a PR to upgrade homebrew-core
-brew bump-formula-pr --no-browse --no-fork --force --version="$VERSION" tilt
+brew bump-formula-pr --verbose --debug --no-browse --force \
+     --fork-org=tilt-dev --version="$VERSION" --tag="v$VERSION" tilt
