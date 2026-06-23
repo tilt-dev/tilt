@@ -36,6 +36,7 @@ let defaultFilter: FilterSet = {
   source: FilterSource.all,
   level: FilterLevel.all,
   term: EMPTY_FILTER_TERM,
+  containers: [],
 }
 
 export const ThreeLines = () => {
@@ -358,6 +359,7 @@ export const BuildLogAndRunLog = (args: any) => {
           source: args.source,
           level: args.level,
           term: args.term || EMPTY_FILTER_TERM,
+          containers: [],
         }}
       />
     </LogStoreProvider>

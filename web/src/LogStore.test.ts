@@ -608,4 +608,87 @@ describe("LogStore", () => {
     let patch3 = logs.starredLogPatchSet(["res1", "res2"], patch.checkpoint)
     expect(logLinesToString(patch3.lines, false)).toEqual("build 4\nbuild 5")
   })
+
+  describe("containersForManifest", () => {
+    it("returns empty when no lines have a container field", () => {
+      let logs = new LogStore()
+      logs.append({
+        spans: { "pod:1": { manifestName: "fe" } },
+        segments: [
+          { spanId: "pod:1", text: "line\n", time: new Date().toString() },
+        ],
+      })
+      expect(logs.containersForManifest("fe")).toEqual([])
+    })
+
+    it("returns distinct container names for the manifest", () => {
+      let logs = new LogStore()
+      logs.append({
+        spans: { "pod:1": { manifestName: "fe" } },
+        segments: [
+          {
+            spanId: "pod:1",
+            text: "a\n",
+            time: new Date().toString(),
+            fields: { container: "app" },
+          },
+          {
+            spanId: "pod:1",
+            text: "b\n",
+            time: new Date().toString(),
+            fields: { container: "sidecar" },
+          },
+          {
+            spanId: "pod:1",
+            text: "c\n",
+            time: new Date().toString(),
+            fields: { container: "app" },
+          },
+        ],
+      })
+      expect(logs.containersForManifest("fe")).toEqual(["app", "sidecar"])
+    })
+
+    it("excludes lines from other manifests", () => {
+      let logs = new LogStore()
+      logs.append({
+        spans: {
+          "pod:fe": { manifestName: "fe" },
+          "pod:be": { manifestName: "be" },
+        },
+        segments: [
+          {
+            spanId: "pod:fe",
+            text: "a\n",
+            time: new Date().toString(),
+            fields: { container: "app" },
+          },
+          {
+            spanId: "pod:be",
+            text: "b\n",
+            time: new Date().toString(),
+            fields: { container: "other" },
+          },
+        ],
+      })
+      expect(logs.containersForManifest("fe")).toEqual(["app"])
+    })
+
+    it("excludes lines without a container field", () => {
+      let logs = new LogStore()
+      logs.append({
+        spans: { "pod:1": { manifestName: "fe" } },
+        segments: [
+          { spanId: "pod:1", text: "build\n", time: new Date().toString() },
+          {
+            spanId: "pod:1",
+            text: "runtime\n",
+            time: new Date().toString(),
+            fields: { container: "app" },
+          },
+        ],
+      })
+      expect(logs.containersForManifest("fe")).toEqual(["app"])
+    })
+  })
 })
