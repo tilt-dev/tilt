@@ -689,6 +689,53 @@ func TestForceDeleteWithCmd(t *testing.T) {
 	}
 }
 
+func TestPrepareTriggerEntitiesStampsWorkloadController(t *testing.T) {
+	entities, err := k8s.ParseYAMLFromString(testyaml.SanchoYAML)
+	require.NoError(t, err)
+
+	stamp := time.Date(2024, 1, 2, 3, 4, 5, 0, time.UTC)
+	toApply, toRecreate, err := PrepareTriggerEntities(entities, stamp)
+	require.NoError(t, err)
+	require.Empty(t, toRecreate)
+	require.Len(t, toApply, 1)
+
+	out, err := k8s.SerializeSpecYAML(toApply)
+	require.NoError(t, err)
+	assert.Contains(t, out, "kubectl.kubernetes.io/restartedAt: \"2024-01-02T03:04:05Z\"")
+}
+
+func TestPrepareTriggerEntitiesRecreatesJob(t *testing.T) {
+	entities, err := k8s.ParseYAMLFromString(testyaml.JobYAML)
+	require.NoError(t, err)
+
+	toApply, toRecreate, err := PrepareTriggerEntities(entities, time.Now())
+	require.NoError(t, err)
+	require.Len(t, toApply, 1)
+	require.Len(t, toRecreate, 1)
+	assert.Equal(t, "Job", toRecreate[0].GVK().Kind)
+}
+
+func TestPrepareTriggerEntitiesPassesThroughConfigMap(t *testing.T) {
+	yaml := `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: untouched
+data:
+  hello: world
+`
+	entities, err := k8s.ParseYAMLFromString(yaml)
+	require.NoError(t, err)
+
+	toApply, toRecreate, err := PrepareTriggerEntities(entities, time.Now())
+	require.NoError(t, err)
+	require.Empty(t, toRecreate)
+	require.Len(t, toApply, 1)
+
+	out, err := k8s.SerializeSpecYAML(toApply)
+	require.NoError(t, err)
+	assert.NotContains(t, out, "restartedAt")
+}
+
 func TestDisableByConfigmap(t *testing.T) {
 	f := newFixture(t)
 	ka := v1alpha1.KubernetesApply{
