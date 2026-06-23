@@ -313,8 +313,8 @@ func ServiceURL(service *v1.Service, ip NodeIP) (*url.URL, error) {
 	return nil, nil
 }
 
-func timeoutError(timeout time.Duration) error {
-	return errors.New(fmt.Sprintf("Killed kubectl. Hit timeout of %v.", timeout))
+func timeoutError(timeout time.Duration, entity K8sEntity) error {
+	return errors.New(fmt.Sprintf("Killed kubectl. Hit timeout of %v applying %s/%s.", timeout, entity.GVK().Kind, entity.Name()))
 }
 
 func (k *K8sClient) ToRESTConfig() (*rest.Config, error) {
@@ -378,8 +378,8 @@ func (k *K8sClient) upsertParallel(ctx context.Context, entities []K8sEntity, ti
 
 			newEntityList, err := k.escalatingUpdate(innerCtx, entity, ssa)
 			if err != nil {
-				if errors.Is(wgCtx.Err(), context.DeadlineExceeded) {
-					return timeoutError(timeout)
+				if errors.Is(err, context.DeadlineExceeded) {
+					return timeoutError(timeout, entity)
 				}
 				return err
 			}
