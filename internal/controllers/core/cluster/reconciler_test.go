@@ -306,6 +306,37 @@ func TestKubernetesMonitor(t *testing.T) {
 	f.MustGet(nn, cluster)
 	assert.Equal(t, "fake cluster health error", cluster.Status.Error)
 	timecmp.RequireTimeEqual(t, connectedAt, cluster.Status.ConnectedAt)
+	assert.True(t, f.k8sClient.ClusterHealthVerbose)
+}
+
+func TestKubernetesMonitorIncludesHealthCheckOutput(t *testing.T) {
+	f := newFixture(t)
+	cluster := &v1alpha1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "default"},
+		Spec: v1alpha1.ClusterSpec{
+			Connection: &v1alpha1.ClusterConnection{
+				Kubernetes: &v1alpha1.KubernetesClusterConnection{},
+			},
+		},
+	}
+	nn := apis.Key(cluster)
+
+	f.Create(cluster)
+	f.MustGet(nn, cluster)
+	connectedAt := *cluster.Status.ConnectedAt
+	f.assertSteadyState(cluster)
+
+	f.k8sClient.ClusterHealthStatus = &k8s.ClusterHealth{
+		Live:       false,
+		LiveOutput: "[+]ping ok\n[-]etcd failed: reason withheld\nlivez check failed",
+		Ready:      true,
+	}
+	f.clock.Advance(time.Minute)
+	<-f.requeues
+
+	f.MustGet(nn, cluster)
+	assert.Equal(t, "cluster did not pass liveness check: [-]etcd failed: reason withheld; livez check failed", cluster.Status.Error)
+	timecmp.RequireTimeEqual(t, connectedAt, cluster.Status.ConnectedAt)
 }
 
 func TestDockerError(t *testing.T) {

@@ -95,12 +95,13 @@ type FakeK8sClient struct {
 	listCallCount           int
 	listReturnsEmpty        bool
 
-	ExecCalls           []ExecCall
-	ExecOutputs         []io.Reader
-	ExecErrors          []error
-	ClusterHealthStatus *ClusterHealth
-	ClusterHealthError  error
-	FakeAPIConfig       *api.Config
+	ExecCalls            []ExecCall
+	ExecOutputs          []io.Reader
+	ExecErrors           []error
+	ClusterHealthStatus  *ClusterHealth
+	ClusterHealthError   error
+	ClusterHealthVerbose bool
+	FakeAPIConfig        *api.Config
 }
 
 var _ Client = &FakeK8sClient{}
@@ -538,9 +539,11 @@ func (c *FakeK8sClient) APIConfig() *api.Config {
 	return c.FakeAPIConfig
 }
 
-func (c *FakeK8sClient) ClusterHealth(_ context.Context, _ bool) (ClusterHealth, error) {
+func (c *FakeK8sClient) ClusterHealth(_ context.Context, verbose bool) (ClusterHealth, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
+	c.ClusterHealthVerbose = verbose
 
 	if c.ClusterHealthStatus != nil {
 		return *c.ClusterHealthStatus, nil

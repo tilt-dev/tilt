@@ -2,7 +2,8 @@ package cluster
 
 import (
 	"context"
-	"errors"
+	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/jonboulle/clockwork"
@@ -113,20 +114,45 @@ func (c *clusterHealthMonitor) run(ctx context.Context, clusterNN types.Namespac
 }
 
 func doKubernetesHealthCheck(ctx context.Context, client k8s.Client) error {
-	// TODO(milas): use verbose=true and propagate the info to the Tilt API
-	// 	cluster obj to show in the web UI
-	health, err := client.ClusterHealth(ctx, false)
+	health, err := client.ClusterHealth(ctx, true)
 	if err != nil {
 		return err
 	}
 
 	if !health.Live {
-		return errors.New("cluster did not pass liveness check")
+		return healthCheckError("cluster did not pass liveness check", health.LiveOutput)
 	}
 
 	if !health.Ready {
-		return errors.New("cluster not ready")
+		return healthCheckError("cluster not ready", health.ReadyOutput)
 	}
 
 	return nil
+}
+
+func healthCheckError(msg, output string) error {
+	output = summarizeHealthCheckOutput(output)
+	if output != "" {
+		return fmt.Errorf("%s: %s", msg, output)
+	}
+	return fmt.Errorf("%s", msg)
+}
+
+func summarizeHealthCheckOutput(output string) string {
+	output = strings.TrimSpace(output)
+	if output == "" {
+		return ""
+	}
+
+	var failures []string
+	for _, line := range strings.Split(output, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "[-]") || strings.Contains(line, " check failed") {
+			failures = append(failures, line)
+		}
+	}
+	if len(failures) == 0 {
+		return output
+	}
+	return strings.Join(failures, "; ")
 }

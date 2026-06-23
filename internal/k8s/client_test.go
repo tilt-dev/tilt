@@ -423,9 +423,6 @@ func TestServerHealth(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			// verbose output is only checked on success - some of the standard
-			// error handling in the K8s helpers massages non-200 requests, so
-			// it's too brittle to check against
 			isLive := tc.liveStatusCode == http.StatusOK
 			if assert.Equal(t, isLive, health.Live, "livez") && isLive {
 				assert.Equal(t, "fake livez response", health.LiveOutput)
@@ -437,6 +434,12 @@ func TestServerHealth(t *testing.T) {
 		})
 	}
 
+}
+
+func TestCleanHealthCheckOutput(t *testing.T) {
+	assert.Equal(t,
+		"[-]etcd failed: reason withheld\nlivez check failed",
+		cleanHealthCheckOutput(`an error on the server ("[-]etcd failed: reason withheld\nlivez check failed") has prevented the request from succeeding`))
 }
 
 type fakeResourceClient struct {

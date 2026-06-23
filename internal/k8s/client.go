@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -891,11 +892,24 @@ func (k *K8sClient) apiServerHealthCheck(ctx context.Context, route string, verb
 	if err != nil {
 		var statusErr *apierrors.StatusError
 		if errors.As(err, &statusErr) {
-			return false, statusErr.ErrStatus.Message, nil
+			return false, cleanHealthCheckOutput(statusErr.ErrStatus.Message), nil
 		}
 		return false, "", err
 	}
 	return true, string(body), nil
+}
+
+func cleanHealthCheckOutput(output string) string {
+	output = strings.TrimSpace(output)
+	const prefix = "an error on the server ("
+	const suffix = ") has prevented the request from succeeding"
+	if strings.HasPrefix(output, prefix) && strings.HasSuffix(output, suffix) {
+		quoted := strings.TrimSuffix(strings.TrimPrefix(output, prefix), suffix)
+		if unquoted, err := strconv.Unquote(quoted); err == nil {
+			return strings.TrimSpace(unquoted)
+		}
+	}
+	return output
 }
 
 // Tests whether a string is a valid version for a k8s resource type.
