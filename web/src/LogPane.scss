@@ -2,5 +2,5 @@
 @import "constants";
 
 .LogPane ::selection {
-  background-color: rgba($color-blue, $translucent);
+  background-color: rgba(var(--color-blue-rgb), $translucent);
 }
