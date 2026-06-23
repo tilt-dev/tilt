@@ -20,18 +20,10 @@ if [[ "$DOCKER_TOKEN" == "" ]]; then
     exit 1
 fi
 
-if [[ "$TILT_CLOUD_TOKEN" == "" ]]; then
-    echo "Missing Tilt release token"
-    exit 1
-fi
-
 DIR=$(dirname "$0")
 cd "$DIR/.."
 
 echo "$DOCKER_TOKEN" | docker login --username "$DOCKER_USERNAME" --password-stdin
-
-mkdir -p ~/.windmill
-echo "$TILT_CLOUD_TOKEN" > ~/.windmill/token
 
 git fetch --tags
 git config --global user.email "tilt-team@docker.com"

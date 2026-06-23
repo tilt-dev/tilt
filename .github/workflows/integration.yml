@@ -1,0 +1,167 @@
+name: Integration
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      has-go-changes: ${{ steps.check.outputs.go-changes }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Check for Go changes
+        id: check
+        run: |
+          if ./scripts/ci-has-go-changes.sh; then
+            echo "go-changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "go-changes=false" >> $GITHUB_OUTPUT
+          fi
+
+  build-integration:
+    needs: check-changes
+    if: needs.check-changes.outputs.has-go-changes == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Group 1: Quick K8s tests (analytics, config, crash, crd, demo, env, event, etc.)
+          - name: quick
+            pattern: "Test(Opt|ConfigMap|Crash|CRD|TiltDemo|EnvInit|Event|Idempotent|Ignores|ImageTags|LocalResource|NamespaceFlag|TiltArgs|TiltCI|CLI_DockerPrune)"
+          # Group 2: Docker Compose tests
+          - name: docker-compose
+            pattern: "Test(DockerCompose|OneDockerCompose|DisableDC)"
+          # Group 3: Live Update tests
+          - name: live-update
+            pattern: "TestLiveUpdate"
+          # Group 4: K8s deployment tests (jobs, oneup, watch, etc.)
+          - name: k8s-deploy
+            pattern: "Test(Job|OneUp|OneWatch|WatchExec|K8sCustomDeploy|DisableK8s|RestartProcess|SameImg|Shortlived|TooMany|TTLJob)"
+    container:
+      image: tiltdev/tilt-integration-ci@sha256:d0dd2ae941a5d67d8c194ce0f72feae4018c88b40ef5cbba89f98c1bf44e9e9c
+      options: --group-add 118
+      volumes:
+        - /var/run/docker.sock:/var/run/docker.sock
+    steps:
+      - name: Check docker sock permissions
+        run: |
+          ls -n /var/run/docker.sock
+          gid=$(ls -n /var/run/docker.sock | awk '{print$4}')
+          if [ "$gid" -ne 118 ]; then
+            echo "::error::Unexpected Group ID ($gid) for Docker socket" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git safe directory
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Fetch master branch
+        run: |
+          git fetch origin master:refs/remotes/origin/master
+          git branch -f master origin/master
+
+      - name: Docker login
+        continue-on-error: true
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          username: ${{ vars.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Setup Kind cluster
+        run: ctlptl create cluster kind --registry=ctlptl-registry
+
+      - name: Build JS assets
+        run: make build-js
+
+      - name: Run integration tests (${{ matrix.name }})
+        run: |
+          go test -mod vendor -v -count 1 -tags 'integration' -timeout 30m \
+            -run '${{ matrix.pattern }}' ./integration
+
+      - name: Notify Slack on failure
+        if: failure() && github.ref == 'refs/heads/master'
+        uses: slackapi/slack-github-action@91efab103c0de0a537f72a35f6b8cda0ee76bf0a # v2.1.1
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "build-integration (${{ matrix.name }}) failed on master: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }
+
+  test-extensions:
+    needs:
+      - check-changes
+      - build-integration
+    if: needs.check-changes.outputs.has-go-changes == 'true'
+    runs-on: ubuntu-latest
+    container:
+      image: docker/tilt-extensions-ci@sha256:c22a39c287c7c3afba182f4f46044475b43bd2d4e2bb89f41136eae7d4f4b94d
+      options: --group-add 118
+      volumes:
+        - /var/run/docker.sock:/var/run/docker.sock
+    env:
+      PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+    steps:
+      - name: Check docker sock permissions
+        run: |
+          ls -n /var/run/docker.sock
+          gid=$(ls -n /var/run/docker.sock | awk '{print$4}')
+          if [ "$gid" -ne 118 ]; then
+            echo "::error::Unexpected Group ID ($gid) for Docker socket" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git safe directory
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Fetch master branch
+        run: |
+          git fetch origin master:refs/remotes/origin/master
+          git branch -f master origin/master
+
+      - name: Docker login
+        continue-on-error: true
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          username: ${{ vars.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Setup Kind cluster
+        run: ctlptl create cluster kind --registry=ctlptl-registry
+
+      - name: Add Go bin to PATH
+        run: echo "$HOME/go/bin" >> $GITHUB_PATH
+
+      - name: Build and test extensions
+        run: make build-js install test-extensions
+
+      - name: Notify Slack on failure
+        if: failure() && github.ref == 'refs/heads/master'
+        uses: slackapi/slack-github-action@91efab103c0de0a537f72a35f6b8cda0ee76bf0a # v2.1.1
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "test-extensions failed on master: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }
