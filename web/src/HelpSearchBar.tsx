@@ -17,7 +17,7 @@ import {
 } from "./style-helpers"
 
 export function searchDocs(query: string) {
-  const docsSearchUrl = new URL("https://docs.tilt.dev/search")
+  const docsSearchUrl = new URL("https://docs.tilt.dev/search.html")
   docsSearchUrl.searchParams.set("q", query)
   docsSearchUrl.searchParams.set("utm_source", "tiltui")
   window.open(docsSearchUrl)
