@@ -152,7 +152,7 @@ func TestKINDWarning(t *testing.T) {
 	out := bytes.NewBuffer(nil)
 	registry := registryAsync.Registry(newLoggerCtx(out))
 	assert.Nil(t, registry)
-	assert.Contains(t, out.String(), "https://github.com/tilt-dev/kind-local")
+	assert.Contains(t, out.String(), "https://kind.sigs.k8s.io/docs/user/local-registry/")
 }
 
 func TestK3DNoWarning(t *testing.T) {

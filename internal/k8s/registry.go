@@ -197,7 +197,7 @@ func (r *registryAsync) Registry(ctx context.Context) *v1alpha1.RegistryHosting 
 			} else if r.env == clusterid.ProductKIND {
 				logger.Get(ctx).Warnf("You are running Kind without a local image registry.\n" +
 					"Tilt can use the local registry to speed up builds.\n" +
-					"Instructions: https://github.com/tilt-dev/kind-local")
+					"Instructions: https://kind.sigs.k8s.io/docs/user/local-registry/")
 			}
 		}
 	})
