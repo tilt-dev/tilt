@@ -4,11 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"net/http"
+	"net/url"
 
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
 
+	"github.com/tilt-dev/tilt/internal/hud/server"
 	"github.com/tilt-dev/tilt/internal/hud/webview"
+	"github.com/tilt-dev/tilt/internal/token"
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 	"github.com/tilt-dev/tilt/pkg/model/logstore"
@@ -34,19 +38,54 @@ func NewLogStreamer(follow FollowFlag, url model.WebURL, filter LogFilter, print
 }
 
 func (ls *LogStreamer) Stream(ctx context.Context) error {
-	url := ls.url
-	url.Scheme = "ws"
-	url.Path = "/ws/view"
-	logger.Get(ctx).Debugf("connecting to %s", url.String())
-
-	conn, _, err := websocket.DefaultDialer.Dial(url.String(), nil)
+	csrfToken, err := ls.fetchWebsocketToken(ctx)
 	if err != nil {
-		return errors.Wrapf(err, "dialing websocket %s", url.String())
+		return errors.Wrap(err, "fetching websocket token")
+	}
+
+	wsURL := ls.url
+	wsURL.Scheme = "ws"
+	wsURL.Path = "/ws/view"
+	wsURL.RawQuery = url.Values{"csrf": []string{csrfToken}}.Encode()
+	logger.Get(ctx).Debugf("connecting to %s", wsURL.String())
+
+	conn, _, err := websocket.DefaultDialer.Dial(wsURL.String(), nil)
+	if err != nil {
+		return errors.Wrapf(err, "dialing websocket %s", wsURL.String())
 	}
 	defer conn.Close()
 
 	wsr := newWebsocketReaderForLogs(conn, bool(ls.follow), ls.filter, ls.printer)
 	return wsr.Listen(ctx)
+}
+
+// our websocket is protected by a csrf token, so we need to fetch it.
+func (ls *LogStreamer) fetchWebsocketToken(ctx context.Context) (string, error) {
+	tokenURL := ls.url
+	tokenURL.Scheme = "http"
+	tokenURL.Path = "/api/websocket_token"
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, tokenURL.String(), nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set(server.TiltTokenHeaderName, token.Load())
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", errors.Wrapf(err, "connecting to Tilt at %s", tokenURL.String())
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		return "", errors.Errorf("request to %s failed with status %q", tokenURL.String(), res.Status)
+	}
+
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return "", err
+	}
+	return string(body), nil
 }
 
 type WebsocketConn interface {
