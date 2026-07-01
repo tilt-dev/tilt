@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"path"
@@ -594,6 +593,7 @@ func (b *fakeBuildAndDeployer) completeBuild(key string) {
 }
 
 func TestUpper_Up(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	manifest := f.newManifest("foobar")
 
@@ -627,6 +627,7 @@ func TestUpper_Up(t *testing.T) {
 }
 
 func TestUpper_UpK8sEntityOrdering(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t, fixtureOptions{engineMode: &store.EngineModeCI})
 	f.useRealTiltfileLoader()
 
@@ -661,6 +662,7 @@ func TestUpper_UpK8sEntityOrdering(t *testing.T) {
 }
 
 func TestUpper_CI(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t, fixtureOptions{engineMode: &store.EngineModeCI})
 
 	manifest := f.newManifest("foobar")
@@ -685,6 +687,7 @@ func TestUpper_CI(t *testing.T) {
 }
 
 func TestFirstBuildFails_Up(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skip("flaky on windows")
 	}
@@ -710,6 +713,7 @@ func TestFirstBuildFails_Up(t *testing.T) {
 }
 
 func TestFirstBuildCancels_Up(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	manifest := f.newManifest("foobar")
 	f.SetNextBuildError(context.Canceled)
@@ -725,6 +729,7 @@ func TestFirstBuildCancels_Up(t *testing.T) {
 }
 
 func TestFirstBuildFails_CI(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t, fixtureOptions{engineMode: &store.EngineModeCI})
 	manifest := f.newManifest("foobar")
 	buildFailedToken := errors.New("doesn't compile")
@@ -755,6 +760,7 @@ func TestFirstBuildFails_CI(t *testing.T) {
 }
 
 func TestCIIgnoresDisabledResources(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t, fixtureOptions{engineMode: &store.EngineModeCI})
 
 	m1 := f.newManifest("m1")
@@ -780,6 +786,7 @@ func TestCIIgnoresDisabledResources(t *testing.T) {
 }
 
 func TestConfigFileChangeClearsBuildStateToForceImageBuild(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	f.useRealTiltfileLoader()
 
@@ -813,6 +820,7 @@ k8s_yaml('snack.yaml')
 }
 
 func TestMultipleChangesOnlyDeployOneManifest(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	f.useRealTiltfileLoader()
 
@@ -876,6 +884,7 @@ k8s_resource('doggos', new_name='quux')
 }
 
 func TestSecondResourceIsBuilt(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	f.useRealTiltfileLoader()
 
@@ -918,6 +927,7 @@ k8s_resource('doggos', new_name='quux')  # rename "doggos" --> "quux"
 }
 
 func TestConfigChange_NoOpChange(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	f.useRealTiltfileLoader()
 
@@ -959,6 +969,7 @@ k8s_yaml('snack.yaml')`)
 }
 
 func TestConfigChange_TiltfileErrorAndFixWithNoChanges(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	f.useRealTiltfileLoader()
 
@@ -993,6 +1004,7 @@ k8s_yaml('snack.yaml')`
 }
 
 func TestConfigChange_TiltfileErrorAndFixWithFileChange(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	f.useRealTiltfileLoader()
 
@@ -1049,6 +1061,7 @@ k8s_yaml('snack.yaml')
 }
 
 func TestConfigChange_TriggerModeChangePropagatesButDoesntInvalidateBuild(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	f.useRealTiltfileLoader()
 
@@ -1083,6 +1096,7 @@ trigger_mode(TRIGGER_MODE_MANUAL)`, origTiltfile)
 }
 
 func TestConfigChange_ManifestWithPendingChangesBuildsIfTriggerModeChangedToAuto(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	f.useRealTiltfileLoader()
 
@@ -1130,6 +1144,7 @@ k8s_yaml('snack.yaml')`
 }
 
 func TestConfigChange_ManifestIncludingInitialBuildsIfTriggerModeChangedToManualAfterInitial(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 
 	foo := f.newManifest("foo").WithTriggerMode(model.TriggerModeManual)
@@ -1167,6 +1182,7 @@ func TestConfigChange_ManifestIncludingInitialBuildsIfTriggerModeChangedToManual
 }
 
 func TestConfigChange_FilenamesLoggedInManifestBuild(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	f.useRealTiltfileLoader()
 
@@ -1202,6 +1218,7 @@ docker_build('gcr.io/windmill-public-containers/servantes/snack', './src', ignor
 }
 
 func TestConfigChange_LocalResourceChange(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	f.useRealTiltfileLoader()
 
@@ -1227,6 +1244,7 @@ local_resource('local', 'echo red fish blue fish', deps='foo.bar')`)
 }
 
 func TestDockerRebuildWithChangedFiles(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	df := `FROM golang
 ADD ./ ./
@@ -1260,6 +1278,7 @@ go build ./...
 }
 
 func TestHudUpdated(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 
 	manifest := f.newManifest("foobar")
@@ -1283,6 +1302,7 @@ func TestHudUpdated(t *testing.T) {
 }
 
 func TestDisabledHudUpdated(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skip("TODO(nick): Investigate")
 	}
@@ -1323,6 +1343,7 @@ func TestDisabledHudUpdated(t *testing.T) {
 }
 
 func TestPodEvent(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	manifest := f.newManifest("foobar")
 	pb := f.registerForDeployer(manifest)
@@ -1347,6 +1368,7 @@ func TestPodEvent(t *testing.T) {
 }
 
 func TestPodEventContainerStatus(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	manifest := f.newManifest("foobar")
 	pb := f.registerForDeployer(manifest)
@@ -1386,6 +1408,7 @@ func TestPodEventContainerStatus(t *testing.T) {
 }
 
 func TestPodEventContainerStatusWithoutImage(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	manifest := model.Manifest{
 		Name: model.ManifestName("foobar"),
@@ -1441,6 +1464,7 @@ func TestPodEventContainerStatusWithoutImage(t *testing.T) {
 }
 
 func TestPodEventUpdateByTimestamp(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	manifest := f.newManifest("foobar")
 	pb := f.registerForDeployer(manifest)
@@ -1477,6 +1501,7 @@ func TestPodEventUpdateByTimestamp(t *testing.T) {
 }
 
 func TestPodForgottenOnDisable(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	manifest := f.newManifest("foobar")
 	pb := f.registerForDeployer(manifest)
@@ -1503,6 +1528,7 @@ func TestPodForgottenOnDisable(t *testing.T) {
 }
 
 func TestPodEventUpdateByPodName(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	manifest := f.newManifest("foobar")
 	pb := f.registerForDeployer(manifest)
@@ -1540,6 +1566,7 @@ func TestPodEventUpdateByPodName(t *testing.T) {
 }
 
 func TestPodEventIgnoreOlderPod(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	manifest := f.newManifest("foobar")
 	pb := f.registerForDeployer(manifest)
@@ -1573,6 +1600,7 @@ func TestPodEventIgnoreOlderPod(t *testing.T) {
 }
 
 func TestPodContainerStatus(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	manifest := f.newManifest("fe")
 	pb := f.registerForDeployer(manifest)
@@ -1616,6 +1644,7 @@ func TestPodContainerStatus(t *testing.T) {
 }
 
 func TestUpper_WatchDockerIgnoredFiles(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	manifest := f.newManifest("foobar")
 	manifest = manifest.WithImageTarget(manifest.ImageTargetAt(0).
@@ -1640,6 +1669,7 @@ func TestUpper_WatchDockerIgnoredFiles(t *testing.T) {
 }
 
 func TestUpper_ShowErrorPodLog(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 
 	name := model.ManifestName("foobar")
@@ -1669,6 +1699,7 @@ func TestUpper_ShowErrorPodLog(t *testing.T) {
 }
 
 func TestUpperPodLogInCrashLoopThirdInstanceStillUp(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 
 	name := model.ManifestName("foobar")
@@ -1702,6 +1733,7 @@ func TestUpperPodLogInCrashLoopThirdInstanceStillUp(t *testing.T) {
 }
 
 func TestUpperPodLogInCrashLoopPodCurrentlyDown(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 
 	name := model.ManifestName("foobar")
@@ -1734,6 +1766,7 @@ func TestUpperPodLogInCrashLoopPodCurrentlyDown(t *testing.T) {
 }
 
 func TestUpperRecordPodWithMultipleContainers(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 
 	name := model.ManifestName("foobar")
@@ -1775,6 +1808,7 @@ func TestUpperRecordPodWithMultipleContainers(t *testing.T) {
 }
 
 func TestUpperProcessOtherContainersIfOneErrors(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 
 	name := model.ManifestName("foobar")
@@ -1816,6 +1850,7 @@ func TestUpperProcessOtherContainersIfOneErrors(t *testing.T) {
 }
 
 func TestUpper_ServiceEvent(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 
 	manifest := f.newManifest("foobar")
@@ -1848,6 +1883,7 @@ func TestUpper_ServiceEvent(t *testing.T) {
 }
 
 func TestUpper_ServiceEventRemovesURL(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 
 	manifest := f.newManifest("foobar")
@@ -1884,6 +1920,7 @@ func TestUpper_ServiceEventRemovesURL(t *testing.T) {
 }
 
 func TestUpper_PodLogs(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 
 	name := model.ManifestName("fe")
@@ -1902,6 +1939,7 @@ func TestUpper_PodLogs(t *testing.T) {
 }
 
 func TestK8sEventGlobalLogAndManifestLog(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 
 	name := model.ManifestName("fe")
@@ -1935,6 +1973,7 @@ func TestK8sEventGlobalLogAndManifestLog(t *testing.T) {
 }
 
 func TestK8sEventNotLoggedIfNoManifestForUID(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 
 	name := model.ManifestName("fe")
@@ -1961,6 +2000,7 @@ func TestK8sEventNotLoggedIfNoManifestForUID(t *testing.T) {
 }
 
 func TestHudExitNoError(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	f.Start([]model.Manifest{})
 	f.store.Dispatch(hud.NewExitAction(nil))
@@ -1969,6 +2009,7 @@ func TestHudExitNoError(t *testing.T) {
 }
 
 func TestHudExitWithError(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	f.Start([]model.Manifest{})
 	e := errors.New("helllllo")
@@ -1977,6 +2018,7 @@ func TestHudExitWithError(t *testing.T) {
 }
 
 func TestDockerComposeUp(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	redis, server := f.setupDCFixture()
 
@@ -1992,6 +2034,7 @@ func TestDockerComposeUp(t *testing.T) {
 }
 
 func TestDockerComposeRedeployFromFileChange(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skip("flaky on windows")
 	}
@@ -2009,6 +2052,7 @@ func TestDockerComposeRedeployFromFileChange(t *testing.T) {
 }
 
 func TestDockerComposeRecordsBuildLogs(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	f.useRealTiltfileLoader()
 
@@ -2030,6 +2074,7 @@ func TestDockerComposeRecordsBuildLogs(t *testing.T) {
 }
 
 func TestDockerComposeBuildCompletedSetsStatusToUpIfSuccessful(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	f.useRealTiltfileLoader()
 
@@ -2056,6 +2101,7 @@ func TestDockerComposeBuildCompletedSetsStatusToUpIfSuccessful(t *testing.T) {
 }
 
 func TestDockerComposeStopOnDisable(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	f.useRealTiltfileLoader()
 
@@ -2083,6 +2129,7 @@ func TestDockerComposeStopOnDisable(t *testing.T) {
 }
 
 func TestDockerComposeStartOnReenable(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	f.useRealTiltfileLoader()
 
@@ -2110,6 +2157,7 @@ func TestDockerComposeStartOnReenable(t *testing.T) {
 }
 
 func TestEmptyTiltfile(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	f.useRealTiltfileLoader()
 	f.WriteFile("Tiltfile", "")
@@ -2141,6 +2189,7 @@ func TestEmptyTiltfile(t *testing.T) {
 }
 
 func TestUpperStart(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	f.useRealTiltfileLoader()
 
@@ -2175,6 +2224,7 @@ func TestUpperStart(t *testing.T) {
 }
 
 func TestWatchManifestsWithCommonAncestor(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	m1, m2 := NewManifestsWithCommonAncestor(f)
 	f.Start([]model.Manifest{m1, m2})
@@ -2227,6 +2277,7 @@ func TestWatchManifestsWithCommonAncestor(t *testing.T) {
 }
 
 func TestConfigChangeThatChangesManifestIsIncludedInManifestsChangedFile(t *testing.T) {
+	t.Parallel()
 	// https://app.clubhouse.io/windmill/story/5701/test-testconfigchangethatchangesmanifestisincludedinmanifestschangedfile-is-flaky
 	t.Skip("TODO(nick): fix this")
 
@@ -2264,6 +2315,7 @@ k8s_yaml('snack.yaml')`
 }
 
 func TestSetAnalyticsOpt(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 
 	opt := func(ia InitAction) InitAction {
@@ -2296,6 +2348,7 @@ func TestSetAnalyticsOpt(t *testing.T) {
 }
 
 func TestFeatureFlagsStoredOnState(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 
 	f.Start([]model.Manifest{})
@@ -2323,6 +2376,7 @@ func TestFeatureFlagsStoredOnState(t *testing.T) {
 }
 
 func TestTeamIDStoredOnState(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 
 	f.Start([]model.Manifest{})
@@ -2350,6 +2404,7 @@ func TestTeamIDStoredOnState(t *testing.T) {
 }
 
 func TestBuildLogAction(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	f.bc.DisableForTesting()
 
@@ -2386,6 +2441,7 @@ alert-injest… │ ghij`)
 }
 
 func TestBuildErrorLoggedOnceByUpper(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 
 	manifest := f.newManifest("alert-injester")
@@ -2403,6 +2459,7 @@ func TestBuildErrorLoggedOnceByUpper(t *testing.T) {
 }
 
 func TestTiltfileChangedFilesOnlyLoggedAfterFirstBuild(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	f.useRealTiltfileLoader()
 
@@ -2442,6 +2499,7 @@ k8s_yaml('snack.yaml')`)
 }
 
 func TestDeployUIDsInEngineState(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 
 	uid := types.UID("fake-uid")
@@ -2461,6 +2519,7 @@ func TestDeployUIDsInEngineState(t *testing.T) {
 }
 
 func TestEnableFeatureOnFail(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	f.useRealTiltfileLoader()
 
@@ -2480,6 +2539,7 @@ fail('goodnight moon')
 }
 
 func TestSecretScrubbed(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	f.useRealTiltfileLoader()
 
@@ -2510,6 +2570,7 @@ data:
 }
 
 func TestShortSecretNotScrubbed(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	f.useRealTiltfileLoader()
 
@@ -2538,6 +2599,7 @@ stringData:
 }
 
 func TestDisableDockerPrune(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	f.useRealTiltfileLoader()
 
@@ -2559,6 +2621,7 @@ docker_prune_settings(disable=True)
 }
 
 func TestDockerPruneEnabledByDefault(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	f.useRealTiltfileLoader()
 
@@ -2579,6 +2642,7 @@ func TestDockerPruneEnabledByDefault(t *testing.T) {
 }
 
 func TestHasEverBeenReadyK8s(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 
 	m := f.newManifest("foobar")
@@ -2597,6 +2661,7 @@ func TestHasEverBeenReadyK8s(t *testing.T) {
 }
 
 func TestHasEverBeenCompleteK8s(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 
 	m := f.newManifest("foobar")
@@ -2615,6 +2680,7 @@ func TestHasEverBeenCompleteK8s(t *testing.T) {
 }
 
 func TestHasEverBeenReadyLocal(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skip("flaky on windows")
 	}
@@ -2639,6 +2705,7 @@ func TestHasEverBeenReadyLocal(t *testing.T) {
 }
 
 func TestVersionSettingsStoredOnState(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 
 	f.Start([]model.Manifest{})
@@ -2664,6 +2731,7 @@ func TestVersionSettingsStoredOnState(t *testing.T) {
 }
 
 func TestAnalyticsTiltfileOpt(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 
 	f.Start([]model.Manifest{})
@@ -2689,6 +2757,7 @@ func TestAnalyticsTiltfileOpt(t *testing.T) {
 }
 
 func TestConfigArgsChangeCausesTiltfileRerun(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	f.useRealTiltfileLoader()
 
@@ -2733,6 +2802,7 @@ print('foo=', cfg['foo'])`)
 }
 
 func TestTelemetryLogAction(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 
 	f.Start([]model.Manifest{})
@@ -2746,6 +2816,7 @@ func TestTelemetryLogAction(t *testing.T) {
 }
 
 func TestLocalResourceServeChangeCmd(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	f.useRealTiltfileLoader()
 
@@ -2771,6 +2842,7 @@ func TestLocalResourceServeChangeCmd(t *testing.T) {
 }
 
 func TestDefaultUpdateSettings(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	f.useRealTiltfileLoader()
 
@@ -2790,6 +2862,7 @@ func TestDefaultUpdateSettings(t *testing.T) {
 }
 
 func TestSetK8sUpsertTimeout(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	f.useRealTiltfileLoader()
 
@@ -2810,6 +2883,7 @@ update_settings(k8s_upsert_timeout_secs=123)
 }
 
 func TestSetMaxBuildSlots(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	f.useRealTiltfileLoader()
 
@@ -2831,6 +2905,7 @@ update_settings(max_parallel_updates=123)
 
 // https://github.com/tilt-dev/tilt/issues/3514
 func TestTiltignoreRespectedOnError(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	f.useRealTiltfileLoader()
 
@@ -2871,6 +2946,7 @@ fail('x')`)
 }
 
 func TestHandleTiltfileTriggerQueue(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	f.useRealTiltfileLoader()
 
@@ -2913,6 +2989,7 @@ func TestHandleTiltfileTriggerQueue(t *testing.T) {
 }
 
 func TestOverrideTriggerModeEvent(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 
 	manifest := f.newManifest("foo")
@@ -2938,6 +3015,7 @@ func TestOverrideTriggerModeEvent(t *testing.T) {
 }
 
 func TestOverrideTriggerModeBadManifestLogsError(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 
 	manifest := f.newManifest("foo")
@@ -2961,6 +3039,7 @@ func TestOverrideTriggerModeBadManifestLogsError(t *testing.T) {
 }
 
 func TestOverrideTriggerModeBadTriggerModeLogsError(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 
 	manifest := f.newManifest("foo")
@@ -2984,6 +3063,7 @@ func TestOverrideTriggerModeBadTriggerModeLogsError(t *testing.T) {
 }
 
 func TestDisableButtonIsCreated(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	f.useRealTiltfileLoader()
 
@@ -3012,6 +3092,7 @@ local_resource('foo', 'echo hi')
 }
 
 func TestCmdServerDoesntStartWhenDisabled(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	f.useRealTiltfileLoader()
 
@@ -3037,6 +3118,7 @@ config.set_enabled_resources(['bar'])
 }
 
 func TestDisabledResourceRemovedFromTriggerQueue(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 
 	m := manifestbuilder.New(f, "foo").WithLocalResource("foo", []string{f.Path()}).Build()
@@ -3061,6 +3143,7 @@ func TestDisabledResourceRemovedFromTriggerQueue(t *testing.T) {
 }
 
 func TestLocalResourceNoServeCmdDeps(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skip("TODO(nick): fix this")
 	}
@@ -3136,7 +3219,6 @@ type fixtureOptions struct {
 }
 
 func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
-	controllers.InitKlog(io.Discard)
 	f := tempdir.NewTempDirFixture(t)
 
 	engineMode := store.EngineModeUp
@@ -3685,7 +3767,7 @@ func (f *testFixture) assertNoCall(msgAndArgs ...interface{}) {
 		select {
 		case call := <-f.b.calls:
 			f.T().Fatalf("%s\ncall:\n%s", msg, spew.Sdump(call))
-		case <-time.After(200 * time.Millisecond):
+		case <-time.After(50 * time.Millisecond):
 			return
 		}
 	}
