@@ -19,6 +19,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/testutils"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
+	"github.com/tilt-dev/tilt/internal/token"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/assets"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -74,6 +75,7 @@ type serverFixture struct {
 	cancel    func()
 	hudsc     *server.HeadsUpServerController
 	client    ctrlclient.Client
+	store     *store.Store
 	analytics *analytics.MemoryAnalytics
 
 	origPort int
@@ -87,8 +89,13 @@ func newServerFixture(t *testing.T) *serverFixture {
 
 	dir := dirs.NewTiltDevDirAt(f.Path())
 
-	ctx, a, _ := testutils.CtxAndAnalyticsForTest()
+	ctx, a, ta := testutils.CtxAndAnalyticsForTest()
 	ctx, cancel := context.WithCancel(ctx)
+
+	// The CLI and the HUD server both read the session token from here, so
+	// token-gated endpoints (e.g. the websocket CSRF token) work by default.
+	t.Setenv("TILT_DEV_DIR", f.Path())
+
 	apiConnProvider := newStaticConnProvider(t)
 	_, apiPortString, _ := net.SplitHostPort(apiConnProvider.l.Addr().String())
 	apiPort, err := strconv.Atoi(apiPortString)
@@ -104,15 +111,28 @@ func newServerFixture(t *testing.T) *serverFixture {
 	webPort, err := strconv.Atoi(webPortString)
 	require.NoError(t, err)
 
-	cfgAccess := server.ProvideConfigAccess(dir)
-	hudsc := server.ProvideHeadsUpServerController(cfgAccess, model.ProvideAPIServerName(model.WebPort(webPort)),
-		webListener, cfg, &server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{})
-	st := store.NewTestingStore()
-	require.NoError(t, hudsc.SetUp(ctx, st))
-
 	scheme := v1alpha1.NewScheme()
 	client, err := ctrlclient.New(cfg.GenericConfig.LoopbackClientConfig, ctrlclient.Options{Scheme: scheme})
 	require.NoError(t, err)
+
+	st, _ := store.NewStoreWithFakeReducer()
+	go func() {
+		err := st.Loop(ctx)
+		testutils.FailOnNonCanceledErr(t, err, "store.Loop failed")
+	}()
+
+	state := st.LockMutableStateForTesting()
+	state.Token = token.Token(token.Load())
+	st.UnlockMutableState()
+
+	hudServer, err := server.ProvideHeadsUpServer(ctx, st, assets.NewFakeServer(), ta,
+		server.NewWebsocketList(), client)
+	require.NoError(t, err)
+
+	cfgAccess := server.ProvideConfigAccess(dir)
+	hudsc := server.ProvideHeadsUpServerController(cfgAccess, model.ProvideAPIServerName(model.WebPort(webPort)),
+		webListener, cfg, hudServer, assets.NewFakeServer(), model.WebURL{})
+	require.NoError(t, hudsc.SetUp(ctx, st))
 
 	t.Setenv("TILT_CONFIG", filepath.Join(f.Path(), "config"))
 
@@ -125,6 +145,7 @@ func newServerFixture(t *testing.T) *serverFixture {
 		cancel:         cancel,
 		hudsc:          hudsc,
 		client:         client,
+		store:          st,
 		origPort:       origPort,
 		analytics:      a,
 	}

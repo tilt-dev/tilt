@@ -20,6 +20,7 @@ import (
 
 	"github.com/google/wire"
 	"github.com/jonboulle/clockwork"
+	"github.com/mattn/go-colorable"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"k8s.io/apimachinery/pkg/version"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -147,6 +148,7 @@ var BaseWireSet = wire.NewSet(
 	provideWebHost,
 	server.WireSet,
 	hudclient.WireSet,
+	provideStdout,
 	server.ProvideDefaultConnProvider,
 	provideAssetServer,
 
@@ -303,8 +305,23 @@ type DownDeps struct {
 	fs               afero.Fs
 }
 
-func wireLogStreamer(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, subcommand model.TiltSubcommand, follow hudclient.FollowFlag) (*hudclient.LogStreamer, error) {
-	wire.Build(UpWireSet)
+var LogStreamerWireSet = wire.NewSet(
+	provideWebHost,
+	provideWebPort,
+	provideWebURL,
+	provideLogSource,
+	provideLogResources,
+	provideLogLevel,
+	provideLogSince,
+	provideLogTail,
+	provideLogJSON,
+	hudclient.NewLogFilter,
+	hudclient.ProvideLogPrinter,
+	hudclient.NewLogStreamer,
+)
+
+func wireLogStreamer(follow hudclient.FollowFlag, stdout hudclient.Stdout) (*hudclient.LogStreamer, error) {
+	wire.Build(LogStreamerWireSet)
 	return nil, nil
 }
 
@@ -341,6 +358,10 @@ func wireLsp(ctx context.Context, l logger.Logger, subcommand model.TiltSubcomma
 
 func provideCITimeoutFlag() model.CITimeoutFlag {
 	return model.CITimeoutFlag(ciTimeout)
+}
+
+func provideStdout() hudclient.Stdout {
+	return hudclient.Stdout(colorable.NewColorableStdout())
 }
 
 func provideLogSource() hudclient.FilterSource {
