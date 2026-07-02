@@ -26,6 +26,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/httpstream"
@@ -44,6 +45,11 @@ var (
 	networkClosedError = "use of closed network connection"
 )
 
+const (
+	defaultDialTimeout     = 30 * time.Second
+	streamConnCloseTimeout = 5 * time.Second
+)
+
 // PortForwarder knows how to listen for local connections and forward them to
 // a remote pod via an upgraded HTTP request.
 type PortForwarder struct {
@@ -51,10 +57,15 @@ type PortForwarder struct {
 	ports     []ForwardedPort
 	stopChan  <-chan struct{}
 
-	dialer        httpstream.Dialer
-	streamConn    httpstream.Connection
-	errorHandler  *errorHandler
+	dialer       httpstream.Dialer
+	dialTimeout  time.Duration
+	streamConn   httpstream.Connection
+	errorHandler *errorHandler
+
+	// listenersLock guards listeners.
+	listenersLock sync.Mutex
 	listeners     []io.Closer
+
 	Ready         chan struct{}
 	requestIDLock sync.Mutex
 	requestID     int
@@ -181,13 +192,14 @@ func NewOnAddresses(dialer httpstream.Dialer, addresses []string, ports []string
 		return nil, err
 	}
 	return &PortForwarder{
-		dialer:    dialer,
-		addresses: parsedAddresses,
-		ports:     parsedPorts,
-		stopChan:  stopChan,
-		Ready:     readyChan,
-		out:       out,
-		errOut:    errOut,
+		dialer:      dialer,
+		dialTimeout: defaultDialTimeout,
+		addresses:   parsedAddresses,
+		ports:       parsedPorts,
+		stopChan:    stopChan,
+		Ready:       readyChan,
+		out:         out,
+		errOut:      errOut,
 	}, nil
 }
 
@@ -202,20 +214,81 @@ func (pf *PortForwarder) Addresses() []string {
 // ForwardPorts formats and executes a port forwarding request. The connection will remain
 // open until stopChan is closed.
 func (pf *PortForwarder) ForwardPorts() error {
-	defer pf.Close()
-
-	var err error
-	var protocol string
-	pf.streamConn, protocol, err = pf.dialer.Dial(PortForwardProtocolV1Name)
+	streamConn, err := pf.dial()
 	if err != nil {
-		return fmt.Errorf("error upgrading connection: %s", err)
+		return err
 	}
-	defer pf.streamConn.Close()
-	if protocol != PortForwardProtocolV1Name {
-		return fmt.Errorf("unable to negotiate protocol: client supports %q, server returned %q", PortForwardProtocolV1Name, protocol)
-	}
+	pf.streamConn = streamConn
+	defer func() {
+		// Release the local ports before touching the stream connection:
+		// closing it can stall on a dead peer (see closeStreamConn), and a
+		// stalled teardown must not keep the ports bound.
+		pf.Close()
+		pf.closeStreamConn()
+	}()
 
 	return pf.forward()
+}
+
+// dial upgrades a connection to the pod, giving up after dialTimeout or when
+// stopChan is closed. The dialer itself has no deadline, so an unresponsive
+// API server would otherwise block the forwarder — and the reconciler's retry
+// loop above it — indefinitely.
+func (pf *PortForwarder) dial() (httpstream.Connection, error) {
+	type dialResult struct {
+		conn     httpstream.Connection
+		protocol string
+		err      error
+	}
+	resultCh := make(chan dialResult, 1)
+	go func() {
+		conn, protocol, err := pf.dialer.Dial(PortForwardProtocolV1Name)
+		resultCh <- dialResult{conn: conn, protocol: protocol, err: err}
+	}()
+
+	abandon := func() {
+		go func() {
+			if res := <-resultCh; res.conn != nil {
+				res.conn.Close()
+			}
+		}()
+	}
+
+	select {
+	case res := <-resultCh:
+		if res.err != nil {
+			return nil, fmt.Errorf("error upgrading connection: %s", res.err)
+		}
+		if res.protocol != PortForwardProtocolV1Name {
+			res.conn.Close()
+			return nil, fmt.Errorf("unable to negotiate protocol: client supports %q, server returned %q", PortForwardProtocolV1Name, res.protocol)
+		}
+		return res.conn, nil
+	case <-pf.stopChan:
+		abandon()
+		return nil, errors.New("error upgrading connection: stop requested while dialing")
+	case <-time.After(pf.dialTimeout):
+		abandon()
+		return nil, fmt.Errorf("error upgrading connection: timed out dialing after %s", pf.dialTimeout)
+	}
+}
+
+// closeStreamConn closes the stream connection, giving up after
+// streamConnCloseTimeout: spdystream's Close writes a GOAWAY frame with no
+// deadline, so closing a half-open connection with a saturated send buffer
+// blocks forever. The abandoned close goroutine is harmless — the connection
+// it holds is already dead.
+func (pf *PortForwarder) closeStreamConn() {
+	done := make(chan struct{})
+	go func() {
+		_ = pf.streamConn.Close()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(streamConnCloseTimeout):
+		_, _ = fmt.Fprintf(pf.out, "timed out closing connection to pod (dead peer?); abandoning it")
+	}
 }
 
 // forward dials the remote host specific in req, upgrades the request, starts
@@ -283,7 +356,9 @@ func (pf *PortForwarder) listenOnPortAndAddress(port *ForwardedPort, protocol st
 	if err != nil {
 		return err
 	}
+	pf.listenersLock.Lock()
 	pf.listeners = append(pf.listeners, listener)
+	pf.listenersLock.Unlock()
 	go pf.waitForConnection(listener, *port)
 	return nil
 }
@@ -428,14 +503,18 @@ func (pf *PortForwarder) handleConnection(conn net.Conn, port ForwardedPort) {
 	}
 }
 
-// Close stops all listeners of PortForwarder.
+// Close stops all listeners of PortForwarder. It is idempotent.
 func (pf *PortForwarder) Close() {
+	pf.listenersLock.Lock()
+	defer pf.listenersLock.Unlock()
+
 	// stop all listeners
 	for _, l := range pf.listeners {
 		if err := l.Close(); err != nil {
 			_, _ = fmt.Fprintf(pf.out, "error closing listener: %v", err)
 		}
 	}
+	pf.listeners = nil
 }
 
 // GetPorts will return the ports that were forwarded; this can be used to
