@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 
 	hudclient "github.com/tilt-dev/tilt/internal/hud/client"
 	"github.com/tilt-dev/tilt/pkg/model"
@@ -14,7 +15,12 @@ import (
 )
 
 type logsCmd struct {
-	follow bool // if true, follow logs (otherwise print current logs and exit)
+	follow  bool // if true, follow logs (otherwise print current logs and exit)
+	streams genericclioptions.IOStreams
+}
+
+func newLogsCmd(streams genericclioptions.IOStreams) *logsCmd {
+	return &logsCmd{streams: streams}
 }
 
 func (c *logsCmd) name() model.TiltSubcommand { return "logs" }
@@ -52,7 +58,7 @@ func (c *logsCmd) run(ctx context.Context, args []string) error {
 	// For `tilt logs`, the resources are passed as extra args.
 	logResourcesFlag = args
 
-	logStreamer, err := wireLogStreamer(ctx, a, "logs", hudclient.FollowFlag(c.follow))
+	logStreamer, err := wireLogStreamer(hudclient.FollowFlag(c.follow), hudclient.Stdout(c.streams.Out))
 	if err != nil {
 		return err
 	}

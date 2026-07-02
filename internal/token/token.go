@@ -16,6 +16,20 @@ func (t Token) String() string {
 	return string(t)
 }
 
+// Load reads the persisted session token from the default Tilt dir, creating
+// it if necessary.
+func Load() string {
+	dir, err := dirs.UseTiltDevDir()
+	if err != nil {
+		return ""
+	}
+	t, err := GetOrCreateToken(dir)
+	if err != nil {
+		return ""
+	}
+	return t.String()
+}
+
 func GetOrCreateToken(dir *dirs.TiltDevDir) (Token, error) {
 	token, err := getExistingToken(dir)
 	if os.IsNotExist(err) {
