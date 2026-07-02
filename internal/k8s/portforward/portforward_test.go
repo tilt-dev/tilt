@@ -627,3 +627,130 @@ func TestForwardPortsReturnsNilWhenStopChanIsClosed(t *testing.T) {
 		t.Fatalf("unexpected error from pf.ForwardPorts(): %s", err)
 	}
 }
+
+// blockingCloseConnection simulates spdystream's Close on a half-open
+// connection with a saturated send buffer: the GOAWAY frame write never
+// returns.
+type blockingCloseConnection struct {
+	*fakeConnection
+	block chan struct{}
+}
+
+func (c *blockingCloseConnection) Close() error {
+	<-c.block
+	return c.fakeConnection.Close()
+}
+
+// blockingDialer simulates dialing an API server that accepts TCP but never
+// completes the upgrade.
+type blockingDialer struct {
+	block chan struct{}
+}
+
+func (d *blockingDialer) Dial(protocols ...string) (httpstream.Connection, string, error) {
+	<-d.block
+	return nil, "", fmt.Errorf("dialer unblocked")
+}
+
+func TestForwardPortsReleasesListenersWhenStreamConnCloseHangs(t *testing.T) {
+	conn := &blockingCloseConnection{
+		fakeConnection: newFakeConnection(),
+		block:          make(chan struct{}),
+	}
+	defer close(conn.block)
+	dialer := &fakeDialer{
+		conn:               conn,
+		negotiatedProtocol: PortForwardProtocolV1Name,
+	}
+
+	stopChan := make(chan struct{})
+	readyChan := make(chan struct{})
+	errChan := make(chan error)
+
+	pf, err := New(dialer, []string{":5000"}, stopChan, readyChan, os.Stdout, os.Stderr)
+	if err != nil {
+		t.Fatalf("failed to create new PortForwarder: %s", err)
+	}
+
+	go func() {
+		errChan <- pf.ForwardPorts()
+	}()
+
+	<-pf.Ready
+
+	ports, err := pf.GetPorts()
+	if err != nil {
+		t.Fatalf("failed to get ports: %s", err)
+	}
+	localPort := ports[0].Local
+
+	close(stopChan)
+
+	// The port must be released even while the stream connection's Close is
+	// still hung, or a successor forward would fail with EADDRINUSE.
+	addr := fmt.Sprintf("127.0.0.1:%d", localPort)
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		l, err := net.Listen("tcp4", addr)
+		if err == nil {
+			_ = l.Close()
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("port %d still bound while streamConn.Close is hung: %s", localPort, err)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+func TestForwardPortsTimesOutWhenDialHangs(t *testing.T) {
+	dialer := &blockingDialer{block: make(chan struct{})}
+	defer close(dialer.block)
+
+	stopChan := make(chan struct{})
+	readyChan := make(chan struct{})
+
+	pf, err := New(dialer, []string{":5000"}, stopChan, readyChan, os.Stdout, os.Stderr)
+	if err != nil {
+		t.Fatalf("failed to create new PortForwarder: %s", err)
+	}
+	pf.dialTimeout = 20 * time.Millisecond
+
+	err = pf.ForwardPorts()
+	if err == nil {
+		t.Fatalf("unexpected non-error from pf.ForwardPorts()")
+	} else if !strings.Contains(err.Error(), "timed out dialing") {
+		t.Fatalf("unexpected error from pf.ForwardPorts(): %s", err)
+	}
+}
+
+func TestForwardPortsAbortsDialWhenStopChanIsClosed(t *testing.T) {
+	dialer := &blockingDialer{block: make(chan struct{})}
+	defer close(dialer.block)
+
+	stopChan := make(chan struct{})
+	readyChan := make(chan struct{})
+	errChan := make(chan error)
+
+	pf, err := New(dialer, []string{":5000"}, stopChan, readyChan, os.Stdout, os.Stderr)
+	if err != nil {
+		t.Fatalf("failed to create new PortForwarder: %s", err)
+	}
+
+	go func() {
+		errChan <- pf.ForwardPorts()
+	}()
+
+	close(stopChan)
+
+	select {
+	case err = <-errChan:
+	case <-time.After(2 * time.Second):
+		t.Fatalf("pf.ForwardPorts() did not return after stopChan was closed mid-dial")
+	}
+	if err == nil {
+		t.Fatalf("unexpected non-error from pf.ForwardPorts()")
+	} else if !strings.Contains(err.Error(), "stop requested") {
+		t.Fatalf("unexpected error from pf.ForwardPorts(): %s", err)
+	}
+}
