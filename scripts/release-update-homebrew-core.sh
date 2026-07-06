@@ -29,4 +29,4 @@ fi
 
 # send the brew team a PR to upgrade homebrew-core
 brew bump-formula-pr --verbose --debug --no-browse --force \
-     --fork-org=tilt-dev --version="$VERSION" --tag="v$VERSION" tilt
+     --version="$VERSION" --tag="v$VERSION" tilt

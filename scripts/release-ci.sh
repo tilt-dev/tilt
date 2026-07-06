@@ -46,4 +46,5 @@ goreleaser --clean
 ./scripts/release-update-tilt-docs-repo.sh "$VERSION"
 ./scripts/record-release.sh "$VERSION"
 ./scripts/release-update-extension-repo.sh "$VERSION"
-./scripts/release-update-homebrew-core.sh "$VERSION"
+# App token doesn't have the permissions to run bump-formula-pr
+#./scripts/release-update-homebrew-core.sh "$VERSION"
