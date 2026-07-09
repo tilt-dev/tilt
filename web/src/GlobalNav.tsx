@@ -8,6 +8,7 @@ import { ReactComponent as UpdateAvailableIcon } from "./assets/svg/update-avail
 import { ClusterStatusDialog, getDefaultCluster } from "./ClusterStatusDialog"
 import { useFeatures } from "./feature"
 import HelpDialog from "./HelpDialog"
+import { RESOURCE_NAME_FILTER_INPUT_ID } from "./ResourceNameFilter"
 import { isTargetEditable } from "./shortcut"
 import { SnapshotAction } from "./snapshot"
 import {
@@ -144,6 +145,14 @@ class GlobalNavShortcuts extends Component<GlobalNavShortcutsProps> {
     } else if (e.key === "s" && this.props.snapshot.enabled) {
       this.props.snapshot.openModal()
       e.preventDefault()
+    } else if (e.key === "/") {
+      const filter = document.getElementById(
+        RESOURCE_NAME_FILTER_INPUT_ID
+      ) as HTMLInputElement | null
+      if (filter) {
+        filter.focus()
+        e.preventDefault()
+      }
     }
   }
 

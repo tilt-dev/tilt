@@ -3,7 +3,10 @@ import userEvent from "@testing-library/user-event"
 import React from "react"
 import { act } from "react-dom/test-utils"
 import { MemoryRouter } from "react-router-dom"
+import { tiltfileKeyContext } from "./BrowserStorage"
 import HeaderBar, { HeaderBarPage } from "./HeaderBar"
+import { ResourceListOptionsProvider } from "./ResourceListOptionsContext"
+import { ResourceNameFilter } from "./ResourceNameFilter"
 import { SnapshotActionTestProvider } from "./snapshot"
 import { nResourceView } from "./testdata"
 
@@ -24,13 +27,18 @@ describe("HeaderBar", () => {
           initialEntries={["/"]}
           future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
         >
-          <SnapshotActionTestProvider value={snapshotAction}>
-            <HeaderBar
-              view={nResourceView(2)}
-              currentPage={HeaderBarPage.Detail}
-              isSocketConnected={true}
-            />
-          </SnapshotActionTestProvider>
+          <tiltfileKeyContext.Provider value="test">
+            <ResourceListOptionsProvider>
+              <SnapshotActionTestProvider value={snapshotAction}>
+                <HeaderBar
+                  view={nResourceView(2)}
+                  currentPage={HeaderBarPage.Detail}
+                  isSocketConnected={true}
+                />
+                <ResourceNameFilter />
+              </SnapshotActionTestProvider>
+            </ResourceListOptionsProvider>
+          </tiltfileKeyContext.Provider>
         </MemoryRouter>
       )
     })
@@ -54,6 +62,17 @@ describe("HeaderBar", () => {
       })
 
       expect(openModal).toBeCalledTimes(1)
+    })
+
+    it("focuses the resource name filter on '/' keypress", () => {
+      const filter = screen.getByPlaceholderText("Filter resources by name")
+      expect(filter).not.toHaveFocus()
+
+      act(() => {
+        userEvent.keyboard("/")
+      })
+
+      expect(filter).toHaveFocus()
     })
   })
 })
