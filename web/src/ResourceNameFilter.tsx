@@ -69,6 +69,8 @@ export const ClearResourceNameFilterButton = styled(InstrumentedButton)`
   align-items: center;
 `
 
+export const RESOURCE_NAME_FILTER_INPUT_ID = "ResourceNameFilter"
+
 export function ResourceNameFilter(props: { className?: string }) {
   const {
     options: { resourceNameFilter },
@@ -106,6 +108,7 @@ export function ResourceNameFilter(props: { className?: string }) {
 
   return (
     <ResourceNameFilterTextField
+      id={RESOURCE_NAME_FILTER_INPUT_ID}
       className={props.className}
       value={resourceNameFilter ?? ""}
       onChange={(e) => setResourceNameFilter(e.target.value)}

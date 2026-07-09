@@ -132,6 +132,9 @@ export default function HelpDialog(props: props) {
       <Shortcut label="Make Snapshot">
         <ShortcutBox>s</ShortcutBox>
       </Shortcut>
+      <Shortcut label="Focus Resource Filter">
+        <ShortcutBox>/</ShortcutBox>
+      </Shortcut>
       <Shortcut label="Help">
         <ShortcutBox>?</ShortcutBox>
       </Shortcut>
