@@ -27,6 +27,7 @@ import (
 )
 
 func TestBuildControllerLocalResource(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 
 	dep := f.JoinPath("stuff.json")
@@ -55,6 +56,7 @@ func TestBuildControllerLocalResource(t *testing.T) {
 }
 
 func TestBuildControllerManualTriggerBuildReasonInit(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name        string
 		triggerMode model.TriggerMode
@@ -63,6 +65,7 @@ func TestBuildControllerManualTriggerBuildReasonInit(t *testing.T) {
 		{"manual with auto init", model.TriggerModeManualWithAutoInit},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			f := newTestFixture(t)
 			mName := model.ManifestName("foobar")
 			manifest := f.newManifest(mName.String()).WithTriggerMode(tc.triggerMode)
@@ -84,6 +87,7 @@ func TestBuildControllerManualTriggerBuildReasonInit(t *testing.T) {
 }
 
 func TestTriggerModes(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name                       string
 		triggerMode                model.TriggerMode
@@ -96,6 +100,7 @@ func TestTriggerModes(t *testing.T) {
 		{name: "fully manual", triggerMode: model.TriggerModeManual, expectInitialBuild: false, expectBuildWhenFilesChange: false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			f := newTestFixture(t)
 
 			manifest := f.simpleManifestWithTriggerMode("foobar", tc.triggerMode)
@@ -129,6 +134,7 @@ func TestTriggerModes(t *testing.T) {
 }
 
 func TestBuildControllerImageBuildTrigger(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name               string
 		triggerMode        model.TriggerMode
@@ -143,6 +149,7 @@ func TestBuildControllerImageBuildTrigger(t *testing.T) {
 		{name: "auto with manual init without change", triggerMode: model.TriggerModeAutoWithManualInit, filesChanged: false, expectedImageBuild: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			f := newTestFixture(t)
 			mName := model.ManifestName("foobar")
 
@@ -187,6 +194,7 @@ func TestBuildControllerImageBuildTrigger(t *testing.T) {
 }
 
 func TestBuildQueueOrdering(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 
 	m1 := f.newManifestWithRef("manifest1", container.MustParseNamed("manifest1")).
@@ -241,6 +249,7 @@ func TestBuildQueueOrdering(t *testing.T) {
 }
 
 func TestBuildQueueAndAutobuildOrdering(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 
 	// changes to this dir. will register with our manual manifests
@@ -303,6 +312,7 @@ func TestBuildQueueAndAutobuildOrdering(t *testing.T) {
 
 // any manifests without image targets should be deployed before any manifests WITH image targets
 func TestBuildControllerNoBuildManifestsFirst(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 
 	manifests := make([]model.Manifest, 10)
@@ -341,6 +351,7 @@ func TestBuildControllerNoBuildManifestsFirst(t *testing.T) {
 }
 
 func TestBuildControllerUnresourcedYAMLFirst(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 
 	manifests := []model.Manifest{
@@ -371,6 +382,7 @@ func TestBuildControllerUnresourcedYAMLFirst(t *testing.T) {
 }
 
 func TestBuildControllerRespectDockerComposeOrder(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 
 	sancho := NewSanchoLiveUpdateDCManifest(f)
@@ -399,6 +411,7 @@ func TestBuildControllerRespectDockerComposeOrder(t *testing.T) {
 }
 
 func TestBuildControllerLocalResourcesBeforeClusterResources(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 
 	manifests := []model.Manifest{
@@ -440,6 +453,7 @@ func TestBuildControllerLocalResourcesBeforeClusterResources(t *testing.T) {
 }
 
 func TestBuildControllerResourceDeps(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 
 	depGraph := map[string][]string{
@@ -497,6 +511,7 @@ func TestBuildControllerResourceDeps(t *testing.T) {
 // normally, local builds go before k8s builds
 // if the local build depends on the k8s build, the k8s build should go first
 func TestBuildControllerResourceDepTrumpsLocalResourcePriority(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 
 	k8sManifest := f.newManifest("foo")
@@ -525,6 +540,7 @@ func TestBuildControllerResourceDepTrumpsLocalResourcePriority(t *testing.T) {
 
 // bar depends on foo, we build foo three times before marking it ready, and make sure bar waits
 func TestBuildControllerResourceDepTrumpsInitialBuild(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skip("flaky on windows")
 	}
@@ -560,6 +576,7 @@ func TestBuildControllerResourceDepTrumpsInitialBuild(t *testing.T) {
 
 // bar depends on foo. make sure bar waits on foo even as foo fails
 func TestBuildControllerResourceDepTrumpsPendingBuild(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skip("flaky on windows")
 	}
@@ -593,6 +610,7 @@ func TestBuildControllerResourceDepTrumpsPendingBuild(t *testing.T) {
 }
 
 func TestBuildControllerWontBuildManifestIfNoSlotsAvailable(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	f.b.completeBuildsManually = true
 	f.setMaxParallelUpdates(2)
@@ -628,6 +646,7 @@ func TestBuildControllerWontBuildManifestIfNoSlotsAvailable(t *testing.T) {
 // are in progress (e.g. if there are 5 builds in progress and user sets
 // maxParallelUpdates=3, nothing should explode.)
 func TestCurrentlyBuildingMayExceedMaxParallelUpdates(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	f.b.completeBuildsManually = true
 	f.setMaxParallelUpdates(3)
@@ -682,6 +701,7 @@ func TestCurrentlyBuildingMayExceedMaxParallelUpdates(t *testing.T) {
 }
 
 func TestDontStartBuildIfControllerAndEngineUnsynced(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 
 	f.b.completeBuildsManually = true
@@ -719,6 +739,7 @@ func TestDontStartBuildIfControllerAndEngineUnsynced(t *testing.T) {
 }
 
 func TestErrorHandlingWithMultipleBuilds(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skip("TODO(nick): fix this")
 	}
@@ -768,6 +789,7 @@ func TestErrorHandlingWithMultipleBuilds(t *testing.T) {
 }
 
 func TestManifestsWithSameTwoImages(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	m1, m2 := NewManifestsWithSameTwoImages(f)
 	f.Start([]model.Manifest{m1, m2})
@@ -815,6 +837,7 @@ func TestManifestsWithSameTwoImages(t *testing.T) {
 }
 
 func TestManifestsWithTwoCommonAncestors(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	m1, m2 := NewManifestsWithTwoCommonAncestors(f)
 	f.Start([]model.Manifest{m1, m2})
@@ -871,6 +894,7 @@ func TestManifestsWithTwoCommonAncestors(t *testing.T) {
 }
 
 func TestLocalDependsOnNonWorkloadK8s(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 
 	local1 := manifestbuilder.New(f, "local").
@@ -897,6 +921,7 @@ func TestLocalDependsOnNonWorkloadK8s(t *testing.T) {
 }
 
 func TestManifestsWithCommonAncestorAndTrigger(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	m1, m2 := NewManifestsWithCommonAncestor(f)
 	f.Start([]model.Manifest{m1, m2})
@@ -924,6 +949,7 @@ func TestManifestsWithCommonAncestorAndTrigger(t *testing.T) {
 }
 
 func TestDisablingCancelsBuild(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	manifest := manifestbuilder.New(f, "local").
 		WithLocalResource("sleep 10000", nil).
@@ -948,6 +974,7 @@ func TestDisablingCancelsBuild(t *testing.T) {
 }
 
 func TestCancelButton(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	f.b.completeBuildsManually = true
 	f.useRealTiltfileLoader()
@@ -975,6 +1002,7 @@ local_resource('local', 'sleep 10000')
 }
 
 func TestCancelButtonClickedBeforeBuild(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 	f.b.completeBuildsManually = true
 	f.useRealTiltfileLoader()
@@ -1014,6 +1042,7 @@ local_resource('local', 'sleep 10000')
 }
 
 func TestBuildControllerK8sFileDependencies(t *testing.T) {
+	t.Parallel()
 	f := newTestFixture(t)
 
 	kt := k8s.MustTarget("fe", testyaml.SanchoYAML).
