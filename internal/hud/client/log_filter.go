@@ -150,8 +150,35 @@ func (f LogFilter) ApplyWithoutTail(lines []logstore.LogLine) []logstore.LogLine
 	return f.ApplyWithOptions(lines, false)
 }
 
+// matchesAllLines reports whether no per-line constraint is active, i.e.
+// MatchesAll is true for every possible line: no resource filter, no
+// build/runtime source restriction (those are the only two sources Matches
+// checks), no severe level filter, and no since bound. This is the default
+// `tilt up` filter, which runs on every store notification.
+func (f LogFilter) matchesAllLines() bool {
+	return len(f.resources) == 0 &&
+		f.source != FilterSourceRuntime &&
+		f.source != FilterSourceBuild &&
+		!f.level.AsSevereAs(logger.WarnLvl) &&
+		f.since.IsZero()
+}
+
 // ApplyWithOptions applies the filter with control over tail application.
+//
+// The result may share backing storage with the input; callers must not
+// mutate either afterwards.
 func (f LogFilter) ApplyWithOptions(lines []logstore.LogLine, applyTail bool) []logstore.LogLine {
+	if f.matchesAllLines() {
+		// Nothing can be filtered out, so don't pay to copy every line on
+		// every notification; the tail is a re-slice.
+		if applyTail && f.tail >= 0 && len(lines) > f.tail {
+			return lines[len(lines)-f.tail:]
+		}
+		return lines
+	}
+
+	// Grow-by-append beats presizing to len(lines) here: selective filters
+	// typically keep a small fraction of the input.
 	filtered := []logstore.LogLine{}
 	for _, line := range lines {
 		if f.MatchesAll(line) {

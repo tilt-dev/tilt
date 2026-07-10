@@ -437,3 +437,67 @@ func TestLogFilterApplyWithSinceAndTail(t *testing.T) {
 	actual := filter.Apply(input)
 	assert.Equal(t, expected, actual)
 }
+
+// matchesAllLines gates the Apply fast path: it must be true only when no
+// per-line constraint is active. A false positive here would silently skip
+// real filtering.
+func TestLogFilterMatchesAllLines(t *testing.T) {
+	testCases := []struct {
+		description string
+		logFilter   LogFilter
+		expected    bool
+	}{
+		{
+			description: "zero-value filter constrains nothing",
+			logFilter:   LogFilter{},
+			expected:    true,
+		},
+		{
+			description: "default tilt up filter constrains nothing",
+			logFilter: NewLogFilter(FilterSourceAll, nil, FilterLevel(logger.NoneLvl),
+				FilterSince(time.Time{}), FilterTail(-1), false),
+			expected: true,
+		},
+		{
+			description: "tail is not a per-line constraint",
+			logFilter:   LogFilter{tail: 5},
+			expected:    true,
+		},
+		{
+			description: "resource filter is a constraint",
+			logFilter:   LogFilter{resources: FilterResources{"fe"}},
+			expected:    false,
+		},
+		{
+			description: "runtime source is a constraint",
+			logFilter:   LogFilter{source: FilterSourceRuntime},
+			expected:    false,
+		},
+		{
+			description: "build source is a constraint",
+			logFilter:   LogFilter{source: FilterSourceBuild},
+			expected:    false,
+		},
+		{
+			description: "warn level is a constraint",
+			logFilter:   LogFilter{level: logger.WarnLvl},
+			expected:    false,
+		},
+		{
+			description: "error level is a constraint",
+			logFilter:   LogFilter{level: logger.ErrorLvl},
+			expected:    false,
+		},
+		{
+			description: "since bound is a constraint",
+			logFilter:   LogFilter{since: time.Unix(1, 0)},
+			expected:    false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			assert.Equal(t, tc.expected, tc.logFilter.matchesAllLines())
+		})
+	}
+}
