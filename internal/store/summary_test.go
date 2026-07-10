@@ -1,6 +1,7 @@
 package store
 
 import (
+	"reflect"
 	"testing"
 	"time"
 
@@ -67,6 +68,14 @@ func TestChangeSummaryAdd(t *testing.T) {
 		dst.Add(ChangeSummary{LastBackoff: time.Second})
 		assert.Equal(t, 2*time.Second, dst.LastBackoff)
 	})
+}
+
+func TestChangeSummaryFieldCoverageGuard(t *testing.T) {
+	// IsLogOnly and Add enumerate every ChangeSummary field by hand instead of
+	// using reflection. If this count changes, update both methods (and their
+	// tests above) before updating the count, or the new field is silently
+	// ignored by log-only detection and summary merging.
+	assert.Equal(t, 8, reflect.TypeOf(ChangeSummary{}).NumField())
 }
 
 func BenchmarkChangeSummaryIsLogOnly(b *testing.B) {

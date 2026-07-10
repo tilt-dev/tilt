@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -328,6 +329,16 @@ func TestPodStatusesEqual(t *testing.T) {
 			assert.Equal(t, tt.want, podStatusesEqual(base, candidate))
 		})
 	}
+}
+
+func TestPodStatusFieldCoverageGuard(t *testing.T) {
+	// podStatusesEqual and podConditionsEqual enumerate every field by hand
+	// instead of using reflection. If either count changes, update the
+	// comparison (and TestPodStatusesEqual) before updating the count, or the
+	// new field is silently ignored when deciding whether to log a rollout
+	// update.
+	assert.Equal(t, 6, reflect.TypeOf(podStatus{}).NumField())
+	assert.Equal(t, 5, reflect.TypeOf(v1alpha1.PodCondition{}).NumField())
 }
 
 func BenchmarkPodMonitorOnLogOnly(b *testing.B) {
