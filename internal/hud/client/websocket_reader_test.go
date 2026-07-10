@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -24,18 +25,18 @@ func TestViewsHandled(t *testing.T) {
 	v := &proto_webview.View{Log: "hello world"}
 	f.sendView(v)
 	f.assertHandlerCallCount(1)
-	assert.Equal(t, "hello world", f.handler.lastViewLog)
+	assert.Equal(t, "hello world", f.handler.lastLog())
 
 	v = &proto_webview.View{Log: "goodbye world"}
 	f.sendView(v)
 	f.assertHandlerCallCount(2)
-	assert.Equal(t, "goodbye world", f.handler.lastViewLog)
+	assert.Equal(t, "goodbye world", f.handler.lastLog())
 }
 
 func TestHandlerErrorDoesntStopLoop(t *testing.T) {
 	f := newWebsocketReaderFixture(t)
 	f.start()
-	f.handler.nextErr = fmt.Errorf("aw nerts")
+	f.handler.setNextErr(fmt.Errorf("aw nerts"))
 
 	v := &proto_webview.View{Log: "hello world"}
 	f.sendView(v)
@@ -46,7 +47,7 @@ func TestHandlerErrorDoesntStopLoop(t *testing.T) {
 	v = &proto_webview.View{Log: "goodbye world"}
 	f.sendView(v)
 	f.assertHandlerCallCount(2)
-	assert.Equal(t, "goodbye world", f.handler.lastViewLog)
+	assert.Equal(t, "goodbye world", f.handler.lastLog())
 }
 
 func TestNonPersistentReaderExistsAfterHandling(t *testing.T) {
@@ -56,7 +57,7 @@ func TestNonPersistentReaderExistsAfterHandling(t *testing.T) {
 	v := &proto_webview.View{Log: "hello world"}
 	f.sendView(v)
 	f.assertHandlerCallCount(1)
-	assert.Equal(t, "hello world", f.handler.lastViewLog)
+	assert.Equal(t, "hello world", f.handler.lastLog())
 	f.assertDone()
 }
 
@@ -130,12 +131,13 @@ func (f *websocketReaderFixture) assertHandlerCallCount(n int) {
 	isCanceled := false
 
 	for {
-		if f.handler.callCount == n {
+		callCount := f.handler.callCount()
+		if callCount == n {
 			return
 		}
 		if isCanceled {
 			f.t.Fatalf("Timed out waiting for handler.callCount = %d (got: %d)",
-				n, f.handler.callCount)
+				n, callCount)
 		}
 
 		select {
@@ -166,13 +168,17 @@ func (f *websocketReaderFixture) assertDone() {
 }
 
 type fakeViewHandler struct {
-	callCount   int
+	mu          sync.Mutex
+	calls       int
 	lastViewLog string // use the Log field to differentiate the views we send, cuz why not
 	nextErr     error
 }
 
 func (fvh *fakeViewHandler) Handle(v *proto_webview.View) error {
-	fvh.callCount += 1
+	fvh.mu.Lock()
+	defer fvh.mu.Unlock()
+
+	fvh.calls += 1
 	if fvh.nextErr != nil {
 		err := fvh.nextErr
 		fvh.nextErr = nil
@@ -180,4 +186,25 @@ func (fvh *fakeViewHandler) Handle(v *proto_webview.View) error {
 	}
 	fvh.lastViewLog = v.Log
 	return nil
+}
+
+func (fvh *fakeViewHandler) callCount() int {
+	fvh.mu.Lock()
+	defer fvh.mu.Unlock()
+
+	return fvh.calls
+}
+
+func (fvh *fakeViewHandler) setNextErr(err error) {
+	fvh.mu.Lock()
+	defer fvh.mu.Unlock()
+
+	fvh.nextErr = err
+}
+
+func (fvh *fakeViewHandler) lastLog() string {
+	fvh.mu.Lock()
+	defer fvh.mu.Unlock()
+
+	return fvh.lastViewLog
 }
