@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/jonboulle/clockwork"
 	v1 "k8s.io/api/core/v1"
 
@@ -72,7 +71,13 @@ func (m *PodMonitor) diff(st store.RStore) []podStatus {
 	return updates
 }
 
-func (m *PodMonitor) OnChange(ctx context.Context, st store.RStore, _ store.ChangeSummary) error {
+func (m *PodMonitor) OnChange(ctx context.Context, st store.RStore, summary store.ChangeSummary) error {
+	// Runtime logs cannot change rollout status. Avoid walking every manifest on
+	// the high-frequency exact log-only notification path.
+	if summary.IsLogOnly() {
+		return nil
+	}
+
 	updates := m.diff(st)
 	for _, update := range updates {
 		ctx := store.WithManifestLogHandler(ctx, st, update.manifestName, spanIDForPod(update.manifestName, update.podID))
@@ -176,10 +181,21 @@ func newPodStatus(pod v1alpha1.Pod, manifestName model.ManifestName) podStatus {
 	return s
 }
 
-var podStatusAllowUnexported = cmp.AllowUnexported(podStatus{})
-
 func podStatusesEqual(a, b podStatus) bool {
-	return cmp.Equal(a, b, podStatusAllowUnexported)
+	return a.podID == b.podID &&
+		a.manifestName == b.manifestName &&
+		a.startTime.Equal(b.startTime) &&
+		podConditionsEqual(a.scheduled, b.scheduled) &&
+		podConditionsEqual(a.initialized, b.initialized) &&
+		podConditionsEqual(a.ready, b.ready)
+}
+
+func podConditionsEqual(a, b v1alpha1.PodCondition) bool {
+	return a.Type == b.Type &&
+		a.Status == b.Status &&
+		a.LastTransitionTime.Equal(&b.LastTransitionTime) &&
+		a.Reason == b.Reason &&
+		a.Message == b.Message
 }
 
 func spanIDForPod(mn model.ManifestName, podID k8s.PodID) logstore.SpanID {

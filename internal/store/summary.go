@@ -3,7 +3,6 @@ package store
 import (
 	"time"
 
-	"github.com/google/go-cmp/cmp"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -69,7 +68,16 @@ type ChangeSummary struct {
 }
 
 func (s ChangeSummary) IsLogOnly() bool {
-	return cmp.Equal(s, ChangeSummary{Log: true})
+	// Keep this equivalent to the exact value ChangeSummary{Log: true}.
+	// In particular, a log flag does not make a mixed summary log-only.
+	return s.Log &&
+		!s.Legacy &&
+		s.CmdSpecs.Changes == nil &&
+		s.UISessions.Changes == nil &&
+		s.UIResources.Changes == nil &&
+		s.UIButtons.Changes == nil &&
+		s.Clusters.Changes == nil &&
+		s.LastBackoff == 0
 }
 
 func (s *ChangeSummary) Add(other ChangeSummary) {
