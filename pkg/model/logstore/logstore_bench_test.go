@@ -80,6 +80,19 @@ func BenchmarkToLogListIncremental(b *testing.B) {
 	}
 }
 
+// A full render of the whole store, as on initial web page load or a
+// `tilt logs` snapshot: every line goes through the line-builder path with
+// manifest prefixes.
+func BenchmarkStringFullStore(b *testing.B) {
+	s := benchStore(10)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = s.String()
+	}
+}
+
 // Log ingestion: one complete line per event, with the default byte cap so
 // amortized truncation stays part of the measured cost.
 func BenchmarkAppendSingleLine(b *testing.B) {

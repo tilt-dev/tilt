@@ -113,7 +113,12 @@ func segmentsFromBytes(spanID SpanID, time time.Time, level logger.Level, fields
 }
 
 func linesToString(lines []LogLine) string {
+	total := 0
+	for _, line := range lines {
+		total += len(line.Text)
+	}
 	sb := strings.Builder{}
+	sb.Grow(total)
 	for _, line := range lines {
 		sb.WriteString(line.Text)
 	}
@@ -442,12 +447,7 @@ func (s *LogStore) ContinuingString(checkpoint Checkpoint) string {
 }
 
 func (s *LogStore) ContinuingStringWithOptions(checkpoint Checkpoint, opts LineOptions) string {
-	lines := s.ContinuingLinesWithOptions(checkpoint, opts)
-	sb := strings.Builder{}
-	for _, line := range lines {
-		sb.WriteString(line.Text)
-	}
-	return sb.String()
+	return linesToString(s.ContinuingLinesWithOptions(checkpoint, opts))
 }
 
 func (s *LogStore) IsLastSegmentUncompleted() bool {
@@ -694,17 +694,6 @@ func (s *LogStore) toLogString(options logOptions) string {
 
 // Returns a sequence of lines, including trailing newlines.
 func (s *LogStore) toLogLines(options logOptions) []LogLine {
-	result := []LogLine{}
-	var lineBuilder *logLineBuilder
-
-	var consumeLineBuilder = func() {
-		if lineBuilder == nil {
-			return
-		}
-		result = append(result, lineBuilder.build(options)...)
-		lineBuilder = nil
-	}
-
 	// We want to print the log line-by-line, but we don't actually store the logs
 	// line-by-line. We store them as segments.
 	//
@@ -722,6 +711,34 @@ func (s *LogStore) toLogLines(options logOptions) []LogLine {
 		return nil
 	}
 
+	// Every line-starting segment in the window yields one line, so size the
+	// result up front. (A rare "init" build event adds an extra space line,
+	// absorbed by append's growth.)
+	lineCount := 0
+	for i := startIndex; i <= lastIndex; i++ {
+		segment := s.segments[i]
+		if !segment.StartsLine() {
+			continue
+		}
+		if _, ok := options.spans[segment.SpanID]; !ok {
+			continue
+		}
+		lineCount++
+	}
+
+	result := make([]LogLine, 0, lineCount)
+
+	// One builder is reused for every line; consume flushes it into result
+	// and recycles its segment buffer.
+	lineBuilder := logLineBuilder{}
+	var consumeLineBuilder = func() {
+		if !lineBuilder.active() {
+			return
+		}
+		result = lineBuilder.appendTo(result, options)
+		lineBuilder.reset()
+	}
+
 	isFirstLine := true
 	for i := startIndex; i <= lastIndex; i++ {
 		segment := s.segments[i]
@@ -737,12 +754,12 @@ func (s *LogStore) toLogLines(options logOptions) []LogLine {
 
 		// If the last segment never completed, print a newline now, so that the
 		// logs from different sources don't blend together.
-		if lineBuilder != nil {
+		if lineBuilder.active() {
 			lineBuilder.needsTrailingNewline = true
 			consumeLineBuilder()
 		}
 
-		lineBuilder = newLogLineBuilder(span, segment, isFirstLine)
+		lineBuilder.start(span, segment, isFirstLine)
 		isFirstLine = false
 
 		// If this segment is not complete, run ahead and try to complete it.
