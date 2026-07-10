@@ -43,6 +43,32 @@ func TestChangeSummaryIsLogOnly(t *testing.T) {
 	}
 }
 
+func TestChangeSummaryAdd(t *testing.T) {
+	name := func(s string) types.NamespacedName { return types.NamespacedName{Name: s} }
+
+	t.Run("merges every field", func(t *testing.T) {
+		dst := ChangeSummary{}
+		src := ChangeSummary{
+			Legacy:      true,
+			Log:         true,
+			CmdSpecs:    NewChangeSet(name("cmd")),
+			UISessions:  NewChangeSet(name("session")),
+			UIResources: NewChangeSet(name("resource")),
+			UIButtons:   NewChangeSet(name("button")),
+			Clusters:    NewChangeSet(name("cluster")),
+			LastBackoff: time.Second,
+		}
+		dst.Add(src)
+		assert.Equal(t, src, dst)
+	})
+
+	t.Run("keeps larger backoff", func(t *testing.T) {
+		dst := ChangeSummary{LastBackoff: 2 * time.Second}
+		dst.Add(ChangeSummary{LastBackoff: time.Second})
+		assert.Equal(t, 2*time.Second, dst.LastBackoff)
+	})
+}
+
 func BenchmarkChangeSummaryIsLogOnly(b *testing.B) {
 	summary := ChangeSummary{Log: true}
 

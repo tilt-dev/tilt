@@ -86,6 +86,7 @@ func (s *ChangeSummary) Add(other ChangeSummary) {
 	s.CmdSpecs.AddAll(other.CmdSpecs)
 	s.UISessions.AddAll(other.UISessions)
 	s.UIResources.AddAll(other.UIResources)
+	s.UIButtons.AddAll(other.UIButtons)
 	s.Clusters.AddAll(other.Clusters)
 	if other.LastBackoff > s.LastBackoff {
 		s.LastBackoff = other.LastBackoff
