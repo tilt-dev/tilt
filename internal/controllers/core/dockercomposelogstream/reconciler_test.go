@@ -7,14 +7,89 @@ import (
 
 	typescontainer "github.com/moby/moby/api/types/container"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
+	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
+
+func TestContainerLogsSince(t *testing.T) {
+	startedAt := mustParseTime(t, "2021-09-08T19:58:01.483005100Z")
+	tiltStartTime := mustParseTime(t, "2026-07-11T03:30:00Z")
+
+	tests := []struct {
+		name          string
+		tiltStartTime time.Time
+		want          time.Time
+	}{
+		{
+			name:          "container started before Tilt",
+			tiltStartTime: tiltStartTime,
+			want:          tiltStartTime,
+		},
+		{
+			name:          "container started after Tilt",
+			tiltStartTime: startedAt.Add(-time.Minute),
+			want:          startedAt.Add(-time.Second),
+		},
+		{
+			name: "Tilt start time not initialized",
+			want: startedAt.Add(-time.Second),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := newFixture(t)
+			f.Store.WithState(func(state *store.EngineState) {
+				state.TiltStartTime = tt.tiltStartTime
+			})
+
+			containerID := "my-container-id"
+			output := make(chan string)
+			defer close(output)
+			f.dc.ContainerLogChans[containerID] = output
+			f.dc.Containers[containerID] = typescontainer.State{
+				Status:    "running",
+				Running:   true,
+				StartedAt: startedAt.Format(time.RFC3339Nano),
+			}
+			f.dcc.ContainerIDDefault = container.ID(containerID)
+
+			obj := v1alpha1.DockerComposeLogStream{
+				ObjectMeta: metav1.ObjectMeta{Name: "fe"},
+				Spec: v1alpha1.DockerComposeLogStreamSpec{
+					Service: "fe",
+					Project: v1alpha1.DockerComposeProject{YAML: "fake-yaml"},
+				},
+			}
+			f.Create(&obj)
+
+			require.Eventually(t, func() bool {
+				return len(f.dc.ContainerLogsRequestsSnapshot()) > 0
+			}, time.Second, 10*time.Millisecond)
+
+			requests := f.dc.ContainerLogsRequestsSnapshot()
+			require.Equal(t, containerID, requests[0].ContainerID)
+			got, err := time.Parse(time.RFC3339Nano, requests[0].Options.Since)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func mustParseTime(t *testing.T, value string) time.Time {
+	t.Helper()
+
+	parsed, err := time.Parse(time.RFC3339Nano, value)
+	require.NoError(t, err)
+	return parsed
+}
 
 // Make sure we stream logs correctly when
 // we're triggered by a project event.
