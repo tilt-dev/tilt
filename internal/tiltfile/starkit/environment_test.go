@@ -234,6 +234,28 @@ print_mypath()
 	require.Equal(t, "Tiltfile2", filepath.Base(paths[1]))
 }
 
+// Tiltfile loads Tiltfile2
+// 1 prints its __name__ and calls a method in 2 to do the same
+func TestUseMagicNameVar(t *testing.T) {
+	f := NewFixture(t, PwdPlugin{})
+	f.File("Tiltfile2", `
+def print_mypath():
+  print(__name__)
+`)
+	f.File("Tiltfile", `
+load('Tiltfile2', 'print_mypath')
+print(__name__)
+print_mypath()
+`)
+
+	_, err := f.ExecFile("Tiltfile")
+	require.NoError(t, err)
+
+	paths := strings.Split(strings.TrimSpace(f.out.String()), "\n")
+	require.Equal(t, "__main__", paths[0])
+	require.Equal(t, "Tiltfile2", filepath.Base(paths[1]))
+}
+
 func TestSupportsSet(t *testing.T) {
 	f := NewFixture(t, PwdPlugin{})
 	f.File("Tiltfile", `

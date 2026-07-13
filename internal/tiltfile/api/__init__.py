@@ -5,6 +5,9 @@ from typing import Dict, Union, List, Callable, Any, Optional
 file__: str = ""
 """The path of the Tiltfile. Set as a local variable in each Tiltfile as it loads.
 """
+__name__: str = ""
+"""Equivalent to the Python __name__ variable, except set to "__main__" in the Tiltfile context. (In other words, if you check whether __name__ == "__main__", it will be True in your Tiltfile, and False in any modules you import.)
+"""
 
 class Blob:
   """The result of executing a command on your local system.
