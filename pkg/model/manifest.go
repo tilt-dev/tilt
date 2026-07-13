@@ -9,7 +9,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/pkg/errors"
-	"k8s.io/apimachinery/pkg/api/validation/path"
+	"k8s.io/apimachinery/pkg/api/validate/content"
 	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/tilt-dev/tilt/internal/container"
@@ -237,7 +237,7 @@ func (m Manifest) Validate() error {
 		return fmt.Errorf("[validate] manifest missing name: %+v", m)
 	}
 
-	if errs := path.ValidatePathSegmentName(m.Name.String(), false); len(errs) != 0 {
+	if errs := content.IsPathSegmentName(m.Name.String()); len(errs) != 0 {
 		return fmt.Errorf("invalid value %q: %v", m.Name.String(), errs[0])
 	}
 

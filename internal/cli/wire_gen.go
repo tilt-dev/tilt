@@ -9,10 +9,16 @@ package cli
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/google/wire"
 	"github.com/jonboulle/clockwork"
 	"github.com/mattn/go-colorable"
 	"github.com/spf13/afero"
+	"go.opentelemetry.io/otel/sdk/trace"
+	version2 "k8s.io/apimachinery/pkg/version"
+	client2 "sigs.k8s.io/controller-runtime/pkg/client"
+
 	"github.com/tilt-dev/clusterid"
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"
@@ -84,13 +90,7 @@ import (
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 	"github.com/tilt-dev/wmclient/pkg/dirs"
-	"go.opentelemetry.io/otel/sdk/trace"
-	version2 "k8s.io/apimachinery/pkg/version"
-	client2 "sigs.k8s.io/controller-runtime/pkg/client"
-	"time"
-)
 
-import (
 	_ "embed"
 )
 

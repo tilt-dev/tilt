@@ -23,12 +23,12 @@ import (
 	"strings"
 	"time"
 
-	"k8s.io/apimachinery/pkg/util/httpstream"
-	"k8s.io/apimachinery/pkg/util/httpstream/spdy"
 	constants "k8s.io/apimachinery/pkg/util/portforward"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/transport/websocket"
 	"k8s.io/klog/v2"
+	"k8s.io/streaming/pkg/httpstream"
+	"k8s.io/streaming/pkg/httpstream/spdy"
 )
 
 const PingPeriod = 10 * time.Second

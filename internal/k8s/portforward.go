@@ -9,10 +9,10 @@ import (
 	"strconv"
 	"strings"
 
-	"k8s.io/apimachinery/pkg/util/httpstream"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // registers gcp auth provider
 	"k8s.io/client-go/transport/spdy"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
+	"k8s.io/streaming/pkg/httpstream"
 
 	"github.com/tilt-dev/tilt/internal/k8s/portforward"
 	"github.com/tilt-dev/tilt/pkg/logger"
@@ -117,7 +117,9 @@ func ProvidePortForwardClient(
 			Name(podID.String()).
 			SubResource("portforward")
 
-		dialer := spdy.NewDialer(upgrader, &http.Client{Transport: transport}, "POST", req.URL())
+		dialer := spdy.NewDialerForStreaming(
+			upgrader,
+			&http.Client{Transport: transport}, "POST", req.URL())
 		if !cmdutil.PortForwardWebsockets.IsDisabled() {
 			tunnelingDialer, err := portforward.NewSPDYOverWebsocketDialer(req.URL(), config)
 			if err != nil {

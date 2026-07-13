@@ -7,9 +7,9 @@ import (
 	"io"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/util/httpstream"
 	"k8s.io/client-go/tools/remotecommand"
 	"k8s.io/kubectl/pkg/scheme"
+	"k8s.io/streaming/pkg/httpstream"
 
 	"github.com/tilt-dev/tilt/internal/container"
 )

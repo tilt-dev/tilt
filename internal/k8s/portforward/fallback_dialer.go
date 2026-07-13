@@ -17,8 +17,8 @@ limitations under the License.
 package portforward
 
 import (
-	"k8s.io/apimachinery/pkg/util/httpstream"
 	"k8s.io/klog/v2"
+	"k8s.io/streaming/pkg/httpstream"
 )
 
 var _ httpstream.Dialer = &FallbackDialer{}

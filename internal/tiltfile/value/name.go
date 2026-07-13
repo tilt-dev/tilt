@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"go.starlark.net/starlark"
-	"k8s.io/apimachinery/pkg/api/validation/path"
+	"k8s.io/apimachinery/pkg/api/validate/content"
 )
 
 // Names in Tilt should be valid Kubernetes API names.
@@ -21,7 +21,7 @@ func (n *Name) Unpack(v starlark.Value) error {
 		return fmt.Errorf("Value should be convertible to string, but is type %s", v.Type())
 	}
 
-	if errs := path.ValidatePathSegmentName(str, false); len(errs) != 0 {
+	if errs := content.IsPathSegmentName(str); len(errs) != 0 {
 		return fmt.Errorf("invalid value %q: %v", str, errs[0])
 	}
 
