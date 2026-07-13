@@ -806,6 +806,12 @@ func (r *Reconciler) garbageCollect(nn types.NamespacedName, isDeleting bool) de
 	toDelete := make([]k8s.K8sEntity, 0, len(result.DanglingObjects))
 	for k, v := range result.DanglingObjects {
 		delete(result.DanglingObjects, k)
+		// Respect tilt.dev/down-policy: keep — don't delete resources
+		// that the user marked as keep, even when the resource is disabled
+		// (not just during `tilt down`).
+		if ann, ok := v.Annotations()["tilt.dev/down-policy"]; ok && ann == "keep" {
+			continue
+		}
 		toDelete = append(toDelete, v)
 	}
 	if isDeleting {
