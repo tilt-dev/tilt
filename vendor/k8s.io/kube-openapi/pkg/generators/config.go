@@ -78,6 +78,17 @@ func GetOpenAPITargets(context *generator.Context, args *args.Args, boilerplate 
 	}
 }
 
+// isReadOnlyPkg checks whether pkgPath matches one of the given read-only
+// package paths.
+func isReadOnlyPkg(pkgPath string, readOnlyPkgs []string) bool {
+	for _, pkg := range readOnlyPkgs {
+		if pkgPath == pkg {
+			return true
+		}
+	}
+	return false
+}
+
 // GetModelNameTargets returns the targets for model name generation.
 func GetModelNameTargets(context *generator.Context, args *args.Args, boilerplate []byte) []generator.Target {
 	var targets []generator.Target
@@ -86,9 +97,17 @@ func GetModelNameTargets(context *generator.Context, args *args.Args, boilerplat
 
 		pkg := context.Universe[i]
 
-		openAPISchemaNamePackage, err := extractOpenAPISchemaNamePackage(pkg.Comments)
+		// Skip read-only packages — they are input dependencies needed
+		// for type resolution but should not have model name files
+		// generated (e.g. read-only module cache).
+		if isReadOnlyPkg(pkg.Path, args.ReadOnlyPkgs) {
+			klog.V(3).Infof("Skipping model name generation for %q: read-only package", pkg.Path)
+			continue
+		}
+
+		openAPISchemaNamePackage, err := resolvePackageModelPackage(pkg)
 		if err != nil {
-			klog.Fatalf("Package %v: invalid %s:%v", i, tagModelPackage, err)
+			klog.Fatalf("Package %v: %v", i, err)
 		}
 		hasPackageTag := len(openAPISchemaNamePackage) > 0
 

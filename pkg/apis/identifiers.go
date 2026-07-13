@@ -6,19 +6,27 @@ import (
 	"regexp"
 	"strings"
 
+	"k8s.io/apimachinery/pkg/api/validate/content"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"k8s.io/apimachinery/pkg/types"
 
-	"k8s.io/apimachinery/pkg/api/validation/path"
 	"k8s.io/apimachinery/pkg/util/validation"
 )
 
 const MaxNameLength = validation.DNS1123SubdomainMaxLength
 
+// Strings that cannot be used as names specified as path segments (like the
+// REST API or etcd store).
+var pathSegmentNameMayNotBe = []string{".", ".."}
+
+// Substrings that cannot be used in names specified as path segments (like the
+// REST API or etcd store).
+var pathSegmentNameMayNotContain = []string{"/", "%"}
+
 var invalidLabelCharacters = regexp.MustCompile("[^-A-Za-z0-9_.]")
 
-var invalidPathCharacters = regexp.MustCompile(`[` + strings.Join(path.NameMayNotContain, "") + `]`)
+var invalidPathCharacters = regexp.MustCompile(`[` + strings.Join(pathSegmentNameMayNotContain, "") + `]`)
 
 type KeyableObject interface {
 	GetName() string
@@ -51,8 +59,8 @@ func SanitizeLabel(name string) string {
 // SanitizeName ensures a value is suitable for usage as an apiserver identifier.
 func SanitizeName(name string) string {
 	sanitized := name
-	if len(path.IsValidPathSegmentName(name)) != 0 {
-		for _, invalidName := range path.NameMayNotBe {
+	if len(content.IsPathSegmentName(name)) != 0 {
+		for _, invalidName := range pathSegmentNameMayNotBe {
 			if name == invalidName {
 				// the only strictly invalid names are `.` and `..` so this is sufficient
 				return strings.ReplaceAll(name, ".", "_")

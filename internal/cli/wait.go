@@ -102,7 +102,7 @@ func (c *waitCmd) run(ctx context.Context, args []string) error {
 
 	o, err := c.flags.ToOptions(args)
 	cmdutil.CheckErr(err)
-	cmdutil.CheckErr(o.RunWait())
+	cmdutil.CheckErr(o.RunWaitContext(context.Background()))
 
 	return nil
 }

@@ -776,7 +776,7 @@ func (k *K8sClient) waitForDelete(ctx context.Context, list kube.ResourceList, d
 				DynamicClient: k.dynamic,
 				IOStreams:     genericclioptions.NewTestIOStreamsDiscard(),
 				Timeout:       duration,
-				ForCondition:  "delete",
+				ForCondition:  []string{"delete"},
 			}
 
 			_, ok, _ := wait.IsDeleted(ctx, resourceInfo, waitOpt)
