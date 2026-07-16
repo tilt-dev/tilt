@@ -18,6 +18,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers"
 	engineanalytics "github.com/tilt-dev/tilt/internal/engine/analytics"
 	"github.com/tilt-dev/tilt/internal/hud/prompt"
+	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/liveupdates"
 	"github.com/tilt-dev/tilt/pkg/assets"
@@ -159,7 +160,7 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 		log.Printf("Tilt analytics disabled: %s", reason)
 	}
 
-	cmdUpDeps, err := wireCmdUp(ctx, a, cmdUpTags, "up", c.disablePortForwards)
+	cmdUpDeps, err := wireCmdUp(ctx, a, cmdUpTags, "up", k8s.DisablePortForwardsFlag(c.disablePortForwards))
 	if err != nil {
 		deferred.SetOutput(deferred.Original())
 		return err

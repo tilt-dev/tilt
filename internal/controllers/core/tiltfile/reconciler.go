@@ -51,7 +51,7 @@ type Reconciler struct {
 	engineMode           store.EngineMode
 	loadCount            int // used to differentiate spans
 	ciTimeoutFlag        model.CITimeoutFlag
-	disablePortForwards  bool
+	disablePortForwards  k8s.DisablePortForwardsFlag
 
 	runs map[types.NamespacedName]*runStatus
 
@@ -91,7 +91,7 @@ func NewReconciler(
 	k8sContextOverride k8s.KubeContextOverride,
 	k8sNamespaceOverride k8s.NamespaceOverride,
 	ciTimeoutFlag model.CITimeoutFlag,
-	disablePortForwards bool,
+	disablePortForwards k8s.DisablePortForwardsFlag,
 ) *Reconciler {
 	return &Reconciler{
 		st:                   st,

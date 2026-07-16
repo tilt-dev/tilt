@@ -41,7 +41,7 @@ type Reconciler struct {
 	clients             *cluster.ClientManager
 	requeuer            *indexer.Requeuer
 	indexer             *indexer.Indexer
-	disablePortForwards bool
+	disablePortForwards k8s.DisablePortForwardsFlag
 
 	// map of PortForward object name --> running forward(s)
 	activeForwards map[types.NamespacedName]*portForwardEntry
@@ -55,7 +55,7 @@ func NewReconciler(
 	scheme *runtime.Scheme,
 	store store.RStore,
 	clients cluster.ClientProvider,
-	disablePortForwards bool,
+	disablePortForwards k8s.DisablePortForwardsFlag,
 ) *Reconciler {
 	return &Reconciler{
 		store:               store,

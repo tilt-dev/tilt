@@ -363,7 +363,7 @@ func newPFRFixture(t *testing.T) *pfrFixture {
 	return newPFRFixtureWithFlag(t, false)
 }
 
-func newPFRFixtureWithFlag(t *testing.T, disablePortForwards bool) *pfrFixture {
+func newPFRFixtureWithFlag(t *testing.T, disablePortForwards k8s.DisablePortForwardsFlag) *pfrFixture {
 	cfb := fake.NewControllerFixtureBuilder(t)
 	clients := cluster.NewFakeClientProvider(t, cfb.Client)
 	r := NewReconciler(cfb.Client, cfb.Scheme(), cfb.Store, clients, disablePortForwards)
