@@ -51,6 +51,17 @@ func TestCreatePortForward(t *testing.T) {
 	assert.Equal(t, 8080, kCli.LastForwardPortRemotePort())
 }
 
+func TestCreatePortForwardDisabled(t *testing.T) {
+	f := newPFRFixtureWithFlag(t, true)
+
+	pf := f.makeSimplePF(pfFooName, 8000, 8080)
+	f.Create(pf)
+	kCli := f.clients.MustK8sClient(clusterNN(pf))
+
+	require.Empty(t, f.r.activeForwards)
+	require.Zero(t, kCli.CreatePortForwardCallCount())
+}
+
 func TestDeletePortForward(t *testing.T) {
 	f := newPFRFixture(t)
 
@@ -349,9 +360,13 @@ type pfrFixture struct {
 }
 
 func newPFRFixture(t *testing.T) *pfrFixture {
+	return newPFRFixtureWithFlag(t, false)
+}
+
+func newPFRFixtureWithFlag(t *testing.T, disablePortForwards bool) *pfrFixture {
 	cfb := fake.NewControllerFixtureBuilder(t)
 	clients := cluster.NewFakeClientProvider(t, cfb.Client)
-	r := NewReconciler(cfb.Client, cfb.Scheme(), cfb.Store, clients)
+	r := NewReconciler(cfb.Client, cfb.Scheme(), cfb.Store, clients, disablePortForwards)
 
 	return &pfrFixture{
 		ControllerFixture: cfb.WithRequeuer(r.requeuer).Build(r),

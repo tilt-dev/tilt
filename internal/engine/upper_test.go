@@ -3314,7 +3314,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 		cdc,
 		uncached)
 	require.NoError(t, err, "Failed to create Tilt API server controller manager")
-	pfr := apiportforward.NewReconciler(cdc, sch, st, clusterClients)
+	pfr := apiportforward.NewReconciler(cdc, sch, st, clusterClients, false)
 
 	wsl := server.NewWebsocketList()
 
@@ -3322,7 +3322,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	dcds := dockercomposeservice.NewDisableSubscriber(ctx, fakeDcc, clock)
 	dcr := dockercomposeservice.NewReconciler(cdc, fakeDcc, dockerClient, st, sch, dcds)
 
-	tfr := ctrltiltfile.NewReconciler(st, tfl, dockerClient, cdc, sch, engineMode, "", "", 0)
+	tfr := ctrltiltfile.NewReconciler(st, tfl, dockerClient, cdc, sch, engineMode, "", "", 0, false)
 	tbr := togglebutton.NewReconciler(cdc, sch)
 	extr := extension.NewReconciler(cdc, sch, ta)
 	extrr, err := extensionrepo.NewReconciler(cdc, st, base)
