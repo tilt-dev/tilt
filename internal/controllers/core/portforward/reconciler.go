@@ -82,6 +82,10 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 }
 
 func (r *Reconciler) reconcile(ctx context.Context, name types.NamespacedName) error {
+	if r.disablePortForwards {
+		return nil
+	}
+
 	pf := &PortForward{}
 	err := r.ctrlClient.Get(ctx, name, pf)
 	if err != nil && !apierrors.IsNotFound(err) {
@@ -91,11 +95,6 @@ func (r *Reconciler) reconcile(ctx context.Context, name types.NamespacedName) e
 	r.indexer.OnReconcile(name, pf)
 	if apierrors.IsNotFound(err) || pf.ObjectMeta.DeletionTimestamp != nil {
 		// PortForward deleted in API server -- stop and remove it
-		r.stop(name)
-		return nil
-	}
-
-	if r.disablePortForwards {
 		r.stop(name)
 		return nil
 	}
