@@ -157,8 +157,7 @@ func (f LogFilter) ApplyWithoutTail(lines []logstore.LogLine) []logstore.LogLine
 // `tilt up` filter, which runs on every store notification.
 func (f LogFilter) matchesAllLines() bool {
 	return len(f.resources) == 0 &&
-		f.source != FilterSourceRuntime &&
-		f.source != FilterSourceBuild &&
+		f.source == FilterSourceAll &&
 		!f.level.AsSevereAs(logger.WarnLvl) &&
 		f.since.IsZero()
 }

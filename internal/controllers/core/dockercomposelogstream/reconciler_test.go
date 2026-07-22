@@ -14,7 +14,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/dockercompose"
-	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 )
 
@@ -30,25 +29,22 @@ func TestContainerLogsSince(t *testing.T) {
 		{
 			name:          "container started before Tilt",
 			tiltStartTime: tiltStartTime,
-			want:          tiltStartTime,
+			want:          tiltStartTime.Add(logStartTimePadding),
 		},
 		{
 			name:          "container started after Tilt",
 			tiltStartTime: startedAt.Add(-time.Minute),
-			want:          startedAt.Add(-time.Second),
+			want:          startedAt.Add(logStartTimePadding),
 		},
 		{
 			name: "Tilt start time not initialized",
-			want: startedAt.Add(-time.Second),
+			want: startedAt.Add(logStartTimePadding),
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			f := newFixture(t)
-			f.Store.WithState(func(state *store.EngineState) {
-				state.TiltStartTime = tt.tiltStartTime
-			})
 
 			containerID := "my-container-id"
 			output := make(chan string)
@@ -64,8 +60,9 @@ func TestContainerLogsSince(t *testing.T) {
 			obj := v1alpha1.DockerComposeLogStream{
 				ObjectMeta: metav1.ObjectMeta{Name: "fe"},
 				Spec: v1alpha1.DockerComposeLogStreamSpec{
-					Service: "fe",
-					Project: v1alpha1.DockerComposeProject{YAML: "fake-yaml"},
+					Service:   "fe",
+					Project:   v1alpha1.DockerComposeProject{YAML: "fake-yaml"},
+					SinceTime: &metav1.Time{Time: tt.tiltStartTime},
 				},
 			}
 			f.Create(&obj)
@@ -78,7 +75,7 @@ func TestContainerLogsSince(t *testing.T) {
 			require.Equal(t, containerID, requests[0].ContainerID)
 			got, err := time.Parse(time.RFC3339Nano, requests[0].Options.Since)
 			require.NoError(t, err)
-			assert.Equal(t, tt.want, got)
+			assert.Equal(t, tt.want.UTC(), got.UTC())
 		})
 	}
 }

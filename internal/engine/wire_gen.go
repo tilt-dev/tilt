@@ -33,6 +33,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/store/liveupdates"
 	"github.com/tilt-dev/tilt/internal/tracer"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+	"github.com/tilt-dev/tilt/pkg/model"
 	"github.com/tilt-dev/wmclient/pkg/dirs"
 )
 
@@ -54,7 +55,8 @@ func provideFakeBuildAndDeployer(ctx context.Context, docker2 docker.Client, kCl
 	kubernetesapplyReconciler := kubernetesapply.NewReconciler(ctrlClient, kClient, scheme, st, execer)
 	imageBuildAndDeployer := buildcontrol.NewImageBuildAndDeployer(reconciler, cmdimageReconciler, imageBuilder, analytics2, clock, ctrlClient, kubernetesapplyReconciler)
 	disableSubscriber := dockercomposeservice.NewDisableSubscriber(ctx, dcc, clockworkClock)
-	dockercomposeserviceReconciler := dockercomposeservice.NewReconciler(ctrlClient, dcc, docker2, st, scheme, disableSubscriber)
+	startTime := model.ProvideStartTime()
+	dockercomposeserviceReconciler := dockercomposeservice.NewReconciler(ctrlClient, dcc, docker2, st, scheme, disableSubscriber, startTime)
 	dockerComposeBuildAndDeployer := buildcontrol.NewDockerComposeBuildAndDeployer(reconciler, cmdimageReconciler, imageBuilder, dockercomposeserviceReconciler, clock, ctrlClient)
 	localTargetBuildAndDeployer := buildcontrol.NewLocalTargetBuildAndDeployer(clock, ctrlClient, controller)
 	kubeContext := provideFakeKubeContext(env)

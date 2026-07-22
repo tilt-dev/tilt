@@ -923,6 +923,10 @@ func (in *DockerComposeLogStreamList) DeepCopyObject() runtime.Object {
 func (in *DockerComposeLogStreamSpec) DeepCopyInto(out *DockerComposeLogStreamSpec) {
 	*out = *in
 	in.Project.DeepCopyInto(&out.Project)
+	if in.SinceTime != nil {
+		in, out := &in.SinceTime, &out.SinceTime
+		*out = (*in).DeepCopy()
+	}
 	return
 }
 
