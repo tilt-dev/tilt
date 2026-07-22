@@ -185,7 +185,8 @@ func wireDockerPrune(ctx context.Context, analytics *analytics.TiltAnalytics, su
 	return dpDeps{}, nil
 }
 
-func wireCmdUp(ctx context.Context, analytics *analytics.TiltAnalytics, cmdTags engineanalytics.CmdTags, subcommand model.TiltSubcommand) (CmdUpDeps, error) {
+func wireCmdUp(ctx context.Context, analytics *analytics.TiltAnalytics, cmdTags engineanalytics.CmdTags, subcommand model.TiltSubcommand,
+	disablePortForwards k8s.DisablePortForwardsFlag) (CmdUpDeps, error) {
 	wire.Build(UpWireSet,
 		cloud.NewSnapshotter,
 		wire.Value(store.EngineModeUp),
@@ -206,6 +207,7 @@ func wireCmdCI(ctx context.Context, analytics *analytics.TiltAnalytics, subcomma
 	wire.Build(UpWireSet,
 		cloud.NewSnapshotter,
 		wire.Value(store.EngineModeCI),
+		wire.Value(k8s.DisablePortForwardsFlag(false)),
 		wire.Value(engineanalytics.CmdTags(map[string]string{})),
 		wire.Struct(new(CmdCIDeps), "*"),
 	)
@@ -230,6 +232,7 @@ func wireCmdUpdog(ctx context.Context,
 		provideUpdogSubscriber,
 		provideUpdogCmdSubscribers,
 		wire.Value(store.EngineModeCI),
+		wire.Value(k8s.DisablePortForwardsFlag(false)),
 		wire.Struct(new(CmdUpdogDeps), "*"))
 	return CmdUpdogDeps{}, nil
 }

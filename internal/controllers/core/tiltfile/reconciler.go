@@ -22,6 +22,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers/apicmp"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/configmap"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/trigger"
+	"github.com/tilt-dev/tilt/internal/controllers/apiset"
 	"github.com/tilt-dev/tilt/internal/controllers/indexer"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/k8s"
@@ -50,6 +51,7 @@ type Reconciler struct {
 	engineMode           store.EngineMode
 	loadCount            int // used to differentiate spans
 	ciTimeoutFlag        model.CITimeoutFlag
+	disablePortForwards  k8s.DisablePortForwardsFlag
 
 	runs map[types.NamespacedName]*runStatus
 
@@ -89,6 +91,7 @@ func NewReconciler(
 	k8sContextOverride k8s.KubeContextOverride,
 	k8sNamespaceOverride k8s.NamespaceOverride,
 	ciTimeoutFlag model.CITimeoutFlag,
+	disablePortForwards k8s.DisablePortForwardsFlag,
 ) *Reconciler {
 	return &Reconciler{
 		st:                   st,
@@ -102,6 +105,7 @@ func NewReconciler(
 		k8sContextOverride:   k8sContextOverride,
 		k8sNamespaceOverride: k8sNamespaceOverride,
 		ciTimeoutFlag:        ciTimeoutFlag,
+		disablePortForwards:  disablePortForwards,
 	}
 }
 
@@ -362,6 +366,10 @@ func (r *Reconciler) handleLoaded(
 	tf *v1alpha1.Tiltfile,
 	entry *BuildEntry,
 	tlr *tiltfile.TiltfileLoadResult) error {
+	if r.disablePortForwards {
+		tlr = tiltfileResultWithoutPortForwards(tlr)
+	}
+
 	// TODO(nick): Rewrite to handle multiple tiltfiles.
 	changeEnabledResources := entry.ArgsChanged && tlr != nil && tlr.Error == nil
 	err := updateOwnedObjects(ctx, r.ctrlClient, nn, tf, tlr, changeEnabledResources, r.ciTimeoutFlag, r.engineMode,
@@ -406,6 +414,51 @@ func (r *Reconciler) handleLoaded(
 	r.requeuer.Add(nn)
 
 	return nil
+}
+
+// tiltfileResultWithoutPortForwards returns a copy with port-forward templates
+// removed from both high-level manifests and v1alpha1 API objects. Keeping the
+// original result intact ensures later Tiltfile reloads still receive the
+// unmodified previous result.
+func tiltfileResultWithoutPortForwards(tlr *tiltfile.TiltfileLoadResult) *tiltfile.TiltfileLoadResult {
+	if tlr == nil {
+		return nil
+	}
+
+	result := *tlr
+	result.Manifests = make([]model.Manifest, len(tlr.Manifests))
+	for i, manifest := range tlr.Manifests {
+		if manifest.IsK8s() {
+			target := manifest.K8sTarget()
+			target.PortForwardTemplateSpec = nil
+			manifest = manifest.WithDeployTarget(target)
+		}
+		result.Manifests[i] = manifest
+	}
+
+	if tlr.ObjectSet != nil {
+		result.ObjectSet = make(apiset.ObjectSet, len(tlr.ObjectSet))
+		for gvr, objectSet := range tlr.ObjectSet {
+			newObjectSet := make(apiset.TypedObjectSet, len(objectSet))
+			for name, object := range objectSet {
+				switch object := object.(type) {
+				case *v1alpha1.KubernetesApply:
+					copy := object.DeepCopy()
+					copy.Spec.PortForwardTemplateSpec = nil
+					newObjectSet[name] = copy
+				case *v1alpha1.KubernetesDiscovery:
+					copy := object.DeepCopy()
+					copy.Spec.PortForwardTemplateSpec = nil
+					newObjectSet[name] = copy
+				default:
+					newObjectSet[name] = object
+				}
+			}
+			result.ObjectSet[gvr] = newObjectSet
+		}
+	}
+
+	return &result
 }
 
 // Cancel execution of a running tiltfile and delete all record of it.

@@ -23,6 +23,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/container"
 	configmap2 "github.com/tilt-dev/tilt/internal/controllers/apis/configmap"
 	"github.com/tilt-dev/tilt/internal/controllers/apis/uibutton"
+	"github.com/tilt-dev/tilt/internal/controllers/apiset"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/k8s/testyaml"
@@ -35,6 +36,48 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 	"github.com/tilt-dev/wmclient/pkg/analytics"
 )
+
+func TestTiltfileResultWithoutPortForwards(t *testing.T) {
+	portForwardTemplate := &v1alpha1.PortForwardTemplateSpec{
+		Forwards: []v1alpha1.Forward{{LocalPort: 8000, ContainerPort: 8080}},
+	}
+	tf := tempdir.NewTempDirFixture(t)
+	manifest := manifestbuilder.New(tf, "sancho").WithK8sYAML(testyaml.SanchoYAML).Build()
+	target := manifest.K8sTarget()
+	target.PortForwardTemplateSpec = portForwardTemplate.DeepCopy()
+	manifest = manifest.WithDeployTarget(target)
+
+	kubernetesApply := &v1alpha1.KubernetesApply{
+		ObjectMeta: metav1.ObjectMeta{Name: "apply"},
+		Spec: v1alpha1.KubernetesApplySpec{
+			PortForwardTemplateSpec: portForwardTemplate.DeepCopy(),
+		},
+	}
+	kubernetesDiscovery := &v1alpha1.KubernetesDiscovery{
+		ObjectMeta: metav1.ObjectMeta{Name: "discovery"},
+		Spec: v1alpha1.KubernetesDiscoverySpec{
+			PortForwardTemplateSpec: portForwardTemplate.DeepCopy(),
+		},
+	}
+	objectSet := apiset.ObjectSet{}
+	objectSet.Add(kubernetesApply)
+	objectSet.Add(kubernetesDiscovery)
+
+	input := &tiltfile.TiltfileLoadResult{
+		Manifests: []model.Manifest{manifest},
+		ObjectSet: objectSet,
+	}
+	result := tiltfileResultWithoutPortForwards(input)
+
+	require.Nil(t, result.Manifests[0].K8sTarget().PortForwardTemplateSpec)
+	require.Nil(t, result.ObjectSet.GetSetForType(&v1alpha1.KubernetesApply{})["apply"].(*v1alpha1.KubernetesApply).Spec.PortForwardTemplateSpec)
+	require.Nil(t, result.ObjectSet.GetSetForType(&v1alpha1.KubernetesDiscovery{})["discovery"].(*v1alpha1.KubernetesDiscovery).Spec.PortForwardTemplateSpec)
+
+	// Filtering a load result must not affect the previous result supplied to a later reload.
+	require.NotNil(t, input.Manifests[0].K8sTarget().PortForwardTemplateSpec)
+	require.NotNil(t, kubernetesApply.Spec.PortForwardTemplateSpec)
+	require.NotNil(t, kubernetesDiscovery.Spec.PortForwardTemplateSpec)
+}
 
 func TestDefault(t *testing.T) {
 	f := newFixture(t)
@@ -542,7 +585,7 @@ func newFixture(t *testing.T) *fixture {
 	st := NewTestingStore()
 	tfl := tiltfile.NewFakeTiltfileLoader()
 	d := docker.NewFakeClient()
-	r := NewReconciler(st, tfl, d, cfb.Client, v1alpha1.NewScheme(), store.EngineModeUp, "", "", 0)
+	r := NewReconciler(st, tfl, d, cfb.Client, v1alpha1.NewScheme(), store.EngineModeUp, "", "", 0, false)
 	q := workqueue.NewTypedRateLimitingQueue[reconcile.Request](
 		workqueue.NewTypedItemExponentialFailureRateLimiter[reconcile.Request](time.Millisecond, time.Millisecond))
 	_ = r.requeuer.Start(context.Background(), q)
