@@ -23,6 +23,7 @@ const DEFAULT_FILTER_SET: FilterSet = {
   source: FilterSource.all,
   level: FilterLevel.all,
   term: EMPTY_FILTER_TERM,
+  containers: [],
 }
 
 describe("CopyLogs", () => {

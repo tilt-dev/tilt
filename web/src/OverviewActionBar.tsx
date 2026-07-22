@@ -62,6 +62,12 @@ type OverviewActionBarProps = {
 
   // buttons for this resource
   buttons?: ButtonSet
+
+  // Distinct container names seen in this resource's logs.
+  // Shown when 1 or more containers are present: disabled at 1, interactive at 2+.
+  // Resources with no container logs (e.g. local_resource) will have an empty
+  // array and will not render the dropdown at all.
+  logContainers?: string[]
 }
 
 type FilterSourceMenuProps = {
@@ -86,6 +92,145 @@ let useMenuStyles = makeStyles((theme: any) => ({
     fontSize: FontSize.smallest,
   },
 }))
+
+type FilterContainerMenuProps = {
+  // The container names observed in the current resource's logs.
+  containers: string[]
+
+  // The currently selected containers from the filter set.
+  selectedContainers: string[]
+}
+
+// Button + dropdown to filter logs by container name.
+// Rendered when 1 or more containers are present; disabled at exactly 1 so the
+// layout is stable once any container logs arrive.
+// Follows the same left/right pill pattern as FilterRadioButton:
+//   left pill: always "Containers" (stable width)
+//   right pill: chevron when unfiltered, name when 1 selected, count when 2+
+function FilterContainerMenu(props: FilterContainerMenuProps) {
+  const { containers, selectedContainers } = props
+  const navigate = useNavigate()
+  const l = useLocation()
+  const classes = useMenuStyles()
+  const [anchorEl, setAnchorEl] = useState<Element | null>(null)
+  const open = !!anchorEl
+  const disabled = containers.length < 2
+
+  const toggle = (name: string) => {
+    const next = selectedContainers.includes(name)
+      ? selectedContainers.filter((c) => c !== name)
+      : [...selectedContainers, name]
+    const search = createLogSearch(l.search, { containers: next })
+    navigate({ pathname: l.pathname, search: search.toString() })
+    setAnchorEl(null)
+  }
+
+  const clearAll = () => {
+    const search = createLogSearch(l.search, { containers: [] })
+    navigate({ pathname: l.pathname, search: search.toString() })
+    setAnchorEl(null)
+  }
+
+  const isActive = selectedContainers.length > 0
+
+  // Left pill is always a non-interactive label (isRadio + isEnabled = pointer-events: none).
+  // The right pill is the only interaction point; it communicates filter state via its content.
+  const leftClass = "isRadio isEnabled"
+  const rightClass = isActive ? "isEnabled" : ""
+
+  let rightContent: JSX.Element | string
+  let rightStyle = { paddingLeft: "4px", paddingRight: "4px" } as any
+  if (selectedContainers.length === 1) {
+    rightContent = (
+      <TruncateText key="right" style={{ maxWidth: "120px" }}>
+        {selectedContainers[0]}
+      </TruncateText>
+    )
+    rightStyle = null
+  } else if (selectedContainers.length > 1) {
+    rightContent = <span key="right">{selectedContainers.length}</span>
+    rightStyle = null
+  } else if (disabled && containers.length === 1) {
+    // Single container: show its name so the user knows what's running
+    rightContent = (
+      <TruncateText key="right" style={{ maxWidth: "120px" }}>
+        {containers[0]}
+      </TruncateText>
+    )
+    rightStyle = null
+  } else {
+    rightContent = (
+      <ExpandMoreIcon
+        style={{ width: "16px", height: "16px" }}
+        key="right"
+        role="presentation"
+      />
+    )
+  }
+
+  const anchorOrigin: PopoverOrigin = {
+    vertical: "bottom",
+    horizontal: "right",
+  }
+  const transformOrigin: PopoverOrigin = {
+    vertical: "top",
+    horizontal: "right",
+  }
+
+  return (
+    <ButtonPill>
+      <ButtonLeftPill className={leftClass}>Containers</ButtonLeftPill>
+      <ButtonRightPill
+        style={rightStyle}
+        className={rightClass}
+        onClick={
+          disabled ? undefined : (e: any) => setAnchorEl(e.currentTarget)
+        }
+        aria-label="Select containers to filter logs"
+        disabled={disabled}
+      >
+        {rightContent}
+      </ButtonRightPill>
+      <Menu
+        anchorEl={anchorEl}
+        open={open}
+        onClose={() => setAnchorEl(null)}
+        disableScrollLock={true}
+        keepMounted={true}
+        anchorOrigin={anchorOrigin}
+        transformOrigin={transformOrigin}
+        getContentAnchorEl={null}
+      >
+        <MenuItem classes={classes} onClick={clearAll}>
+          All Containers
+        </MenuItem>
+        {containers.map((name) => {
+          const selected = selectedContainers.includes(name)
+          return (
+            <MenuItem
+              key={name}
+              classes={classes}
+              onClick={() => toggle(name)}
+              role="menuitemcheckbox"
+              aria-checked={selected}
+            >
+              <CheckmarkSvg
+                width="12"
+                height="12"
+                style={{
+                  marginRight: "4px",
+                  visibility: selected ? "visible" : "hidden",
+                }}
+                role="presentation"
+              />
+              {name}
+            </MenuItem>
+          )
+        })}
+      </Menu>
+    </ButtonPill>
+  )
+}
 
 // Menu to filter logs by source (e.g., build-only, runtime-only).
 function FilterSourceMenu(props: FilterSourceMenuProps) {
@@ -328,7 +473,13 @@ export function createLogSearch(
     level,
     source,
     term,
-  }: { level?: FilterLevel; source?: FilterSource; term?: string }
+    containers,
+  }: {
+    level?: FilterLevel
+    source?: FilterSource
+    term?: string
+    containers?: string[]
+  }
 ) {
   // Start with the existing search params
   const newSearch = new URLSearchParams(currentSearch)
@@ -354,6 +505,14 @@ export function createLogSearch(
       newSearch.set("term", term)
     } else {
       newSearch.delete("term")
+    }
+  }
+
+  if (containers !== undefined) {
+    if (containers.length > 0) {
+      newSearch.set("containers", containers.join(","))
+    } else {
+      newSearch.delete("containers")
     }
   }
 
@@ -708,7 +867,7 @@ function DisableButtonSection(props: { button?: UIButton }) {
 }
 
 export default function OverviewActionBar(props: OverviewActionBarProps) {
-  let { resource, filterSet, alerts, buttons } = props
+  let { resource, filterSet, alerts, buttons, logContainers } = props
   const logStore = useLogStore()
   const isSnapshot = usePathBuilder().isSnapshot()
   const isDisabled = resourceIsDisabled(resource)
@@ -803,6 +962,15 @@ export default function OverviewActionBar(props: OverviewActionBarProps) {
         alerts={alerts}
       />
     )
+    if (logContainers && logContainers.length >= 1) {
+      bottomRow.push(
+        <FilterContainerMenu
+          key="filterContainerMenu"
+          containers={logContainers}
+          selectedContainers={filterSet.containers}
+        />
+      )
+    }
     bottomRow.push(
       <FilterTermField key="filterTermField" termFromUrl={filterSet.term} />
     )
