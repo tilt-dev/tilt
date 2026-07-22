@@ -1294,9 +1294,10 @@ func TestHudUpdated(t *testing.T) {
 	err := f.Stop()
 	assert.Equal(t, nil, err)
 
-	assert.Equal(t, 2, len(f.fakeHud().LastView.Resources))
-	assert.Equal(t, store.MainTiltfileManifestName, f.fakeHud().LastView.Resources[0].Name)
-	rv := f.fakeHud().LastView.Resources[1]
+	lastView := f.fakeHud().LastView()
+	assert.Equal(t, 2, len(lastView.Resources))
+	assert.Equal(t, store.MainTiltfileManifestName, lastView.Resources[0].Name)
+	rv := lastView.Resources[1]
 	assert.Equal(t, manifest.Name, rv.Name)
 	f.assertAllBuildsConsumed()
 }
@@ -3983,7 +3984,7 @@ func (f *testFixture) setBuildLogOutput(id model.TargetID, output string) {
 }
 
 func (f *testFixture) hudResource(name model.ManifestName) view.Resource {
-	res, ok := f.fakeHud().LastView.Resource(name)
+	res, ok := f.fakeHud().LastView().Resource(name)
 	if !ok {
 		f.T().Fatalf("Resource not found: %s", name)
 	}
