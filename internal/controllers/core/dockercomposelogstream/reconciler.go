@@ -152,6 +152,16 @@ func (r *Reconciler) manageLogWatch(ctx context.Context, nn types.NamespacedName
 	// the first log timestamps (also reported by Docker), so we pad it by a second to reduce the
 	// number of potentially duplicative logs
 	startWatchTime := containerState.StartedAt.Time.Add(-time.Second)
+	state := r.store.RLockState()
+	tiltStartTime := state.TiltStartTime
+	r.store.RUnlockState()
+
+	// Tilt retains about 2MB per log span, while a warm Compose container can hold GBs of json-file
+	// logs. Requesting that full history would flood the store's unbounded action queue only to discard
+	// it, so mirror the pod log stream invariant and only stream logs since Tilt started.
+	if !tiltStartTime.IsZero() && startWatchTime.Before(tiltStartTime) {
+		startWatchTime = tiltStartTime
+	}
 	if result.watch != nil {
 		if !result.watch.Done() {
 			// watcher is already running

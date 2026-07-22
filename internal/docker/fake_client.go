@@ -9,6 +9,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 	"unicode"
 
@@ -89,6 +90,11 @@ type ExecCall struct {
 	Cmd       model.Cmd
 }
 
+type ContainerLogsRequest struct {
+	ContainerID string
+	Options     client.ContainerLogsOptions
+}
+
 type FakeClient struct {
 	FakeEnv Env
 
@@ -126,8 +132,10 @@ type FakeClient struct {
 	Images map[string]typesimage.InspectResponse
 
 	// Containers returned by ContainerInspect
-	Containers        map[string]typescontainer.State
-	ContainerLogChans map[string]<-chan string
+	Containers            map[string]typescontainer.State
+	ContainerLogChans     map[string]<-chan string
+	ContainerLogsRequests []ContainerLogsRequest
+	containerLogsMu       sync.Mutex
 
 	// If true, ImageInspectWithRaw will always return an ImageInspect,
 	// even if one hasn't been explicitly pre-loaded.
@@ -192,6 +200,13 @@ func (c *FakeClient) SetExecError(err error) {
 }
 
 func (c *FakeClient) ContainerLogs(ctx context.Context, containerID string, options client.ContainerLogsOptions) (client.ContainerLogsResult, error) {
+	c.containerLogsMu.Lock()
+	c.ContainerLogsRequests = append(c.ContainerLogsRequests, ContainerLogsRequest{
+		ContainerID: containerID,
+		Options:     options,
+	})
+	c.containerLogsMu.Unlock()
+
 	output := c.ContainerLogChans[containerID]
 	reader, writer := io.Pipe()
 	go func() {
@@ -216,6 +231,13 @@ func (c *FakeClient) ContainerLogs(ctx context.Context, containerID string, opti
 		}
 	}()
 	return reader, nil
+}
+
+func (c *FakeClient) ContainerLogsRequestsSnapshot() []ContainerLogsRequest {
+	c.containerLogsMu.Lock()
+	defer c.containerLogsMu.Unlock()
+
+	return append([]ContainerLogsRequest(nil), c.ContainerLogsRequests...)
 }
 
 func (c *FakeClient) ContainerInspect(ctx context.Context, containerID string, options client.ContainerInspectOptions) (client.ContainerInspectResult, error) {
