@@ -22,6 +22,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/testutils/manifestbuilder"
 	"github.com/tilt-dev/tilt/internal/testutils/tempdir"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 func TestImageIndexing(t *testing.T) {
@@ -298,7 +299,7 @@ func newFixture(t *testing.T) *fixture {
 	dCli := docker.NewFakeClient()
 	clock := clockwork.NewFakeClock()
 	watcher := NewDisableSubscriber(cfb.Context(), dcCli, clock)
-	r := NewReconciler(cfb.Client, dcCli, dCli, cfb.Store, v1alpha1.NewScheme(), watcher)
+	r := NewReconciler(cfb.Client, dcCli, dCli, cfb.Store, v1alpha1.NewScheme(), watcher, model.ProvideStartTime())
 
 	return &fixture{
 		ControllerFixture: cfb.Build(r),

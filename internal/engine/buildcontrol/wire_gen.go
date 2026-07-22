@@ -31,6 +31,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/store/liveupdates"
 	"github.com/tilt-dev/tilt/internal/tracer"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+	"github.com/tilt-dev/tilt/pkg/model"
 	"github.com/tilt-dev/wmclient/pkg/dirs"
 )
 
@@ -73,7 +74,8 @@ func ProvideDockerComposeBuildAndDeployer(ctx context.Context, dcCli dockercompo
 	reconciler := dockerimage.NewReconciler(ctrlclient, st, scheme, dCli, imageBuilder)
 	cmdimageReconciler := cmdimage.NewReconciler(ctrlclient, st, scheme, dCli, imageBuilder)
 	disableSubscriber := dockercomposeservice.NewDisableSubscriber(ctx, dcCli, clock)
-	dockercomposeserviceReconciler := dockercomposeservice.NewReconciler(ctrlclient, dcCli, dCli, st, scheme, disableSubscriber)
+	startTime := model.ProvideStartTime()
+	dockercomposeserviceReconciler := dockercomposeservice.NewReconciler(ctrlclient, dcCli, dCli, st, scheme, disableSubscriber, startTime)
 	dockerComposeBuildAndDeployer := NewDockerComposeBuildAndDeployer(reconciler, cmdimageReconciler, imageBuilder, dockercomposeserviceReconciler, buildClock, ctrlclient)
 	return dockerComposeBuildAndDeployer, nil
 }

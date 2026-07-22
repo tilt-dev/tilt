@@ -656,6 +656,13 @@ export interface DockerComposeLogStreamSpec {
    * Each service spec keeps its own copy of the project spec.
    */
   project: DockerComposeProject
+  /**
+   * An RFC3339 timestamp from which to show logs. If this value
+   * precedes the time a container was started, only logs since the container start will be returned.
+   * If this value is in the future, no logs will be returned.
+   * +optional
+   */
+  sinceTime?: string
 }
 /**
  * DockerComposeLogStreamStatus defines the observed state of DockerComposeLogStream

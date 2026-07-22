@@ -32,6 +32,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/store/liveupdates"
 	"github.com/tilt-dev/tilt/internal/tracer"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 var BaseWireSet = wire.NewSet(
@@ -99,6 +100,7 @@ func ProvideDockerComposeBuildAndDeployer(
 	wire.Build(
 		BaseWireSet,
 		dockercomposeservice.WireSet,
+		model.ProvideStartTime,
 		build.ProvideClock,
 		build.NewKINDLoader,
 		dockerimage.NewReconciler,
