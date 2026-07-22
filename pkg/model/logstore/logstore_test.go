@@ -362,6 +362,42 @@ func TestLogIncremental(t *testing.T) {
 	assert.Equal(t, int32(-1), list.ToCheckpoint)
 }
 
+func TestContinuingLinesNoNewLogs(t *testing.T) {
+	l := NewLogStore()
+	l.Append(newTestLogEvent("fe", time.Now(), "line\n"), nil)
+	checkpoint := l.Checkpoint()
+
+	assert.Empty(t, l.ContinuingLines(checkpoint))
+	assert.Empty(t, l.ContinuingLinesWithOptions(checkpoint, LineOptions{
+		ManifestNames: model.ManifestNameSet{"fe": true},
+	}))
+}
+
+func TestLogIncrementalSpansScopedToSegments(t *testing.T) {
+	l := NewLogStore()
+	l.Append(newTestLogEvent("fe", time.Now(), "fe line\n"), nil)
+	l.Append(newTestLogEvent("back", time.Now(), "back line\n"), nil)
+	checkpoint := l.Checkpoint()
+	l.Append(newTestLogEvent("back", time.Now(), "back line 2\n"), nil)
+
+	// The full list carries every span its segments reference.
+	full, err := l.ToLogList(0)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(full.Spans))
+
+	// An incremental update carries only the spans its segments reference.
+	// Every segment's span must ride in the same update: the tilt logs client
+	// resolves segments against the spans of the update that carried them.
+	list, err := l.ToLogList(checkpoint)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(list.Segments))
+	assert.Equal(t, 1, len(list.Spans))
+	for _, seg := range list.Segments {
+		_, ok := list.Spans[seg.SpanId]
+		assert.True(t, ok, "segment span %q missing from update", seg.SpanId)
+	}
+}
+
 func TestWarnings(t *testing.T) {
 	l := NewLogStore()
 	l.Append(testLogEvent{
