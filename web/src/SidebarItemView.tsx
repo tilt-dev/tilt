@@ -16,6 +16,7 @@ import {
   barberpole,
   Color,
   ColorAlpha,
+  ColorRGB,
   ColorRGBA,
   Font,
   FontSize,
@@ -75,7 +76,7 @@ export let SidebarItemBox = styled.div`
   position: relative; /* Anchor the .isBuilding::after pseudo-element */
 
   &:hover {
-    background-color: ${ColorRGBA(Color.gray30, ColorAlpha.translucent)};
+    background-color: ${ColorRGBA(ColorRGB.gray30, ColorAlpha.translucent)};
   }
 
   &.isSelected {
@@ -92,10 +93,10 @@ export let SidebarItemBox = styled.div`
     bottom: 0;
     background: repeating-linear-gradient(
       225deg,
-      ${ColorRGBA(Color.gray50, ColorAlpha.translucent)},
-      ${ColorRGBA(Color.gray50, ColorAlpha.translucent)} 1px,
-      ${ColorRGBA(Color.black, 0)} 1px,
-      ${ColorRGBA(Color.black, 0)} 6px
+      ${ColorRGBA(ColorRGB.gray50, ColorAlpha.translucent)},
+      ${ColorRGBA(ColorRGB.gray50, ColorAlpha.translucent)} 1px,
+      ${ColorRGBA(ColorRGB.black, 0)} 1px,
+      ${ColorRGBA(ColorRGB.black, 0)} 6px
     );
     background-size: 200% 200%;
     animation: ${barberpole} 8s linear infinite;
