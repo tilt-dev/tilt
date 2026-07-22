@@ -141,7 +141,8 @@ func wireTiltfileResult(ctx context.Context, analytics2 *analytics.TiltAnalytics
 	env := localexec.DefaultEnv(webPort, webHost, kubeconfigPathOnce)
 	processExecer := localexec.NewProcessExecer(env)
 	defaults := _wireDefaultsValue
-	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics2, plugin, versionPlugin, configPlugin, tiltextensionPlugin, cisettingsPlugin, dockerComposeClient, webHost, processExecer, defaults, product)
+	startTime := model.ProvideStartTime()
+	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics2, plugin, versionPlugin, configPlugin, tiltextensionPlugin, cisettingsPlugin, dockerComposeClient, webHost, processExecer, defaults, product, startTime)
 	cliCmdTiltfileResultDeps := newTiltfileResultDeps(tiltfileLoader)
 	return cliCmdTiltfileResultDeps, nil
 }
@@ -203,7 +204,8 @@ func wireDockerPrune(ctx context.Context, analytics2 *analytics.TiltAnalytics, s
 	env := localexec.DefaultEnv(webPort, webHost, kubeconfigPathOnce)
 	processExecer := localexec.NewProcessExecer(env)
 	defaults := _wireDefaultsValue
-	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics2, plugin, versionPlugin, configPlugin, tiltextensionPlugin, cisettingsPlugin, dockerComposeClient, webHost, processExecer, defaults, product)
+	startTime := model.ProvideStartTime()
+	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics2, plugin, versionPlugin, configPlugin, tiltextensionPlugin, cisettingsPlugin, dockerComposeClient, webHost, processExecer, defaults, product, startTime)
 	cliDpDeps := newDPDeps(compositeClient, client, tiltfileLoader)
 	return cliDpDeps, nil
 }
@@ -320,7 +322,8 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	localEnv := docker.ProvideLocalEnv(ctx, realClientCreator, kubeContext, product, clusterEnv)
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
 	defaults := _wireDefaultsValue
-	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, plugin, versionPlugin, configPlugin, tiltextensionPlugin, cisettingsPlugin, dockerComposeClient, webHost, processExecer, defaults, product)
+	startTime := model.ProvideStartTime()
+	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, plugin, versionPlugin, configPlugin, tiltextensionPlugin, cisettingsPlugin, dockerComposeClient, webHost, processExecer, defaults, product, startTime)
 	localClient := docker.ProvideLocalCli(ctx, localEnv)
 	clusterClient, err := docker.ProvideClusterCli(ctx, localEnv, clusterEnv, localClient)
 	if err != nil {
@@ -351,7 +354,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	kubernetesClientFactory := _wireKubernetesClientFuncValue
 	clusterReconciler := cluster.NewReconciler(ctx, deferredClient, storeStore, clock, connectionManager, localEnv, dockerClientFactory, kubernetesClientFactory, websocketList, writer, kubeconfigPathOnce)
 	disableSubscriber := dockercomposeservice.NewDisableSubscriber(ctx, dockerComposeClient, clock)
-	dockercomposeserviceReconciler := dockercomposeservice.NewReconciler(deferredClient, dockerComposeClient, compositeClient, storeStore, scheme, disableSubscriber)
+	dockercomposeserviceReconciler := dockercomposeservice.NewReconciler(deferredClient, dockerComposeClient, compositeClient, storeStore, scheme, disableSubscriber, startTime)
 	imagemapReconciler := imagemap.NewReconciler(deferredClient, storeStore)
 	dockercomposelogstreamReconciler := dockercomposelogstream.NewReconciler(deferredClient, storeStore, dockerComposeClient, compositeClient)
 	sessionReconciler := session.NewReconciler(deferredClient, storeStore, clock)
@@ -545,7 +548,8 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	localEnv := docker.ProvideLocalEnv(ctx, realClientCreator, kubeContext, product, clusterEnv)
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
 	defaults := _wireDefaultsValue
-	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, plugin, versionPlugin, configPlugin, tiltextensionPlugin, cisettingsPlugin, dockerComposeClient, webHost, processExecer, defaults, product)
+	startTime := model.ProvideStartTime()
+	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, plugin, versionPlugin, configPlugin, tiltextensionPlugin, cisettingsPlugin, dockerComposeClient, webHost, processExecer, defaults, product, startTime)
 	localClient := docker.ProvideLocalCli(ctx, localEnv)
 	clusterClient, err := docker.ProvideClusterCli(ctx, localEnv, clusterEnv, localClient)
 	if err != nil {
@@ -576,7 +580,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	kubernetesClientFactory := _wireKubernetesClientFuncValue
 	clusterReconciler := cluster.NewReconciler(ctx, deferredClient, storeStore, clock, connectionManager, localEnv, dockerClientFactory, kubernetesClientFactory, websocketList, writer, kubeconfigPathOnce)
 	disableSubscriber := dockercomposeservice.NewDisableSubscriber(ctx, dockerComposeClient, clock)
-	dockercomposeserviceReconciler := dockercomposeservice.NewReconciler(deferredClient, dockerComposeClient, compositeClient, storeStore, scheme, disableSubscriber)
+	dockercomposeserviceReconciler := dockercomposeservice.NewReconciler(deferredClient, dockerComposeClient, compositeClient, storeStore, scheme, disableSubscriber, startTime)
 	imagemapReconciler := imagemap.NewReconciler(deferredClient, storeStore)
 	dockercomposelogstreamReconciler := dockercomposelogstream.NewReconciler(deferredClient, storeStore, dockerComposeClient, compositeClient)
 	sessionReconciler := session.NewReconciler(deferredClient, storeStore, clock)
@@ -766,7 +770,8 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	localEnv := docker.ProvideLocalEnv(ctx, realClientCreator, kubeContext, product, clusterEnv)
 	dockerComposeClient := dockercompose.NewDockerComposeClient(localEnv)
 	defaults := _wireDefaultsValue
-	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, plugin, versionPlugin, configPlugin, tiltextensionPlugin, cisettingsPlugin, dockerComposeClient, webHost, processExecer, defaults, product)
+	startTime := model.ProvideStartTime()
+	tiltfileLoader := tiltfile.ProvideTiltfileLoader(analytics3, plugin, versionPlugin, configPlugin, tiltextensionPlugin, cisettingsPlugin, dockerComposeClient, webHost, processExecer, defaults, product, startTime)
 	localClient := docker.ProvideLocalCli(ctx, localEnv)
 	clusterClient, err := docker.ProvideClusterCli(ctx, localEnv, clusterEnv, localClient)
 	if err != nil {
@@ -797,7 +802,7 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	kubernetesClientFactory := _wireKubernetesClientFuncValue
 	clusterReconciler := cluster.NewReconciler(ctx, deferredClient, storeStore, clock, connectionManager, localEnv, dockerClientFactory, kubernetesClientFactory, websocketList, writer, kubeconfigPathOnce)
 	disableSubscriber := dockercomposeservice.NewDisableSubscriber(ctx, dockerComposeClient, clock)
-	dockercomposeserviceReconciler := dockercomposeservice.NewReconciler(deferredClient, dockerComposeClient, compositeClient, storeStore, scheme, disableSubscriber)
+	dockercomposeserviceReconciler := dockercomposeservice.NewReconciler(deferredClient, dockerComposeClient, compositeClient, storeStore, scheme, disableSubscriber, startTime)
 	imagemapReconciler := imagemap.NewReconciler(deferredClient, storeStore)
 	dockercomposelogstreamReconciler := dockercomposelogstream.NewReconciler(deferredClient, storeStore, dockerComposeClient, compositeClient)
 	sessionReconciler := session.NewReconciler(deferredClient, storeStore, clock)
@@ -1026,7 +1031,8 @@ func wireDownDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, s
 	env := localexec.DefaultEnv(webPort, webHost, kubeconfigPathOnce)
 	processExecer := localexec.NewProcessExecer(env)
 	defaults := _wireDefaultsValue
-	tiltfileLoader := tiltfile.ProvideTiltfileLoader(tiltAnalytics, plugin, versionPlugin, configPlugin, tiltextensionPlugin, cisettingsPlugin, dockerComposeClient, webHost, processExecer, defaults, product)
+	startTime := model.ProvideStartTime()
+	tiltfileLoader := tiltfile.ProvideTiltfileLoader(tiltAnalytics, plugin, versionPlugin, configPlugin, tiltextensionPlugin, cisettingsPlugin, dockerComposeClient, webHost, processExecer, defaults, product, startTime)
 	downDeps := DownDeps{
 		tfl:              tiltfileLoader,
 		dcClient:         dockerComposeClient,
@@ -1149,8 +1155,7 @@ var K8sWireSet = wire.NewSet(k8s.ProvideClusterProduct, k8s.ProvideClusterName, 
 	ProvideNamespaceOverride)
 
 var BaseWireSet = wire.NewSet(
-	K8sWireSet, tiltfile.WireSet, git.ProvideGitRemote, localexec.DefaultEnv, localexec.NewProcessExecer, wire.Bind(new(localexec.Execer), new(*localexec.ProcessExecer)), docker.SwitchWireSet, dockercompose.NewDockerComposeClient, clockwork.NewRealClock, engine.DeployerWireSet, engine.NewBuildController, local.NewServerController, kubernetesdiscovery.NewContainerRestartDetector, k8swatch.NewServiceWatcher, k8swatch.NewEventWatchManager, uisession2.NewSubscriber, uiresource2.NewSubscriber, configs.NewConfigsController, configs.NewTriggerQueueSubscriber, telemetry.NewController, cloud.WireSet, cloudurl.ProvideAddress, k8srollout.NewPodMonitor, telemetry.NewStartTracker, session2.NewController, build.ProvideClock, provideClock,
-	provideLogSource,
+	K8sWireSet, tiltfile.WireSet, git.ProvideGitRemote, localexec.DefaultEnv, localexec.NewProcessExecer, wire.Bind(new(localexec.Execer), new(*localexec.ProcessExecer)), docker.SwitchWireSet, dockercompose.NewDockerComposeClient, clockwork.NewRealClock, engine.DeployerWireSet, engine.NewBuildController, local.NewServerController, kubernetesdiscovery.NewContainerRestartDetector, k8swatch.NewServiceWatcher, k8swatch.NewEventWatchManager, uisession2.NewSubscriber, uiresource2.NewSubscriber, configs.NewConfigsController, configs.NewTriggerQueueSubscriber, telemetry.NewController, cloud.WireSet, cloudurl.ProvideAddress, k8srollout.NewPodMonitor, telemetry.NewStartTracker, session2.NewController, build.ProvideClock, provideClock, model.ProvideStartTime, provideLogSource,
 	provideLogResources,
 	provideLogLevel,
 	provideLogSince,

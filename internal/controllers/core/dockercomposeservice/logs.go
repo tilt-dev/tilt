@@ -106,6 +106,7 @@ func (r *Reconciler) toDesiredLogStream(obj *v1alpha1.DockerComposeService) (*v1
 		return nil, nil
 	}
 
+	sinceTime := metav1.Time(r.startTime)
 	desired := &v1alpha1.DockerComposeLogStream{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: obj.Name,
@@ -115,8 +116,9 @@ func (r *Reconciler) toDesiredLogStream(obj *v1alpha1.DockerComposeService) (*v1
 			},
 		},
 		Spec: v1alpha1.DockerComposeLogStreamSpec{
-			Service: obj.Spec.Service,
-			Project: obj.Spec.Project,
+			Service:   obj.Spec.Service,
+			Project:   obj.Spec.Project,
+			SinceTime: &sinceTime,
 		},
 	}
 

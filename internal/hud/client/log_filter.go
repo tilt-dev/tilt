@@ -17,6 +17,10 @@ const (
 	FilterSourceRuntime FilterSource = "runtime"
 )
 
+func (s FilterSource) MatchesAll() bool {
+	return s == FilterSourceAll || s == ""
+}
+
 func (s FilterSource) String() string { return string(s) }
 
 type FilterResources []model.ManifestName
@@ -157,8 +161,7 @@ func (f LogFilter) ApplyWithoutTail(lines []logstore.LogLine) []logstore.LogLine
 // `tilt up` filter, which runs on every store notification.
 func (f LogFilter) matchesAllLines() bool {
 	return len(f.resources) == 0 &&
-		f.source != FilterSourceRuntime &&
-		f.source != FilterSourceBuild &&
+		f.source.MatchesAll() &&
 		!f.level.AsSevereAs(logger.WarnLvl) &&
 		f.since.IsZero()
 }

@@ -43,6 +43,7 @@ type Reconciler struct {
 	indexer      *indexer.Indexer
 	requeuer     *indexer.Requeuer
 	disableQueue *DisableSubscriber
+	startTime    model.StartTime
 	mu           sync.Mutex
 
 	// Protected by the mutex.
@@ -71,6 +72,7 @@ func NewReconciler(
 	st store.RStore,
 	scheme *runtime.Scheme,
 	disableQueue *DisableSubscriber,
+	startTime model.StartTime,
 ) *Reconciler {
 	return &Reconciler{
 		ctrlClient:                     ctrlClient,
@@ -80,6 +82,7 @@ func NewReconciler(
 		st:                             st,
 		requeuer:                       indexer.NewRequeuer(),
 		disableQueue:                   disableQueue,
+		startTime:                      startTime,
 		results:                        make(map[types.NamespacedName]*Result),
 		resultsByServiceName:           make(map[string]*Result),
 		healthcheckOutputByServiceName: make(map[string]string),

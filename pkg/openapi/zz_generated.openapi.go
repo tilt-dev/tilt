@@ -1846,12 +1846,18 @@ func schema_pkg_apis_core_v1alpha1_DockerComposeLogStreamSpec(ref common.Referen
 							Ref:         ref(v1alpha1.DockerComposeProject{}.OpenAPIModelName()),
 						},
 					},
+					"sinceTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "An RFC3339 timestamp from which to show logs. If this value precedes the time a container was started, only logs since the container start will be returned. If this value is in the future, no logs will be returned.",
+							Ref:         ref(v1.Time{}.OpenAPIModelName()),
+						},
+					},
 				},
 				Required: []string{"service", "project"},
 			},
 		},
 		Dependencies: []string{
-			v1alpha1.DockerComposeProject{}.OpenAPIModelName()},
+			v1alpha1.DockerComposeProject{}.OpenAPIModelName(), v1.Time{}.OpenAPIModelName()},
 	}
 }
 

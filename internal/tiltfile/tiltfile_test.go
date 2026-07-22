@@ -5849,7 +5849,7 @@ func (f *fixture) newTiltfileLoader() TiltfileLoader {
 	extPlugin := tiltextension.NewFakePlugin(extrr, extr)
 	ciSettingsPlugin := cisettings.NewPlugin(0)
 	return ProvideTiltfileLoader(f.ta, k8sContextPlugin, versionPlugin, configPlugin,
-		extPlugin, ciSettingsPlugin, dcc, f.webHost, execer, f.features, f.k8sEnv)
+		extPlugin, ciSettingsPlugin, dcc, f.webHost, execer, f.features, f.k8sEnv, model.ProvideStartTime())
 }
 
 func newFixture(t *testing.T) *fixture {

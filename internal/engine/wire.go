@@ -31,6 +31,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/localexec"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/liveupdates"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 var DeployerBaseWireSet = wire.NewSet(
@@ -75,6 +76,7 @@ func provideFakeBuildAndDeployer(
 		dockerimage.NewReconciler,
 		cmdimage.NewReconciler,
 		dockercomposeservice.WireSet,
+		model.ProvideStartTime,
 		cmd.WireSet,
 		clockwork.NewRealClock,
 		provideFakeEnv,

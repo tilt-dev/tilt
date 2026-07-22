@@ -106,7 +106,8 @@ func ProvideTiltfileLoader(
 	webHost model.WebHost,
 	execer localexec.Execer,
 	fDefaults feature.Defaults,
-	env clusterid.Product) TiltfileLoader {
+	env clusterid.Product,
+	startTime model.StartTime) TiltfileLoader {
 	return tiltfileLoader{
 		analytics:        analytics,
 		k8sContextPlugin: k8sContextPlugin,
@@ -119,6 +120,7 @@ func ProvideTiltfileLoader(
 		execer:           execer,
 		fDefaults:        fDefaults,
 		env:              env,
+		startTime:        startTime,
 	}
 }
 
@@ -135,6 +137,7 @@ type tiltfileLoader struct {
 	ciSettingsPlugin cisettings.Plugin
 	fDefaults        feature.Defaults
 	env              clusterid.Product
+	startTime        model.StartTime
 }
 
 var _ TiltfileLoader = &tiltfileLoader{}
@@ -174,7 +177,7 @@ func (tfl tiltfileLoader) Load(ctx context.Context, tf *corev1alpha1.Tiltfile, p
 	tlr.Tiltignore = tiltignore
 
 	s := newTiltfileState(ctx, tfl.dcCli, tfl.webHost, tfl.execer, tfl.k8sContextPlugin, tfl.versionPlugin,
-		tfl.configPlugin, tfl.extensionPlugin, tfl.ciSettingsPlugin, feature.FromDefaults(tfl.fDefaults))
+		tfl.configPlugin, tfl.extensionPlugin, tfl.ciSettingsPlugin, feature.FromDefaults(tfl.fDefaults), tfl.startTime)
 
 	manifests, result, err := s.loadManifests(tf)
 
