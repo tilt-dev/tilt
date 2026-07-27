@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/looplab/tarjan"
 	"github.com/pkg/errors"
@@ -68,8 +67,6 @@ var unmatchedImageAllUnresourcedWarning = "No Kubernetes configs with images fou
 	"If you are using CRDs, add k8s_kind() to tell Tilt how to find images.\n" +
 	"https://docs.tilt.dev/api.html#api.k8s_kind"
 
-var pkgInitTime = time.Now()
-
 type resourceSet struct {
 	dc  []*dcResourceSet
 	k8s []*k8sResource
@@ -87,6 +84,7 @@ type tiltfileState struct {
 	extensionPlugin  *tiltextension.Plugin
 	ciSettingsPlugin cisettings.Plugin
 	features         feature.FeatureSet
+	startTime        model.StartTime
 
 	// added to during execution
 	buildIndex     *buildIndex
@@ -165,7 +163,8 @@ func newTiltfileState(
 	configPlugin *config.Plugin,
 	extensionPlugin *tiltextension.Plugin,
 	ciSettingsPlugin cisettings.Plugin,
-	features feature.FeatureSet) *tiltfileState {
+	features feature.FeatureSet,
+	startTime model.StartTime) *tiltfileState {
 	return &tiltfileState{
 		ctx:                       ctx,
 		dcCli:                     dcCli,
@@ -176,6 +175,7 @@ func newTiltfileState(
 		configPlugin:              configPlugin,
 		extensionPlugin:           extensionPlugin,
 		ciSettingsPlugin:          ciSettingsPlugin,
+		startTime:                 startTime,
 		buildIndex:                newBuildIndex(),
 		k8sObjectIndex:            tiltfile_k8s.NewState(),
 		k8sByName:                 make(map[string]*k8sResource),
@@ -1178,7 +1178,7 @@ func (s *tiltfileState) k8sDeployTarget(targetName model.TargetName, r *k8sResou
 		}
 	}
 
-	sinceTime := apis.NewTime(pkgInitTime)
+	sinceTime := metav1.Time(s.startTime)
 	applySpec := v1alpha1.KubernetesApplySpec{
 		Cluster:                         v1alpha1.ClusterNameDefault,
 		Timeout:                         metav1.Duration{Duration: updateSettings.K8sUpsertTimeout()},

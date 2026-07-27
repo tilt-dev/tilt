@@ -27,6 +27,11 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
+// Docker evidently records the container start time asynchronously, so it can actually be AFTER
+// the first log timestamps (also reported by Docker), so we pad it by a second to reduce the
+// number of potentially duplicative logs
+var logStartTimePadding = -time.Second
+
 type ContainerInfo struct {
 	ID    string
 	State *v1alpha1.DockerContainerState
@@ -151,17 +156,11 @@ func (r *Reconciler) manageLogWatch(ctx context.Context, nn types.NamespacedName
 	// Docker evidently records the container start time asynchronously, so it can actually be AFTER
 	// the first log timestamps (also reported by Docker), so we pad it by a second to reduce the
 	// number of potentially duplicative logs
-	startWatchTime := containerState.StartedAt.Time.Add(-time.Second)
-	state := r.store.RLockState()
-	tiltStartTime := state.TiltStartTime
-	r.store.RUnlockState()
-
-	// Tilt retains about 2MB per log span, while a warm Compose container can hold GBs of json-file
-	// logs. Requesting that full history would flood the store's unbounded action queue only to discard
-	// it, so mirror the pod log stream invariant and only stream logs since Tilt started.
-	if !tiltStartTime.IsZero() && startWatchTime.Before(tiltStartTime) {
-		startWatchTime = tiltStartTime
+	startWatchTime := containerState.StartedAt.Time.Add(logStartTimePadding)
+	if obj.Spec.SinceTime != nil && obj.Spec.SinceTime.Time.After(startWatchTime) {
+		startWatchTime = obj.Spec.SinceTime.Time.Add(logStartTimePadding)
 	}
+
 	if result.watch != nil {
 		if !result.watch.Done() {
 			// watcher is already running

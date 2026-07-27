@@ -113,6 +113,7 @@ var BaseWireSet = wire.NewSet(
 
 	build.ProvideClock,
 	provideClock,
+	model.ProvideStartTime,
 	provideLogSource,
 	provideLogResources,
 	provideLogLevel,

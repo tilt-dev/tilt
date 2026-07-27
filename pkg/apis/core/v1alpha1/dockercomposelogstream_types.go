@@ -61,6 +61,13 @@ type DockerComposeLogStreamSpec struct {
 	//
 	// Each service spec keeps its own copy of the project spec.
 	Project DockerComposeProject `json:"project" protobuf:"bytes,2,opt,name=project"`
+
+	// An RFC3339 timestamp from which to show logs. If this value
+	// precedes the time a container was started, only logs since the container start will be returned.
+	// If this value is in the future, no logs will be returned.
+	//
+	// +optional
+	SinceTime *metav1.Time `json:"sinceTime,omitempty" protobuf:"bytes,3,opt,name=sinceTime"`
 }
 
 var _ resource.Object = &DockerComposeLogStream{}
