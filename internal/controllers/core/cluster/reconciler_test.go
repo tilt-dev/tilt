@@ -301,15 +301,21 @@ func TestKubernetesMonitorReportsSustainedFailure(t *testing.T) {
 	f.assertSteadyState(cluster)
 
 	f.k8sClient.ClusterHealthError = errors.New("fake cluster health error")
+
+	for i := 0; i < clientHealthFailureThreshold-1; i++ {
+		f.clock.Advance(clientHealthPollInterval)
+		requireClusterHealthCallCount(t, f.k8sClient, i+2)
+
+		f.MustGet(nn, cluster)
+		assert.Empty(t, cluster.Status.Error)
+	}
+
 	f.clock.Advance(clientHealthPollInterval)
-	requireClusterHealthCallCount(t, f.k8sClient, 2)
-
-	f.MustGet(nn, cluster)
-	assert.Empty(t, cluster.Status.Error)
-
-	f.clock.Advance(clientHealthFailureGracePeriod)
-	requireClusterHealthCallCount(t, f.k8sClient, 3)
-	<-f.requeues
+	select {
+	case <-f.requeues:
+	case <-time.After(time.Second):
+		t.Fatal("expected a requeue event")
+	}
 
 	f.MustGet(nn, cluster)
 	assert.Equal(t, "fake cluster health error", cluster.Status.Error)

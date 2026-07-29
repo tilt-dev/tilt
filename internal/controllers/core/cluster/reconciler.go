@@ -41,7 +41,7 @@ const (
 	clientHealthPollInterval = 15 * time.Second
 	// Like Kubernetes probes, require successive health check failures before turning
 	// a point-in-time control-plane error into a terminal CI result.
-	clientHealthFailureGracePeriod = 1 * time.Minute
+	clientHealthFailureThreshold = 4
 )
 
 type Reconciler struct {
