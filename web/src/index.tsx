@@ -1,5 +1,5 @@
 import React from "react"
-import ReactDOM from "react-dom"
+import { createRoot } from "react-dom/client"
 import ReactModal from "react-modal"
 import { BrowserRouter } from "react-router-dom"
 import { HUDFromContext } from "./HUD"
@@ -20,5 +20,5 @@ let app = (
     </InterfaceVersionProvider>
   </BrowserRouter>
 )
-let root = document.getElementById("root")
-ReactDOM.render(app, root)
+let root = createRoot(document.getElementById("root")!)
+root.render(app)
