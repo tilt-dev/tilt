@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"time"
 
 	"github.com/jonboulle/clockwork"
 	"k8s.io/apimachinery/pkg/types"
@@ -96,11 +97,19 @@ func (c *clusterHealthMonitor) run(ctx context.Context, clusterNN types.Namespac
 
 	ticker := c.clock.NewTicker(clientHealthPollInterval)
 	defer ticker.Stop()
+	var unhealthySince time.Time
 	for {
 		err := doKubernetesHealthCheck(ctx, conn.k8sClient)
 		if err != nil {
-			c.UpdateStatus(ctx, clusterNN, err.Error())
+			now := c.clock.Now()
+			if unhealthySince.IsZero() {
+				unhealthySince = now
+			}
+			if now.Sub(unhealthySince) >= clientHealthFailureGracePeriod {
+				c.UpdateStatus(ctx, clusterNN, err.Error())
+			}
 		} else {
+			unhealthySince = time.Time{}
 			c.UpdateStatus(ctx, clusterNN, "")
 		}
 

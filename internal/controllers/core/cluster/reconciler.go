@@ -39,6 +39,9 @@ const ArchUnknown string = "unknown"
 const (
 	clientInitBackoff        = 30 * time.Second
 	clientHealthPollInterval = 15 * time.Second
+	// Like Kubernetes probes, require successive health check failures before turning
+	// a point-in-time control-plane error into a terminal CI result.
+	clientHealthFailureGracePeriod = 1 * time.Minute
 )
 
 type Reconciler struct {

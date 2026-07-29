@@ -282,7 +282,7 @@ users: null
 `, string(contents))
 }
 
-func TestKubernetesMonitor(t *testing.T) {
+func TestKubernetesMonitorReportsSustainedFailure(t *testing.T) {
 	f := newFixture(t)
 	cluster := &v1alpha1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{Name: "default"},
@@ -295,17 +295,62 @@ func TestKubernetesMonitor(t *testing.T) {
 	nn := apis.Key(cluster)
 
 	f.Create(cluster)
+	requireClusterHealthCallCount(t, f.k8sClient, 1)
 	f.MustGet(nn, cluster)
 	connectedAt := *cluster.Status.ConnectedAt
 	f.assertSteadyState(cluster)
 
 	f.k8sClient.ClusterHealthError = errors.New("fake cluster health error")
-	f.clock.Advance(time.Minute)
+	f.clock.Advance(clientHealthPollInterval)
+	requireClusterHealthCallCount(t, f.k8sClient, 2)
+
+	f.MustGet(nn, cluster)
+	assert.Empty(t, cluster.Status.Error)
+
+	f.clock.Advance(clientHealthFailureGracePeriod)
+	requireClusterHealthCallCount(t, f.k8sClient, 3)
 	<-f.requeues
 
 	f.MustGet(nn, cluster)
 	assert.Equal(t, "fake cluster health error", cluster.Status.Error)
 	timecmp.RequireTimeEqual(t, connectedAt, cluster.Status.ConnectedAt)
+}
+
+func TestKubernetesMonitorIgnoresTransientFailure(t *testing.T) {
+	f := newFixture(t)
+	cluster := &v1alpha1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{Name: "default"},
+		Spec: v1alpha1.ClusterSpec{
+			Connection: &v1alpha1.ClusterConnection{
+				Kubernetes: &v1alpha1.KubernetesClusterConnection{},
+			},
+		},
+	}
+	nn := apis.Key(cluster)
+
+	f.Create(cluster)
+	requireClusterHealthCallCount(t, f.k8sClient, 1)
+
+	f.k8sClient.ClusterHealthError = errors.New("fake cluster health error")
+	f.clock.Advance(clientHealthPollInterval)
+	requireClusterHealthCallCount(t, f.k8sClient, 2)
+
+	f.MustGet(nn, cluster)
+	assert.Empty(t, cluster.Status.Error)
+
+	f.k8sClient.ClusterHealthError = nil
+	f.clock.Advance(clientHealthPollInterval)
+	requireClusterHealthCallCount(t, f.k8sClient, 3)
+
+	f.MustGet(nn, cluster)
+	assert.Empty(t, cluster.Status.Error)
+}
+
+func requireClusterHealthCallCount(t *testing.T, client *k8s.FakeK8sClient, expected int) {
+	t.Helper()
+	require.Eventually(t, func() bool {
+		return client.ClusterHealthCallCount() >= expected
+	}, time.Second, time.Millisecond)
 }
 
 func TestDockerError(t *testing.T) {

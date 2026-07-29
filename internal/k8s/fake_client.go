@@ -100,6 +100,7 @@ type FakeK8sClient struct {
 	ExecErrors          []error
 	ClusterHealthStatus *ClusterHealth
 	ClusterHealthError  error
+	clusterHealthCalls  int
 	FakeAPIConfig       *api.Config
 }
 
@@ -542,6 +543,8 @@ func (c *FakeK8sClient) ClusterHealth(_ context.Context, _ bool) (ClusterHealth,
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
+	c.clusterHealthCalls++
+
 	if c.ClusterHealthStatus != nil {
 		return *c.ClusterHealthStatus, nil
 	}
@@ -559,6 +562,13 @@ func (c *FakeK8sClient) ClusterHealth(_ context.Context, _ bool) (ClusterHealth,
 		LiveOutput:  "[+]fake-tilt ok\nlivez check passed\n",
 		ReadyOutput: "[+]fake-tilt ok\nreadyz check passed\n",
 	}, nil
+}
+
+func (c *FakeK8sClient) ClusterHealthCallCount() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	return c.clusterHealthCalls
 }
 
 func FakePodStatus(image reference.NamedTagged, phase string) v1.PodStatus {
