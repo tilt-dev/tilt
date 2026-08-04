@@ -74,8 +74,13 @@ func TestForceUpdateK8s(t *testing.T) {
 	_, err := f.BuildAndDeploy(BuildTargets(m), stateSet)
 	require.NoError(t, err)
 
-	// A force rebuild should delete the old resources.
-	assert.Equal(t, 1, strings.Count(f.k8s.DeletedYaml, "Deployment"))
+	// A force update stamps a restartedAt annotation on the pod template
+	// rather than deleting the Deployment; the Deployment controller then
+	// rolls its pods on the next apply.
+	assert.Equal(t, 0, strings.Count(f.k8s.DeletedYaml, "Deployment"))
+	// Fake clock is fixed at 2019-01-01 01:01:01 UTC; the stamp is RFC3339.
+	assert.Contains(t, f.k8s.Yaml,
+		"kubectl.kubernetes.io/restartedAt: \"2019-01-01T01:01:01Z\"")
 }
 
 func TestForceUpdateDoesNotDeleteNamespace(t *testing.T) {
@@ -105,17 +110,19 @@ metadata:
 	_, err := f.BuildAndDeploy(BuildTargets(m), stateSet)
 	require.NoError(t, err)
 
-	// A force rebuild should delete the ConfigMap but not the Namespace.
-	assert.Equal(t, 1, strings.Count(f.k8s.DeletedYaml, "kind: ConfigMap"))
+	// Force update no longer deletes non-workload kinds: the ConfigMap
+	// updates in place via the apply pipeline and the Namespace was
+	// already preserved by ForceDelete's filter.
+	assert.Equal(t, 0, strings.Count(f.k8s.DeletedYaml, "kind: ConfigMap"))
 	assert.Equal(t, 0, strings.Count(f.k8s.DeletedYaml, "kind: Namespace"))
 }
 
-func TestDeleteShouldHappenInReverseOrder(t *testing.T) {
+func TestForceDeleteHappensInReverseOrder(t *testing.T) {
 	f := newIBDFixture(t, clusterid.ProductGKE)
 
 	m := newK8sMultiEntityManifest("sancho")
-
-	err := f.ibd.delete(f.ctx, m.K8sTarget(), nil)
+	nn := ktypes.NamespacedName{Name: m.K8sTarget().ID().Name.String()}
+	err := f.ibd.r.ForceDelete(f.ctx, nn, m.K8sTarget().KubernetesApplySpec, nil, "test")
 	require.NoError(t, err)
 
 	assert.Regexp(t, "(?s)name: sancho-deployment.*name: sancho-pvc", f.k8s.DeletedYaml) // pvc comes after deployment
