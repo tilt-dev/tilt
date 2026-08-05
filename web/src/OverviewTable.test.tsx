@@ -8,6 +8,7 @@ import Features, { FeaturesTestProvider, Flag } from "./feature"
 import { GroupByLabelView, TILTFILE_LABEL, UNLABELED_LABEL } from "./labels"
 import LogStore from "./LogStore"
 import OverviewTable, {
+  collapsedColumnsForWidth,
   labeledResourcesToTableCells,
   NoMatchesFound,
   OverviewGroup,
@@ -17,8 +18,14 @@ import OverviewTable, {
   ResourceTableHeaderSortTriangle,
   ResourceTableRow,
   TableGroupedByLabels,
+  TableWithoutGroups,
 } from "./OverviewTable"
-import { Name, RowValues, SelectionCheckbox } from "./OverviewTableColumns"
+import {
+  EXPANDER_COLUMN_ID,
+  Name,
+  RowValues,
+  SelectionCheckbox,
+} from "./OverviewTableColumns"
 import { ToggleTriggerModeTooltip } from "./OverviewTableTriggerModeToggle"
 import {
   DEFAULT_GROUP_STATE,
@@ -85,6 +92,32 @@ const findTableHeaderByName = (columnName: string, sortable = true): any => {
   const selector = sortable ? `Sort by ${columnName}` : columnName
   return screen.getAllByTitle(selector)[0]
 }
+
+const tableViewWithCollapsedColumns = (
+  view: TestDataView,
+  collapsedColumns: string[]
+) => (
+  <MemoryRouter
+    initialEntries={["/"]}
+    future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+  >
+    <SnackbarProvider>
+      <FeaturesTestProvider value={new Features({})}>
+        <ResourceGroupsContextProvider>
+          <ResourceListOptionsProvider>
+            <ResourceSelectionProvider>
+              <TableWithoutGroups
+                resources={view.uiResources}
+                buttons={view.uiButtons}
+                collapsedColumns={collapsedColumns}
+              />
+            </ResourceSelectionProvider>
+          </ResourceListOptionsProvider>
+        </ResourceGroupsContextProvider>
+      </FeaturesTestProvider>
+    </SnackbarProvider>
+  </MemoryRouter>
+)
 
 // End helpers
 
@@ -492,6 +525,7 @@ describe("overview table with groups", () => {
               <TableGroupedByLabels
                 resources={view.uiResources}
                 buttons={view.uiButtons}
+                collapsedColumns={[EXPANDER_COLUMN_ID]}
               />
             </ResourceSelectionProvider>
           </ResourceGroupsContextProvider>
@@ -925,6 +959,57 @@ it("renders the trigger mode column correctly", () => {
     ToggleTriggerModeTooltip.isAuto,
     ToggleTriggerModeTooltip.isManual,
   ])
+})
+
+describe("responsive columns", () => {
+  describe("collapsedColumnsForWidth", () => {
+    it("collapses only the expander when the table is wide", () => {
+      expect(collapsedColumnsForWidth(1400)).toEqual([EXPANDER_COLUMN_ID])
+    })
+
+    it("collapses columns right-to-left as the table narrows", () => {
+      expect(collapsedColumnsForWidth(1000)).toEqual([
+        "mode",
+        "endpoints",
+        "widgets",
+      ])
+    })
+
+    it("never collapses the selection or resource name columns", () => {
+      const collapsed = collapsedColumnsForWidth(1)
+      expect(collapsed).not.toContain("selection")
+      expect(collapsed).not.toContain("name")
+    })
+
+    it("assumes a full-size table before the first measurement", () => {
+      expect(collapsedColumnsForWidth(0)).toEqual([EXPANDER_COLUMN_ID])
+    })
+  })
+
+  it("moves collapsed columns into an expandable row detail", () => {
+    render(tableViewWithCollapsedColumns(nResourceView(2), ["podId", "mode"]))
+
+    // Collapsed columns are absent until a row is expanded
+    expect(screen.queryByText("Pod ID")).toBeNull()
+    expect(screen.queryByText("Mode")).toBeNull()
+
+    const expanders = screen.getAllByTitle(/^Show additional columns/)
+    expect(expanders).toHaveLength(2)
+
+    userEvent.click(expanders[0])
+
+    expect(screen.getByText("Pod ID")).toBeInTheDocument()
+    expect(screen.getByText("Mode")).toBeInTheDocument()
+  })
+
+  it("shows no expander when nothing is collapsed", () => {
+    render(
+      tableViewWithCollapsedColumns(nResourceView(2), [EXPANDER_COLUMN_ID])
+    )
+
+    expect(screen.queryAllByTitle(/^Show additional columns/)).toHaveLength(0)
+    expect(screen.getByText("Pod ID")).toBeInTheDocument()
+  })
 })
 
 function renderContainer(x: ReactElement) {
