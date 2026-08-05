@@ -37,9 +37,9 @@ const OverviewTableMenu = styled.section`
   align-items: center;
   margin-left: auto;
   margin-right: auto;
-  /* Max and min width are based on fixed table layout and column widths */
+  /* Max width matches the table below, which has no min width. */
   max-width: 2000px;
-  min-width: 1400px;
+  flex-wrap: wrap;
 
   @media screen and (max-width: 2200px) {
     margin-left: ${SizeUnit(1 / 2)};

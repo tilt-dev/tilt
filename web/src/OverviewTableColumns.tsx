@@ -142,6 +142,9 @@ const PodIdInput = styled.input`
   border-radius: 2px;
   padding: ${SizeUnit(0.1)} ${SizeUnit(0.2)};
   width: 100px;
+  /* Flex items won't shrink past their intrinsic size by default, which pushes
+  the copy button outside the cell when the column is narrow. */
+  min-width: 0;
   text-overflow: ellipsis;
   overflow: auto;
 
@@ -608,6 +611,64 @@ export function ResourceTableHeaderTip(props: { id?: string }) {
   )
 }
 
+export const EXPANDER_COLUMN_ID = "expander"
+
+// Columns collapse into a per-row detail panel as the table narrows, dropping
+// right-to-left so the leftmost columns survive longest. The selection checkbox
+// and resource name never collapse, so they have no entry here. Each
+// `minTableWidth` is the table width at or above which the column stays visible.
+export const COLUMN_COLLAPSE_BREAKPOINTS: ReadonlyArray<{
+  id: string
+  minTableWidth: number
+}> = [
+  { id: "mode", minTableWidth: 1350 },
+  { id: "endpoints", minTableWidth: 1190 },
+  { id: "widgets", minTableWidth: 1040 },
+  { id: "podId", minTableWidth: 890 },
+  { id: "status", minTableWidth: 730 },
+  { id: "resourceTypeLabel", minTableWidth: 580 },
+  { id: "lastDeployTime", minTableWidth: 500 },
+  { id: "trigger", minTableWidth: 430 },
+  { id: "starred", minTableWidth: 380 },
+]
+
+const ExpanderButton = styled.button`
+  ${mixinResetButtonStyle};
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding: ${SizeUnit(1 / 4)};
+`
+
+const ExpanderTriangle = styled.div`
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 6px solid ${Color.gray70};
+
+  &.is-expanded {
+    transform: rotate(90deg);
+  }
+`
+
+function TableExpanderColumn({ row }: CellProps<RowValues>) {
+  const label = `${row.isExpanded ? "Hide" : "Show"} additional columns for ${
+    row.original.name
+  }`
+
+  return (
+    <ExpanderButton
+      {...row.getToggleRowExpandedProps()}
+      aria-expanded={row.isExpanded}
+      aria-label={label}
+      title={label}
+    >
+      <ExpanderTriangle className={row.isExpanded ? "is-expanded" : ""} />
+    </ExpanderButton>
+  )
+}
+
 // https://react-table.tanstack.com/docs/api/useTable#column-options
 // The docs on this are not very clear!
 // `accessor` should return a primitive, and that primitive is used for sorting and filtering
@@ -615,6 +676,13 @@ export function ResourceTableHeaderTip(props: { id?: string }) {
 // best evidence I've (Matt) found: https://github.com/tannerlinsley/react-table/discussions/2429#discussioncomment-25582
 //   (from the author)
 export const COLUMNS: Column<RowValues>[] = [
+  {
+    Header: "",
+    id: EXPANDER_COLUMN_ID,
+    disableSortBy: true,
+    width: "30px",
+    Cell: TableExpanderColumn,
+  },
   {
     Header: (props) => <ResourceSelectionHeader {...props} />,
     id: "selection",
@@ -646,7 +714,9 @@ export const COLUMNS: Column<RowValues>[] = [
     Header: "Resource Name",
     accessor: "name",
     Cell: TableNameColumn,
-    width: "400px",
+    // Proportional so the name column gives space back as the table narrows,
+    // rather than reserving a fixed width and collapsing other columns early.
+    width: "25%",
   },
   {
     Header: "Type",
@@ -655,6 +725,9 @@ export const COLUMNS: Column<RowValues>[] = [
   },
   {
     Header: "Status",
+    // Named explicitly because react-table otherwise ids function accessors by
+    // their Header string.
+    id: "status",
     accessor: (row) => statusSortKey(row),
     Cell: TableStatusColumn,
     width: "auto",

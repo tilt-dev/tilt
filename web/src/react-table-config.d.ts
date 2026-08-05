@@ -1,6 +1,11 @@
 // From https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/react-table
 
 import {
+  UseExpandedHooks,
+  UseExpandedInstanceProps,
+  UseExpandedOptions,
+  UseExpandedRowProps,
+  UseExpandedState,
   UsePaginationInstanceProps,
   UsePaginationOptions,
   UsePaginationState,
@@ -17,8 +22,8 @@ declare module "react-table" {
 
   export interface TableOptions<D extends Record<string, unknown>>
     extends UseSortByOptions<D>,
-      UsePaginationOptions<D> {
-    // UseExpandedOptions<D>,
+      UsePaginationOptions<D>,
+      UseExpandedOptions<D> {
     // UseFiltersOptions<D>,
     // UseGlobalFiltersOptions<D>,
     // UseGroupByOptions<D>,
@@ -33,8 +38,8 @@ declare module "react-table" {
 
   export interface Hooks<
     D extends Record<string, unknown> = Record<string, unknown>
-  > extends UseSortByHooks<D> {
-    // UseExpandedHooks<D>,
+  > extends UseSortByHooks<D>,
+      UseExpandedHooks<D> {
     // UseGroupByHooks<D>,
     // UseRowSelectHooks<D>,
     // UseSortByHooks<D>
@@ -43,9 +48,9 @@ declare module "react-table" {
   export interface TableInstance<
     D extends Record<string, unknown> = Record<string, unknown>
   > extends UseSortByInstanceProps<D>,
-      UsePaginationInstanceProps<D> {
+      UsePaginationInstanceProps<D>,
+      UseExpandedInstanceProps<D> {
     // UseColumnOrderInstanceProps<D>,
-    // UseExpandedInstanceProps<D>,
     // UseFiltersInstanceProps<D>,
     // UseGlobalFiltersInstanceProps<D>,
     // UseGroupByInstanceProps<D>,
@@ -57,9 +62,9 @@ declare module "react-table" {
   export interface TableState<
     D extends Record<string, unknown> = Record<string, unknown>
   > extends UseSortByState<D>,
-      UsePaginationState<D> {
+      UsePaginationState<D>,
+      UseExpandedState<D> {
     // UseColumnOrderState<D>,
-    // UseExpandedState<D>,
     // UseFiltersState<D>,
     // UseGlobalFiltersState<D>,
     // UseGroupByState<D>,
@@ -89,9 +94,11 @@ declare module "react-table" {
   //   extends UseGroupByCellProps<D>,
   //     UseRowStateCellProps<D> {}
 
-  // export interface Row<D extends Record<string, unknown> = Record<string, unknown>>
-  //   extends UseExpandedRowProps<D>,
-  //     UseGroupByRowProps<D>,
-  //     UseRowSelectRowProps<D>,
-  //     UseRowStateRowProps<D> {}
+  export interface Row<
+    D extends Record<string, unknown> = Record<string, unknown>
+  > extends UseExpandedRowProps<D> {
+    //     UseGroupByRowProps<D>,
+    //     UseRowSelectRowProps<D>,
+    //     UseRowStateRowProps<D>
+  }
 }

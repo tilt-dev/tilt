@@ -13,12 +13,14 @@ import React, {
   useState,
 } from "react"
 import {
+  ColumnInstance,
   HeaderGroup,
   Row,
   SortingRule,
   TableHeaderProps,
   TableOptions,
   TableState,
+  useExpanded,
   usePagination,
   useSortBy,
   UseSortByState,
@@ -42,7 +44,9 @@ import {
 } from "./labels"
 import { LogAlertIndex, useLogAlertIndex } from "./LogStore"
 import {
+  COLUMN_COLLAPSE_BREAKPOINTS,
   COLUMNS,
+  EXPANDER_COLUMN_ID,
   ResourceTableHeaderTip,
   rowIsDisabled,
   RowValues,
@@ -78,6 +82,7 @@ import {
   UIResource,
   UIResourceStatus,
 } from "./types"
+import { useElementWidth } from "./useElementWidth"
 import type { View } from "./webview"
 
 export type OverviewTableProps = {
@@ -87,17 +92,20 @@ export type OverviewTableProps = {
 type TableWrapperProps = {
   resources?: UIResource[]
   buttons?: UIButton[]
+  collapsedColumns: string[]
 }
 
 type TableGroupProps = {
   label: string
   setGlobalSortBy: (id: string) => void
   focused: string
+  collapsedColumns: string[]
 } & TableOptions<RowValues>
 
 type TableProps = {
   setGlobalSortBy?: (id: string) => void
   focused: string
+  collapsedColumns: string[]
 } & TableOptions<RowValues>
 
 type ResourceTableHeadRowProps = {
@@ -125,9 +133,9 @@ const OverviewTableRoot = styled.section`
   padding-bottom: ${SizeUnit(1 / 2)};
   margin-left: auto;
   margin-right: auto;
-  /* Max and min width are based on fixed table layout and column widths */
+  /* Max width is based on fixed table layout and column widths. There's no min
+  width, since columns collapse into a detail panel as space runs out. */
   max-width: 2000px;
-  min-width: 1400px;
 
   @media screen and (max-width: 2200px) {
     margin-left: ${SizeUnit(1 / 2)};
@@ -225,6 +233,24 @@ const ResourceTableHeaderLabel = styled.div`
   user-select: none;
 `
 
+// Detail panel holding the columns that collapsed out of a narrow table
+const CollapsedColumnsDetail = styled.dl`
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: ${SizeUnit(1 / 4)} ${SizeUnit(1 / 2)};
+  margin: 0;
+  padding: ${SizeUnit(1 / 4)} 0 ${SizeUnit(1 / 2)} ${SizeUnit(1 / 2)};
+
+  dt {
+    color: ${Color.gray70};
+  }
+
+  dd {
+    margin: 0;
+    min-width: 0;
+  }
+`
+
 export const ResourceTableHeaderSortTriangle = styled.div`
   display: inline-block;
   margin-left: ${SizeUnit(0.25)};
@@ -308,6 +334,31 @@ export function TableNoMatchesFound(props: { resources?: UIResource[] }) {
   }
 
   return null
+}
+
+// If a column header is JSX, fall back on its id as a descriptive label
+// and capitalize for consistency.
+function columnDisplayName(column: ColumnInstance<RowValues>): string {
+  return typeof column.Header === "string"
+    ? column.Header
+    : `${column.id[0]?.toUpperCase()}${column.id?.slice(1)}`
+}
+
+// Which columns collapse into the per-row detail panel at a given table width.
+// When nothing collapses, the expander column hides itself, so the disclosure
+// control only appears when it has something to disclose.
+export function collapsedColumnsForWidth(tableWidth: number): string[] {
+  // Width is 0 before the first measurement; assume a full-size table so the
+  // first paint doesn't flash a collapsed layout.
+  if (tableWidth === 0) {
+    return [EXPANDER_COLUMN_ID]
+  }
+
+  const collapsed = COLUMN_COLLAPSE_BREAKPOINTS.filter(
+    ({ minTableWidth }) => tableWidth < minTableWidth
+  ).map(({ id }) => id)
+
+  return collapsed.length > 0 ? collapsed : [EXPANDER_COLUMN_ID]
 }
 
 const FIRST_SORT_STATE = false
@@ -623,7 +674,40 @@ function ShowMoreResourcesRow({
   )
 }
 
-function TableRow(props: { row: Row<RowValues>; focused: string }) {
+// Renders collapsed columns as label/value pairs. Cells come from `row.allCells`,
+// which includes hidden columns, so each column's Cell renderer is reused here.
+function CollapsedColumnsRow(props: { row: Row<RowValues>; colSpan: number }) {
+  const { row, colSpan } = props
+  const visibleIds = new Set(row.cells.map((cell) => cell.column.id))
+  const collapsedCells = row.allCells.filter(
+    (cell) => !visibleIds.has(cell.column.id)
+  )
+
+  if (collapsedCells.length === 0) {
+    return null
+  }
+
+  return (
+    <ResourceTableRow>
+      <ResourceTableData colSpan={colSpan}>
+        <CollapsedColumnsDetail>
+          {collapsedCells.map((cell) => (
+            <React.Fragment key={cell.column.id}>
+              <dt>{columnDisplayName(cell.column)}</dt>
+              <dd>{cell.render("Cell")}</dd>
+            </React.Fragment>
+          ))}
+        </CollapsedColumnsDetail>
+      </ResourceTableData>
+    </ResourceTableRow>
+  )
+}
+
+function TableRow(props: {
+  row: Row<RowValues>
+  focused: string
+  colSpan: number
+}) {
   let { row, focused } = props
   const { isSelected } = useResourceSelection()
   let isFocused = row.original.name == focused
@@ -640,22 +724,27 @@ function TableRow(props: { row: Row<RowValues>; focused: string }) {
   }, [isFocused, ref])
 
   return (
-    <ResourceTableRow
-      tabIndex={-1}
-      ref={ref}
-      {...row.getRowProps({
-        className: rowClasses,
-      })}
-    >
-      {row.cells.map((cell) => (
-        <ResourceTableData
-          {...cell.getCellProps()}
-          className={cell.column.isSorted ? "isSorted" : ""}
-        >
-          {cell.render("Cell")}
-        </ResourceTableData>
-      ))}
-    </ResourceTableRow>
+    <>
+      <ResourceTableRow
+        tabIndex={-1}
+        ref={ref}
+        {...row.getRowProps({
+          className: rowClasses,
+        })}
+      >
+        {row.cells.map((cell) => (
+          <ResourceTableData
+            {...cell.getCellProps()}
+            className={cell.column.isSorted ? "isSorted" : ""}
+          >
+            {cell.render("Cell")}
+          </ResourceTableData>
+        ))}
+      </ResourceTableRow>
+      {row.isExpanded && (
+        <CollapsedColumnsRow row={row} colSpan={props.colSpan} />
+      )}
+    </>
   )
 }
 
@@ -671,6 +760,8 @@ export function Table(props: TableProps) {
     rows, // Used to calculate the total number of rows
     page, // Used to render the rows for the current page
     prepareRow,
+    visibleColumns,
+    setHiddenColumns,
     state: { pageSize },
     setPageSize,
   } = useTable(
@@ -678,12 +769,23 @@ export function Table(props: TableProps) {
       columns: props.columns,
       data: props.data,
       autoResetSortBy: false,
+      autoResetExpanded: false,
+      autoResetHiddenColumns: false,
       useControlledState: props.useControlledState,
-      initialState: { pageSize: DEFAULT_RESOURCE_LIST_LIMIT },
+      initialState: {
+        pageSize: DEFAULT_RESOURCE_LIST_LIMIT,
+        hiddenColumns: props.collapsedColumns,
+      },
     },
     useSortBy,
+    useExpanded,
     usePagination
   )
+
+  // `collapsedColumns` is memoized by table width, so this only fires on resize.
+  useEffect(() => {
+    setHiddenColumns(props.collapsedColumns)
+  }, [setHiddenColumns, props.collapsedColumns])
 
   const showMoreOnClick = () => setPageSize(pageSize * RESOURCE_LIST_MULTIPLIER)
 
@@ -707,6 +809,7 @@ export function Table(props: TableProps) {
               key={row.original.name}
               row={row}
               focused={props.focused}
+              colSpan={visibleColumns.length}
             />
           )
         })}
@@ -714,7 +817,7 @@ export function Table(props: TableProps) {
           itemCount={rows.length}
           pageSize={pageSize}
           onClick={showMoreOnClick}
-          colSpan={props.columns.length}
+          colSpan={visibleColumns.length}
         />
       </tbody>
     </ResourceTable>
@@ -755,6 +858,7 @@ function TableGroup(props: TableGroupProps) {
 export function TableGroupedByLabels({
   resources,
   buttons,
+  collapsedColumns,
 }: TableWrapperProps) {
   const features = useFeatures()
   const logAlertIndex = useLogAlertIndex()
@@ -801,6 +905,7 @@ export function TableGroupedByLabels({
           useControlledState={useControlledState}
           setGlobalSortBy={setGlobalSortBy}
           focused={focused}
+          collapsedColumns={collapsedColumns}
         />
       ))}
       <TableGroup
@@ -810,6 +915,7 @@ export function TableGroupedByLabels({
         useControlledState={useControlledState}
         setGlobalSortBy={setGlobalSortBy}
         focused={focused}
+        collapsedColumns={collapsedColumns}
       />
       <TableGroup
         label={TILTFILE_LABEL}
@@ -818,6 +924,7 @@ export function TableGroupedByLabels({
         useControlledState={useControlledState}
         setGlobalSortBy={setGlobalSortBy}
         focused={focused}
+        collapsedColumns={collapsedColumns}
       />
       <OverviewTableKeyboardShortcuts
         focused={focused}
@@ -828,7 +935,11 @@ export function TableGroupedByLabels({
   )
 }
 
-export function TableWithoutGroups({ resources, buttons }: TableWrapperProps) {
+export function TableWithoutGroups({
+  resources,
+  buttons,
+  collapsedColumns,
+}: TableWrapperProps) {
   const features = useFeatures()
   const logAlertIndex = useLogAlertIndex()
   const data = useMemo(() => {
@@ -846,7 +957,12 @@ export function TableWithoutGroups({ resources, buttons }: TableWrapperProps) {
 
   return (
     <TableWithoutGroupsRoot>
-      <Table columns={COLUMNS} data={data} focused={focused} />
+      <Table
+        columns={COLUMNS}
+        data={data}
+        focused={focused}
+        collapsedColumns={collapsedColumns}
+      />
       <OverviewTableKeyboardShortcuts
         focused={focused}
         setFocused={setFocused}
@@ -856,7 +972,9 @@ export function TableWithoutGroups({ resources, buttons }: TableWrapperProps) {
   )
 }
 
-function OverviewTableContent(props: OverviewTableProps) {
+function OverviewTableContent(
+  props: OverviewTableProps & { collapsedColumns: string[] }
+) {
   const features = useFeatures()
   const labelsEnabled = features.isEnabled(Flag.Labels)
   const resourcesHaveLabels =
@@ -883,6 +1001,7 @@ function OverviewTableContent(props: OverviewTableProps) {
       <TableGroupedByLabels
         resources={resourcesToDisplay}
         buttons={props.view.uiButtons}
+        collapsedColumns={props.collapsedColumns}
       />
     )
   } else {
@@ -902,6 +1021,7 @@ function OverviewTableContent(props: OverviewTableProps) {
           }
           resources={resourcesToDisplay}
           buttons={props.view.uiButtons}
+          collapsedColumns={props.collapsedColumns}
         />
       </>
     )
@@ -909,9 +1029,16 @@ function OverviewTableContent(props: OverviewTableProps) {
 }
 
 export default function OverviewTable(props: OverviewTableProps) {
+  const rootRef = useRef<HTMLElement | null>(null)
+  const tableWidth = useElementWidth(rootRef)
+  const collapsedColumns = useMemo(
+    () => collapsedColumnsForWidth(tableWidth),
+    [tableWidth]
+  )
+
   return (
-    <OverviewTableRoot aria-label="Resources overview">
-      <OverviewTableContent {...props} />
+    <OverviewTableRoot ref={rootRef} aria-label="Resources overview">
+      <OverviewTableContent {...props} collapsedColumns={collapsedColumns} />
     </OverviewTableRoot>
   )
 }
