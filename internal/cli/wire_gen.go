@@ -210,7 +210,7 @@ func wireDockerPrune(ctx context.Context, analytics2 *analytics.TiltAnalytics, s
 	return cliDpDeps, nil
 }
 
-func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags analytics2.CmdTags, subcommand model.TiltSubcommand) (CmdUpDeps, error) {
+func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags analytics2.CmdTags, subcommand model.TiltSubcommand, disablePortForwards k8s.DisablePortForwardsFlag) (CmdUpDeps, error) {
 	reducer := _wireReducerValue
 	storeLogActionsFlag := provideLogActions()
 	storeStore := store.NewStore(reducer, storeLogActionsFlag)
@@ -305,7 +305,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	uisessionReconciler := uisession.NewReconciler(deferredClient, websocketList)
 	uiresourceReconciler := uiresource.NewReconciler(deferredClient, websocketList, storeStore)
 	uibuttonReconciler := uibutton.NewReconciler(deferredClient, websocketList, storeStore)
-	portforwardReconciler := portforward.NewReconciler(deferredClient, scheme, storeStore, connectionManager)
+	portforwardReconciler := portforward.NewReconciler(deferredClient, scheme, storeStore, connectionManager, disablePortForwards)
 	plugin := k8scontext.NewPlugin(kubeContext, namespace, product)
 	versionPlugin := version.NewPlugin(tiltBuild)
 	configPlugin := config.NewPlugin(subcommand)
@@ -331,7 +331,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	}
 	compositeClient := docker.ProvideSwitchCli(clusterClient, localClient)
 	engineMode := _wireEngineModeValue
-	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, compositeClient, deferredClient, scheme, engineMode, k8sKubeContextOverride, k8sNamespaceOverride, ciTimeoutFlag)
+	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, compositeClient, deferredClient, scheme, engineMode, k8sKubeContextOverride, k8sNamespaceOverride, ciTimeoutFlag, disablePortForwards)
 	togglebuttonReconciler := togglebutton.NewReconciler(deferredClient, scheme)
 	dockerUpdater := containerupdate.NewDockerUpdater(compositeClient)
 	execUpdater := containerupdate.NewExecUpdater(k8sClient)
@@ -531,7 +531,8 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	uisessionReconciler := uisession.NewReconciler(deferredClient, websocketList)
 	uiresourceReconciler := uiresource.NewReconciler(deferredClient, websocketList, storeStore)
 	uibuttonReconciler := uibutton.NewReconciler(deferredClient, websocketList, storeStore)
-	portforwardReconciler := portforward.NewReconciler(deferredClient, scheme, storeStore, connectionManager)
+	disablePortForwardsFlag := _wireDisablePortForwardsFlagValue
+	portforwardReconciler := portforward.NewReconciler(deferredClient, scheme, storeStore, connectionManager, disablePortForwardsFlag)
 	plugin := k8scontext.NewPlugin(kubeContext, namespace, product)
 	versionPlugin := version.NewPlugin(tiltBuild)
 	configPlugin := config.NewPlugin(subcommand)
@@ -557,7 +558,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	}
 	compositeClient := docker.ProvideSwitchCli(clusterClient, localClient)
 	engineMode := _wireStoreEngineModeValue
-	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, compositeClient, deferredClient, scheme, engineMode, k8sKubeContextOverride, k8sNamespaceOverride, ciTimeoutFlag)
+	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, compositeClient, deferredClient, scheme, engineMode, k8sKubeContextOverride, k8sNamespaceOverride, ciTimeoutFlag, disablePortForwardsFlag)
 	togglebuttonReconciler := togglebutton.NewReconciler(deferredClient, scheme)
 	dockerUpdater := containerupdate.NewDockerUpdater(compositeClient)
 	execUpdater := containerupdate.NewExecUpdater(k8sClient)
@@ -654,8 +655,9 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 }
 
 var (
-	_wireStoreEngineModeValue = store.EngineModeCI
-	_wireCmdTagsValue         = analytics2.CmdTags(map[string]string{})
+	_wireDisablePortForwardsFlagValue = k8s.DisablePortForwardsFlag(false)
+	_wireStoreEngineModeValue         = store.EngineModeCI
+	_wireCmdTagsValue                 = analytics2.CmdTags(map[string]string{})
 )
 
 func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags analytics2.CmdTags, subcommand model.TiltSubcommand, objects []client2.Object) (CmdUpdogDeps, error) {
@@ -753,7 +755,8 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	uisessionReconciler := uisession.NewReconciler(deferredClient, websocketList)
 	uiresourceReconciler := uiresource.NewReconciler(deferredClient, websocketList, storeStore)
 	uibuttonReconciler := uibutton.NewReconciler(deferredClient, websocketList, storeStore)
-	portforwardReconciler := portforward.NewReconciler(deferredClient, scheme, storeStore, connectionManager)
+	disablePortForwardsFlag := _wireK8sDisablePortForwardsFlagValue
+	portforwardReconciler := portforward.NewReconciler(deferredClient, scheme, storeStore, connectionManager, disablePortForwardsFlag)
 	plugin := k8scontext.NewPlugin(kubeContext, namespace, product)
 	versionPlugin := version.NewPlugin(tiltBuild)
 	configPlugin := config.NewPlugin(subcommand)
@@ -779,7 +782,7 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	}
 	compositeClient := docker.ProvideSwitchCli(clusterClient, localClient)
 	engineMode := _wireEngineModeValue2
-	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, compositeClient, deferredClient, scheme, engineMode, k8sKubeContextOverride, k8sNamespaceOverride, ciTimeoutFlag)
+	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, compositeClient, deferredClient, scheme, engineMode, k8sKubeContextOverride, k8sNamespaceOverride, ciTimeoutFlag, disablePortForwardsFlag)
 	togglebuttonReconciler := togglebutton.NewReconciler(deferredClient, scheme)
 	dockerUpdater := containerupdate.NewDockerUpdater(compositeClient)
 	execUpdater := containerupdate.NewExecUpdater(k8sClient)
@@ -846,7 +849,8 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 }
 
 var (
-	_wireEngineModeValue2 = store.EngineModeCI
+	_wireK8sDisablePortForwardsFlagValue = k8s.DisablePortForwardsFlag(false)
+	_wireEngineModeValue2                = store.EngineModeCI
 )
 
 func wireKubeContext(ctx context.Context) (k8s.KubeContext, error) {

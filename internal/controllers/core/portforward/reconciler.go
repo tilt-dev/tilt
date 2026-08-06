@@ -36,11 +36,12 @@ import (
 var clusterGVK = v1alpha1.SchemeGroupVersion.WithKind("Cluster")
 
 type Reconciler struct {
-	store      store.RStore
-	ctrlClient ctrlclient.Client
-	clients    *cluster.ClientManager
-	requeuer   *indexer.Requeuer
-	indexer    *indexer.Indexer
+	store               store.RStore
+	ctrlClient          ctrlclient.Client
+	clients             *cluster.ClientManager
+	requeuer            *indexer.Requeuer
+	indexer             *indexer.Indexer
+	disablePortForwards k8s.DisablePortForwardsFlag
 
 	// map of PortForward object name --> running forward(s)
 	activeForwards map[types.NamespacedName]*portForwardEntry
@@ -54,14 +55,16 @@ func NewReconciler(
 	scheme *runtime.Scheme,
 	store store.RStore,
 	clients cluster.ClientProvider,
+	disablePortForwards k8s.DisablePortForwardsFlag,
 ) *Reconciler {
 	return &Reconciler{
-		store:          store,
-		ctrlClient:     ctrlClient,
-		clients:        cluster.NewClientManager(clients),
-		requeuer:       indexer.NewRequeuer(),
-		indexer:        indexer.NewIndexer(scheme, indexPortForward),
-		activeForwards: make(map[types.NamespacedName]*portForwardEntry),
+		store:               store,
+		ctrlClient:          ctrlClient,
+		clients:             cluster.NewClientManager(clients),
+		requeuer:            indexer.NewRequeuer(),
+		indexer:             indexer.NewIndexer(scheme, indexPortForward),
+		disablePortForwards: disablePortForwards,
+		activeForwards:      make(map[types.NamespacedName]*portForwardEntry),
 	}
 }
 
@@ -79,6 +82,10 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 }
 
 func (r *Reconciler) reconcile(ctx context.Context, name types.NamespacedName) error {
+	if r.disablePortForwards {
+		return nil
+	}
+
 	pf := &PortForward{}
 	err := r.ctrlClient.Get(ctx, name, pf)
 	if err != nil && !apierrors.IsNotFound(err) {
