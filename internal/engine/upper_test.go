@@ -3274,7 +3274,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	ciSettingsPlugin := cisettings.NewPlugin(0)
 	realTFL := tiltfile.ProvideTiltfileLoader(ta,
 		k8sContextPlugin, versionPlugin, configPlugin, extPlugin, ciSettingsPlugin,
-		fakeDcc, "localhost", execer, feature.MainDefaults, env, model.ProvideStartTime())
+		fakeDcc, "localhost", execer, feature.MainDefaults, env, k8s.PortForwardsFlag(true), model.ProvideStartTime())
 	tfl := tiltfile.NewFakeTiltfileLoader()
 	cc := configs.NewConfigsController(cdc)
 	tqs := configs.NewTriggerQueueSubscriber(cdc)
@@ -3315,7 +3315,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 		cdc,
 		uncached)
 	require.NoError(t, err, "Failed to create Tilt API server controller manager")
-	pfr := apiportforward.NewReconciler(cdc, sch, st, clusterClients, false)
+	pfr := apiportforward.NewReconciler(cdc, sch, st, clusterClients, k8s.PortForwardsFlag(true))
 
 	wsl := server.NewWebsocketList()
 
@@ -3323,7 +3323,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	dcds := dockercomposeservice.NewDisableSubscriber(ctx, fakeDcc, clock)
 	dcr := dockercomposeservice.NewReconciler(cdc, fakeDcc, dockerClient, st, sch, dcds, model.ProvideStartTime())
 
-	tfr := ctrltiltfile.NewReconciler(st, tfl, dockerClient, cdc, sch, engineMode, "", "", 0, false)
+	tfr := ctrltiltfile.NewReconciler(st, tfl, dockerClient, cdc, sch, engineMode, "", "", 0)
 	tbr := togglebutton.NewReconciler(cdc, sch)
 	extr := extension.NewReconciler(cdc, sch, ta)
 	extrr, err := extensionrepo.NewReconciler(cdc, st, base)

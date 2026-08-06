@@ -84,6 +84,7 @@ type tiltfileState struct {
 	extensionPlugin  *tiltextension.Plugin
 	ciSettingsPlugin cisettings.Plugin
 	features         feature.FeatureSet
+	portForwards     k8s.PortForwardsFlag
 	startTime        model.StartTime
 
 	// added to during execution
@@ -164,6 +165,7 @@ func newTiltfileState(
 	extensionPlugin *tiltextension.Plugin,
 	ciSettingsPlugin cisettings.Plugin,
 	features feature.FeatureSet,
+	portForwards k8s.PortForwardsFlag,
 	startTime model.StartTime) *tiltfileState {
 	return &tiltfileState{
 		ctx:                       ctx,
@@ -175,6 +177,7 @@ func newTiltfileState(
 		configPlugin:              configPlugin,
 		extensionPlugin:           extensionPlugin,
 		ciSettingsPlugin:          ciSettingsPlugin,
+		portForwards:              portForwards,
 		startTime:                 startTime,
 		buildIndex:                newBuildIndex(),
 		k8sObjectIndex:            tiltfile_k8s.NewState(),
@@ -1253,6 +1256,14 @@ func (s *tiltfileState) k8sDeployTarget(targetName model.TargetName, r *k8sResou
 // TODO(nick): I think the "right" way to do this is to give the starkit plugin system
 // a "default"-ing hook that runs post-execution.
 func (s *tiltfileState) defaultedPortForwards(pfs []model.PortForward) []model.PortForward {
+	// When port-forwards are disabled (--port-forwards=false), drop them at the
+	// source so no PortForwardTemplateSpec is created. This keeps them out of the
+	// manifest and API objects entirely, so the port-forward controllers never
+	// start them and the web UI never shows them as endpoints.
+	if !s.portForwards {
+		return nil
+	}
+
 	result := make([]model.PortForward, 0, len(pfs))
 	for _, pf := range pfs {
 		if pf.Host == "" {
