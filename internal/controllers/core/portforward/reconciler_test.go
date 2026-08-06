@@ -52,7 +52,7 @@ func TestCreatePortForward(t *testing.T) {
 }
 
 func TestCreatePortForwardDisabled(t *testing.T) {
-	f := newPFRFixtureWithFlag(t, true)
+	f := newPFRFixtureWithFlag(t, false)
 
 	pf := f.makeSimplePF(pfFooName, 8000, 8080)
 	f.Create(pf)
@@ -360,13 +360,13 @@ type pfrFixture struct {
 }
 
 func newPFRFixture(t *testing.T) *pfrFixture {
-	return newPFRFixtureWithFlag(t, false)
+	return newPFRFixtureWithFlag(t, true)
 }
 
-func newPFRFixtureWithFlag(t *testing.T, disablePortForwards k8s.DisablePortForwardsFlag) *pfrFixture {
+func newPFRFixtureWithFlag(t *testing.T, portForwards k8s.PortForwardsFlag) *pfrFixture {
 	cfb := fake.NewControllerFixtureBuilder(t)
 	clients := cluster.NewFakeClientProvider(t, cfb.Client)
-	r := NewReconciler(cfb.Client, cfb.Scheme(), cfb.Store, clients, disablePortForwards)
+	r := NewReconciler(cfb.Client, cfb.Scheme(), cfb.Store, clients, portForwards)
 
 	return &pfrFixture{
 		ControllerFixture: cfb.WithRequeuer(r.requeuer).Build(r),

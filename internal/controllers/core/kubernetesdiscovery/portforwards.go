@@ -82,6 +82,11 @@ func (r *Reconciler) toDesiredPortForward(kd *v1alpha1.KubernetesDiscovery) (*v1
 		return nil, nil
 	}
 
+	// If port-forwards are disabled, don't create any PortForward objects.
+	if !r.portForwards {
+		return nil, nil
+	}
+
 	pfTemplate := kd.Spec.PortForwardTemplateSpec
 	if pfTemplate == nil {
 		return nil, nil

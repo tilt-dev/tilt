@@ -59,6 +59,42 @@ func TestPortForwardCreateAndUpdate(t *testing.T) {
 	assert.Equal(t, 4001, int(pf.Spec.Forwards[0].LocalPort))
 }
 
+func TestPortForwardDisabled(t *testing.T) {
+	f := newFixtureWithPortForwards(t, false)
+
+	pod := f.buildPod("pod-ns", "pod", nil, nil)
+	key := types.NamespacedName{Name: "kd"}
+	kd := &v1alpha1.KubernetesDiscovery{
+		ObjectMeta: metav1.ObjectMeta{Name: "kd"},
+		Spec: v1alpha1.KubernetesDiscoverySpec{
+			Watches: []v1alpha1.KubernetesWatchRef{
+				{
+					UID:       string(pod.UID),
+					Namespace: pod.Namespace,
+					Name:      pod.Name,
+				},
+			},
+			PortForwardTemplateSpec: &v1alpha1.PortForwardTemplateSpec{
+				Forwards: []v1alpha1.Forward{
+					v1alpha1.Forward{LocalPort: 4000, ContainerPort: 4000},
+				},
+			},
+		},
+	}
+
+	f.Create(kd)
+	f.injectK8sObjects(*kd, pod)
+
+	f.requireObservedPods(key, ancestorMap{pod.UID: pod.UID}, nil)
+
+	f.MustReconcile(key)
+
+	// Even though the KD has a port-forward template and a running pod, no
+	// PortForward object should be created when port-forwards are disabled.
+	var pf v1alpha1.PortForward
+	assert.False(t, f.Get(types.NamespacedName{Name: "kd-pod"}, &pf))
+}
+
 func TestPortForwardIdempotent(t *testing.T) {
 	f := newFixture(t)
 

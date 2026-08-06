@@ -9,16 +9,10 @@ package cli
 import (
 	"context"
 	"fmt"
-	"time"
-
 	"github.com/google/wire"
 	"github.com/jonboulle/clockwork"
 	"github.com/mattn/go-colorable"
 	"github.com/spf13/afero"
-	"go.opentelemetry.io/otel/sdk/trace"
-	version2 "k8s.io/apimachinery/pkg/version"
-	client2 "sigs.k8s.io/controller-runtime/pkg/client"
-
 	"github.com/tilt-dev/clusterid"
 	"github.com/tilt-dev/tilt/internal/analytics"
 	"github.com/tilt-dev/tilt/internal/build"
@@ -90,7 +84,13 @@ import (
 	"github.com/tilt-dev/tilt/pkg/logger"
 	"github.com/tilt-dev/tilt/pkg/model"
 	"github.com/tilt-dev/wmclient/pkg/dirs"
+	"go.opentelemetry.io/otel/sdk/trace"
+	version2 "k8s.io/apimachinery/pkg/version"
+	client2 "sigs.k8s.io/controller-runtime/pkg/client"
+	"time"
+)
 
+import (
 	_ "embed"
 )
 
@@ -210,7 +210,7 @@ func wireDockerPrune(ctx context.Context, analytics2 *analytics.TiltAnalytics, s
 	return cliDpDeps, nil
 }
 
-func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags analytics2.CmdTags, subcommand model.TiltSubcommand, disablePortForwards k8s.DisablePortForwardsFlag) (CmdUpDeps, error) {
+func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags analytics2.CmdTags, subcommand model.TiltSubcommand) (CmdUpDeps, error) {
 	reducer := _wireReducerValue
 	storeLogActionsFlag := provideLogActions()
 	storeStore := store.NewStore(reducer, storeLogActionsFlag)
@@ -299,13 +299,14 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	podlogstreamController := podlogstream.NewController(ctx, deferredClient, scheme, storeStore, k8sClient, podSource, clock)
 	connectionManager := cluster.NewConnectionManager()
 	containerRestartDetector := kubernetesdiscovery.NewContainerRestartDetector()
-	reconciler := kubernetesdiscovery.NewReconciler(deferredClient, scheme, connectionManager, containerRestartDetector, storeStore)
+	k8sPortForwardsFlag := ProvidePortForwardsFlag()
+	reconciler := kubernetesdiscovery.NewReconciler(deferredClient, scheme, connectionManager, containerRestartDetector, storeStore, k8sPortForwardsFlag)
 	processExecer := localexec.NewProcessExecer(env)
 	kubernetesapplyReconciler := kubernetesapply.NewReconciler(deferredClient, k8sClient, scheme, storeStore, processExecer)
 	uisessionReconciler := uisession.NewReconciler(deferredClient, websocketList)
 	uiresourceReconciler := uiresource.NewReconciler(deferredClient, websocketList, storeStore)
 	uibuttonReconciler := uibutton.NewReconciler(deferredClient, websocketList, storeStore)
-	portforwardReconciler := portforward.NewReconciler(deferredClient, scheme, storeStore, connectionManager, disablePortForwards)
+	portforwardReconciler := portforward.NewReconciler(deferredClient, scheme, storeStore, connectionManager, k8sPortForwardsFlag)
 	plugin := k8scontext.NewPlugin(kubeContext, namespace, product)
 	versionPlugin := version.NewPlugin(tiltBuild)
 	configPlugin := config.NewPlugin(subcommand)
@@ -331,7 +332,7 @@ func wireCmdUp(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags
 	}
 	compositeClient := docker.ProvideSwitchCli(clusterClient, localClient)
 	engineMode := _wireEngineModeValue
-	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, compositeClient, deferredClient, scheme, engineMode, k8sKubeContextOverride, k8sNamespaceOverride, ciTimeoutFlag, disablePortForwards)
+	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, compositeClient, deferredClient, scheme, engineMode, k8sKubeContextOverride, k8sNamespaceOverride, ciTimeoutFlag)
 	togglebuttonReconciler := togglebutton.NewReconciler(deferredClient, scheme)
 	dockerUpdater := containerupdate.NewDockerUpdater(compositeClient)
 	execUpdater := containerupdate.NewExecUpdater(k8sClient)
@@ -525,14 +526,14 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	podlogstreamController := podlogstream.NewController(ctx, deferredClient, scheme, storeStore, k8sClient, podSource, clock)
 	connectionManager := cluster.NewConnectionManager()
 	containerRestartDetector := kubernetesdiscovery.NewContainerRestartDetector()
-	reconciler := kubernetesdiscovery.NewReconciler(deferredClient, scheme, connectionManager, containerRestartDetector, storeStore)
+	k8sPortForwardsFlag := ProvidePortForwardsFlag()
+	reconciler := kubernetesdiscovery.NewReconciler(deferredClient, scheme, connectionManager, containerRestartDetector, storeStore, k8sPortForwardsFlag)
 	processExecer := localexec.NewProcessExecer(env)
 	kubernetesapplyReconciler := kubernetesapply.NewReconciler(deferredClient, k8sClient, scheme, storeStore, processExecer)
 	uisessionReconciler := uisession.NewReconciler(deferredClient, websocketList)
 	uiresourceReconciler := uiresource.NewReconciler(deferredClient, websocketList, storeStore)
 	uibuttonReconciler := uibutton.NewReconciler(deferredClient, websocketList, storeStore)
-	disablePortForwardsFlag := _wireDisablePortForwardsFlagValue
-	portforwardReconciler := portforward.NewReconciler(deferredClient, scheme, storeStore, connectionManager, disablePortForwardsFlag)
+	portforwardReconciler := portforward.NewReconciler(deferredClient, scheme, storeStore, connectionManager, k8sPortForwardsFlag)
 	plugin := k8scontext.NewPlugin(kubeContext, namespace, product)
 	versionPlugin := version.NewPlugin(tiltBuild)
 	configPlugin := config.NewPlugin(subcommand)
@@ -558,7 +559,7 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 	}
 	compositeClient := docker.ProvideSwitchCli(clusterClient, localClient)
 	engineMode := _wireStoreEngineModeValue
-	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, compositeClient, deferredClient, scheme, engineMode, k8sKubeContextOverride, k8sNamespaceOverride, ciTimeoutFlag, disablePortForwardsFlag)
+	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, compositeClient, deferredClient, scheme, engineMode, k8sKubeContextOverride, k8sNamespaceOverride, ciTimeoutFlag)
 	togglebuttonReconciler := togglebutton.NewReconciler(deferredClient, scheme)
 	dockerUpdater := containerupdate.NewDockerUpdater(compositeClient)
 	execUpdater := containerupdate.NewExecUpdater(k8sClient)
@@ -655,9 +656,8 @@ func wireCmdCI(ctx context.Context, analytics3 *analytics.TiltAnalytics, subcomm
 }
 
 var (
-	_wireDisablePortForwardsFlagValue = k8s.DisablePortForwardsFlag(false)
-	_wireStoreEngineModeValue         = store.EngineModeCI
-	_wireCmdTagsValue                 = analytics2.CmdTags(map[string]string{})
+	_wireStoreEngineModeValue = store.EngineModeCI
+	_wireCmdTagsValue         = analytics2.CmdTags(map[string]string{})
 )
 
 func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdTags analytics2.CmdTags, subcommand model.TiltSubcommand, objects []client2.Object) (CmdUpdogDeps, error) {
@@ -749,14 +749,14 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	podlogstreamController := podlogstream.NewController(ctx, deferredClient, scheme, storeStore, k8sClient, podSource, clock)
 	connectionManager := cluster.NewConnectionManager()
 	containerRestartDetector := kubernetesdiscovery.NewContainerRestartDetector()
-	reconciler := kubernetesdiscovery.NewReconciler(deferredClient, scheme, connectionManager, containerRestartDetector, storeStore)
+	k8sPortForwardsFlag := ProvidePortForwardsFlag()
+	reconciler := kubernetesdiscovery.NewReconciler(deferredClient, scheme, connectionManager, containerRestartDetector, storeStore, k8sPortForwardsFlag)
 	processExecer := localexec.NewProcessExecer(env)
 	kubernetesapplyReconciler := kubernetesapply.NewReconciler(deferredClient, k8sClient, scheme, storeStore, processExecer)
 	uisessionReconciler := uisession.NewReconciler(deferredClient, websocketList)
 	uiresourceReconciler := uiresource.NewReconciler(deferredClient, websocketList, storeStore)
 	uibuttonReconciler := uibutton.NewReconciler(deferredClient, websocketList, storeStore)
-	disablePortForwardsFlag := _wireK8sDisablePortForwardsFlagValue
-	portforwardReconciler := portforward.NewReconciler(deferredClient, scheme, storeStore, connectionManager, disablePortForwardsFlag)
+	portforwardReconciler := portforward.NewReconciler(deferredClient, scheme, storeStore, connectionManager, k8sPortForwardsFlag)
 	plugin := k8scontext.NewPlugin(kubeContext, namespace, product)
 	versionPlugin := version.NewPlugin(tiltBuild)
 	configPlugin := config.NewPlugin(subcommand)
@@ -782,7 +782,7 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 	}
 	compositeClient := docker.ProvideSwitchCli(clusterClient, localClient)
 	engineMode := _wireEngineModeValue2
-	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, compositeClient, deferredClient, scheme, engineMode, k8sKubeContextOverride, k8sNamespaceOverride, ciTimeoutFlag, disablePortForwardsFlag)
+	tiltfileReconciler := tiltfile2.NewReconciler(storeStore, tiltfileLoader, compositeClient, deferredClient, scheme, engineMode, k8sKubeContextOverride, k8sNamespaceOverride, ciTimeoutFlag)
 	togglebuttonReconciler := togglebutton.NewReconciler(deferredClient, scheme)
 	dockerUpdater := containerupdate.NewDockerUpdater(compositeClient)
 	execUpdater := containerupdate.NewExecUpdater(k8sClient)
@@ -849,8 +849,7 @@ func wireCmdUpdog(ctx context.Context, analytics3 *analytics.TiltAnalytics, cmdT
 }
 
 var (
-	_wireK8sDisablePortForwardsFlagValue = k8s.DisablePortForwardsFlag(false)
-	_wireEngineModeValue2                = store.EngineModeCI
+	_wireEngineModeValue2 = store.EngineModeCI
 )
 
 func wireKubeContext(ctx context.Context) (k8s.KubeContext, error) {
@@ -1156,7 +1155,8 @@ func wireLsp(ctx context.Context, l logger.Logger, subcommand model.TiltSubcomma
 // wire.go:
 
 var K8sWireSet = wire.NewSet(k8s.ProvideClusterProduct, k8s.ProvideClusterName, k8s.ProvideKubeContext, k8s.ProvideAPIConfig, k8s.ProvideClientConfig, k8s.ProvideClientset, k8s.ProvideRESTConfig, k8s.ProvidePortForwardClient, k8s.ProvideConfigNamespace, k8s.ProvideServerVersion, k8s.ProvideK8sClient, k8s.ProvideDefaultLocalKubeconfigPath, ProvideKubeContextOverride,
-	ProvideNamespaceOverride)
+	ProvideNamespaceOverride,
+	ProvidePortForwardsFlag)
 
 var BaseWireSet = wire.NewSet(
 	K8sWireSet, tiltfile.WireSet, git.ProvideGitRemote, localexec.DefaultEnv, localexec.NewProcessExecer, wire.Bind(new(localexec.Execer), new(*localexec.ProcessExecer)), docker.SwitchWireSet, dockercompose.NewDockerComposeClient, clockwork.NewRealClock, engine.DeployerWireSet, engine.NewBuildController, local.NewServerController, kubernetesdiscovery.NewContainerRestartDetector, k8swatch.NewServiceWatcher, k8swatch.NewEventWatchManager, uisession2.NewSubscriber, uiresource2.NewSubscriber, configs.NewConfigsController, configs.NewTriggerQueueSubscriber, telemetry.NewController, cloud.WireSet, cloudurl.ProvideAddress, k8srollout.NewPodMonitor, telemetry.NewStartTracker, session2.NewController, build.ProvideClock, provideClock, model.ProvideStartTime, provideLogSource,
