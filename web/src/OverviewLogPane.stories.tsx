@@ -83,7 +83,11 @@ export const ManyLines = (args: any) => {
   appendLines(logStore, "fe", lines)
   return (
     <LogStoreProvider value={logStore}>
-      <OverviewLogPane manifestName="fe" filterSet={defaultFilter} />
+      <OverviewLogPane
+        manifestName="fe"
+        filterSet={defaultFilter}
+        innerRef={args.innerRef}
+      />
     </LogStoreProvider>
   )
 }

@@ -1,7 +1,6 @@
 import { render, RenderOptions, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import React, { ChangeEvent, useState } from "react"
-import { act } from "react-dom/test-utils"
+import React, { act, ChangeEvent, useState } from "react"
 import { MemoryRouter } from "react-router"
 import { useLocation, useNavigate } from "react-router-dom"
 import { ResourceNavProvider, useResourceNav } from "./ResourceNav"

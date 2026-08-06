@@ -367,6 +367,12 @@ export function ResourceNotification(props: {
   const [notification, setNotification] = useState<Notification | undefined>()
 
   useEffect(() => {
+    // The Notification API isn't available in every context (older browsers,
+    // insecure origins, and the jsdom test environment), so feature-detect
+    // before touching it.
+    if (typeof Notification === "undefined") {
+      return
+    }
     try {
       Notification.requestPermission().then((result) =>
         setAllowed(result === "granted")

@@ -566,30 +566,31 @@ export function ResourceTableHeadRow({
 
   return (
     <ResourceTableRow>
-      {headerGroup.headers.map((column) => (
-        <ResourceTableHeader
-          {...column.getHeaderProps([
-            calculateHeaderProps(column),
-            column.getSortByToggleProps(calculateToggleProps(column)),
-          ])}
-        >
-          <ResourceTableHeaderLabel>
-            {column.render("Header")}
-            <ResourceTableHeaderTip id={String(column.id)} />
-            {column.canSort && (
-              <ResourceTableHeaderSortTriangle
-                className={
-                  column.isSorted
-                    ? column.isSortedDesc
-                      ? "is-sorted-desc"
-                      : "is-sorted-asc"
-                    : ""
-                }
-              />
-            )}
-          </ResourceTableHeaderLabel>
-        </ResourceTableHeader>
-      ))}
+      {headerGroup.headers.map((column) => {
+        const { key, ...headerProps } = column.getHeaderProps([
+          calculateHeaderProps(column),
+          column.getSortByToggleProps(calculateToggleProps(column)),
+        ])
+        return (
+          <ResourceTableHeader key={key} {...headerProps}>
+            <ResourceTableHeaderLabel>
+              {column.render("Header")}
+              <ResourceTableHeaderTip id={String(column.id)} />
+              {column.canSort && (
+                <ResourceTableHeaderSortTriangle
+                  className={
+                    column.isSorted
+                      ? column.isSortedDesc
+                        ? "is-sorted-desc"
+                        : "is-sorted-asc"
+                      : ""
+                  }
+                />
+              )}
+            </ResourceTableHeaderLabel>
+          </ResourceTableHeader>
+        )
+      })}
     </ResourceTableRow>
   )
 }
@@ -639,22 +640,23 @@ function TableRow(props: { row: Row<RowValues>; focused: string }) {
     }
   }, [isFocused, ref])
 
+  const { key: rowKey, ...rowProps } = row.getRowProps({
+    className: rowClasses,
+  })
   return (
-    <ResourceTableRow
-      tabIndex={-1}
-      ref={ref}
-      {...row.getRowProps({
-        className: rowClasses,
+    <ResourceTableRow tabIndex={-1} ref={ref} key={rowKey} {...rowProps}>
+      {row.cells.map((cell) => {
+        const { key: cellKey, ...cellProps } = cell.getCellProps()
+        return (
+          <ResourceTableData
+            key={cellKey}
+            {...cellProps}
+            className={cell.column.isSorted ? "isSorted" : ""}
+          >
+            {cell.render("Cell")}
+          </ResourceTableData>
+        )
       })}
-    >
-      {row.cells.map((cell) => (
-        <ResourceTableData
-          {...cell.getCellProps()}
-          className={cell.column.isSorted ? "isSorted" : ""}
-        >
-          {cell.render("Cell")}
-        </ResourceTableData>
-      ))}
     </ResourceTableRow>
   )
 }
@@ -691,13 +693,17 @@ export function Table(props: TableProps) {
   return (
     <ResourceTable {...getTableProps()}>
       <ResourceTableHead>
-        {headerGroups.map((headerGroup: HeaderGroup<RowValues>) => (
-          <ResourceTableHeadRow
-            {...headerGroup.getHeaderGroupProps()}
-            headerGroup={headerGroup}
-            setGlobalSortBy={props.setGlobalSortBy}
-          />
-        ))}
+        {headerGroups.map((headerGroup: HeaderGroup<RowValues>) => {
+          const { key, ...headerGroupProps } = headerGroup.getHeaderGroupProps()
+          return (
+            <ResourceTableHeadRow
+              key={key}
+              {...headerGroupProps}
+              headerGroup={headerGroup}
+              setGlobalSortBy={props.setGlobalSortBy}
+            />
+          )
+        })}
       </ResourceTableHead>
       <tbody {...getTableBodyProps()}>
         {page.map((row: Row<RowValues>) => {
