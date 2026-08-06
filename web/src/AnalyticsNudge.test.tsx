@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react"
+import { act, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import fetchMock, { MockResponseObject } from "fetch-mock"
 import React from "react"
@@ -97,7 +97,9 @@ describe("AnalyticsNudge", () => {
       expect(screen.getByTestId("option-success")).toBeInTheDocument()
     })
 
-    jest.advanceTimersByTime(NUDGE_TIMEOUT_MS)
+    act(() => {
+      jest.advanceTimersByTime(NUDGE_TIMEOUT_MS)
+    })
 
     expect(screen.queryByLabelText("Tilt analytics options")).toBeNull()
   })

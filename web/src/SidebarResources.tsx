@@ -507,7 +507,8 @@ export class SidebarResources extends React.Component<SidebarProps> {
         ? "isOverview"
         : ""
 
-    const labelsEnabled: boolean = this.context.isEnabled(Flag.Labels)
+    const features = this.context as React.ContextType<typeof FeaturesContext>
+    const labelsEnabled: boolean = features.isEnabled(Flag.Labels)
     const resourcesHaveLabels = this.props.items.some(
       (item) => item.labels.length > 0
     )
