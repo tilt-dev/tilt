@@ -1,6 +1,7 @@
 package logstore
 
 import (
+	"bytes"
 	"fmt"
 	"sort"
 	"strings"
@@ -79,7 +80,13 @@ func (l LogSegment) String() string {
 }
 
 func segmentsFromBytes(spanID SpanID, time time.Time, level logger.Level, fields logger.Fields, bs []byte) []LogSegment {
-	segments := []LogSegment{}
+	// One segment per newline, plus one more for a trailing partial line.
+	// Sizing up front keeps a multi-line write to a single allocation.
+	segmentCount := bytes.Count(bs, []byte{newlineByte})
+	if len(bs) == 0 || bs[len(bs)-1] != newlineByte {
+		segmentCount++
+	}
+	segments := make([]LogSegment, 0, segmentCount)
 	lastBreak := 0
 	for i, b := range bs {
 		if b == newlineByte {
@@ -106,7 +113,12 @@ func segmentsFromBytes(spanID SpanID, time time.Time, level logger.Level, fields
 }
 
 func linesToString(lines []LogLine) string {
+	total := 0
+	for _, line := range lines {
+		total += len(line.Text)
+	}
 	sb := strings.Builder{}
+	sb.Grow(total)
 	for _, line := range lines {
 		sb.WriteString(line.Text)
 	}
@@ -348,7 +360,7 @@ func (s *LogStore) tailHelper(n int, spans map[SpanID]*Span, showManifestPrefix 
 		startedSpans[spanID] = true
 	}
 
-	tempStore := &LogStore{spans: s.cloneSpanMap(), segments: newSegments}
+	tempStore := &LogStore{spans: s.cloneSpanMapForSegments(newSegments), segments: newSegments}
 	tempStore.recomputeDerivedValues()
 	return tempStore.toLogString(logOptions{
 		spans:              tempStore.spans,
@@ -356,10 +368,21 @@ func (s *LogStore) tailHelper(n int, spans map[SpanID]*Span, showManifestPrefix 
 	})
 }
 
-func (s *LogStore) cloneSpanMap() map[SpanID]*Span {
-	newSpans := make(map[SpanID]*Span, len(s.spans))
-	for spanID, span := range s.spans {
-		newSpans[spanID] = span.Clone()
+// Clone only the spans referenced by the given segments.
+//
+// Temp stores built from a segment window only need those spans:
+// recomputeDerivedValues rebuilds every derived index from the segments and
+// deletes unreferenced spans anyway, so cloning the full map is pure waste
+// when the store holds many more spans than the window touches.
+func (s *LogStore) cloneSpanMapForSegments(segments []LogSegment) map[SpanID]*Span {
+	newSpans := make(map[SpanID]*Span)
+	for _, segment := range segments {
+		if _, ok := newSpans[segment.SpanID]; ok {
+			continue
+		}
+		if span, ok := s.spans[segment.SpanID]; ok {
+			newSpans[segment.SpanID] = span.Clone()
+		}
 	}
 	return newSpans
 }
@@ -424,12 +447,7 @@ func (s *LogStore) ContinuingString(checkpoint Checkpoint) string {
 }
 
 func (s *LogStore) ContinuingStringWithOptions(checkpoint Checkpoint, opts LineOptions) string {
-	lines := s.ContinuingLinesWithOptions(checkpoint, opts)
-	sb := strings.Builder{}
-	for _, line := range lines {
-		sb.WriteString(line.Text)
-	}
-	return sb.String()
+	return linesToString(s.ContinuingLinesWithOptions(checkpoint, opts))
 }
 
 func (s *LogStore) IsLastSegmentUncompleted() bool {
@@ -448,6 +466,12 @@ func (s *LogStore) ContinuingLinesWithOptions(checkpoint Checkpoint, opts LineOp
 	isSameSpanContinuation := false
 	isDifferentSpan := false
 	checkpointIndex := s.checkpointToIndex(checkpoint)
+	if checkpointIndex >= len(s.segments) {
+		// Nothing new since the checkpoint. Subscribers are notified for every
+		// store change, so this is the common case for non-log changes and must
+		// not pay for span cloning below.
+		return nil
+	}
 	precedingIndexToPrint := s.prevIndexMatchingManifests(checkpointIndex, opts.ManifestNames)
 	nextIndexToPrint := s.nextIndexMatchingManifests(checkpointIndex, opts.ManifestNames)
 	var precedingSegment = LogSegment{}
@@ -470,12 +494,9 @@ func (s *LogStore) ContinuingLinesWithOptions(checkpoint Checkpoint, opts LineOp
 		}
 	}
 
-	// --> if checkpointIndex == len(s.segments)
-	// nothing new to print, return!
-
 	tempSegments := s.segments[checkpointIndex:]
 	tempLogStore := &LogStore{
-		spans:    s.cloneSpanMap(),
+		spans:    s.cloneSpanMapForSegments(tempSegments),
 		segments: tempSegments,
 	}
 	tempLogStore.recomputeDerivedValues()
@@ -508,13 +529,6 @@ func (s *LogStore) ContinuingLinesWithOptions(checkpoint Checkpoint, opts LineOp
 }
 
 func (s *LogStore) ToLogList(fromCheckpoint Checkpoint) (*webview.LogList, error) {
-	spans := make(map[string]*webview.LogSpan, len(s.spans))
-	for spanID, span := range s.spans {
-		spans[string(spanID)] = &webview.LogSpan{
-			ManifestName: span.ManifestName.String(),
-		}
-	}
-
 	startIndex := s.checkpointToIndex(fromCheckpoint)
 	if startIndex >= len(s.segments) {
 		// No logs to send down.
@@ -524,9 +538,22 @@ func (s *LogStore) ToLogList(fromCheckpoint Checkpoint) (*webview.LogList, error
 		}, nil
 	}
 
+	// Only send the spans referenced by the segments in this update. Both the
+	// web UI and the tilt logs client resolve each segment against the spans of
+	// the update that carried it (the web UI additionally accumulates spans
+	// across updates), so re-sending every span in the store on each
+	// incremental update is pure overhead.
+	spans := make(map[string]*webview.LogSpan)
 	segments := make([]*webview.LogSegment, 0, len(s.segments)-startIndex)
 	for i := startIndex; i < len(s.segments); i++ {
 		segment := s.segments[i]
+		if _, ok := spans[string(segment.SpanID)]; !ok {
+			if span, ok := s.spans[segment.SpanID]; ok {
+				spans[string(segment.SpanID)] = &webview.LogSpan{
+					ManifestName: span.ManifestName.String(),
+				}
+			}
+		}
 		segments = append(segments, &webview.LogSegment{
 			SpanId: string(segment.SpanID),
 			Level:  webview.LogLevel(segment.Level.Name()),
@@ -667,17 +694,6 @@ func (s *LogStore) toLogString(options logOptions) string {
 
 // Returns a sequence of lines, including trailing newlines.
 func (s *LogStore) toLogLines(options logOptions) []LogLine {
-	result := []LogLine{}
-	var lineBuilder *logLineBuilder
-
-	var consumeLineBuilder = func() {
-		if lineBuilder == nil {
-			return
-		}
-		result = append(result, lineBuilder.build(options)...)
-		lineBuilder = nil
-	}
-
 	// We want to print the log line-by-line, but we don't actually store the logs
 	// line-by-line. We store them as segments.
 	//
@@ -695,6 +711,34 @@ func (s *LogStore) toLogLines(options logOptions) []LogLine {
 		return nil
 	}
 
+	// Every line-starting segment in the window yields one line, so size the
+	// result up front. (A rare "init" build event adds an extra space line,
+	// absorbed by append's growth.)
+	lineCount := 0
+	for i := startIndex; i <= lastIndex; i++ {
+		segment := s.segments[i]
+		if !segment.StartsLine() {
+			continue
+		}
+		if _, ok := options.spans[segment.SpanID]; !ok {
+			continue
+		}
+		lineCount++
+	}
+
+	result := make([]LogLine, 0, lineCount)
+
+	// One builder is reused for every line; consume flushes it into result
+	// and recycles its segment buffer.
+	lineBuilder := logLineBuilder{}
+	var consumeLineBuilder = func() {
+		if !lineBuilder.active() {
+			return
+		}
+		result = lineBuilder.appendTo(result, options)
+		lineBuilder.reset()
+	}
+
 	isFirstLine := true
 	for i := startIndex; i <= lastIndex; i++ {
 		segment := s.segments[i]
@@ -710,12 +754,12 @@ func (s *LogStore) toLogLines(options logOptions) []LogLine {
 
 		// If the last segment never completed, print a newline now, so that the
 		// logs from different sources don't blend together.
-		if lineBuilder != nil {
+		if lineBuilder.active() {
 			lineBuilder.needsTrailingNewline = true
 			consumeLineBuilder()
 		}
 
-		lineBuilder = newLogLineBuilder(span, segment, isFirstLine)
+		lineBuilder.start(span, segment, isFirstLine)
 		isFirstLine = false
 
 		// If this segment is not complete, run ahead and try to complete it.
