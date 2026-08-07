@@ -1,6 +1,5 @@
 import { render, RenderOptions, screen } from "@testing-library/react"
-import { Component } from "react"
-import { findRenderedComponentWithType } from "react-dom/test-utils"
+import { createRef } from "react"
 import { MemoryRouter } from "react-router"
 import {
   createFilterTermState,
@@ -23,7 +22,6 @@ import {
   StarredResourcesLog,
 } from "./OverviewLogPane.stories"
 import { newFakeRaf, RafProvider, SyncRafProvider, TestRafContext } from "./raf"
-import { renderTestComponent } from "./test-helpers"
 import { appendLines } from "./testlogs"
 
 function customRender(component: JSX.Element, options?: RenderOptions) {
@@ -185,32 +183,25 @@ describe("OverviewLogPane", () => {
     const initLineCount = 2 * renderWindow
 
     let fakeRaf: TestRafContext
-    let rootTree: Component<any>
     let container: HTMLDivElement
     let component: OverviewLogComponent
 
     beforeEach(() => {
       fakeRaf = newFakeRaf()
 
-      class ManyLinesWrapper extends Component {
-        render() {
-          return (
-            <MemoryRouter
-              initialEntries={["/"]}
-              future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-            >
-              <RafProvider value={fakeRaf}>
-                <ManyLines count={initLineCount} />
-              </RafProvider>
-            </MemoryRouter>
-          )
-        }
-      }
-
-      const testHelpers = renderTestComponent(<ManyLinesWrapper />)
-      rootTree = testHelpers.rootTree
-      container = testHelpers.container
-      component = findRenderedComponentWithType(rootTree, OverviewLogComponent)
+      const logRef = createRef<OverviewLogComponent>()
+      const rendered = render(
+        <MemoryRouter
+          initialEntries={["/"]}
+          future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+        >
+          <RafProvider value={fakeRaf}>
+            <ManyLines count={initLineCount} innerRef={logRef} />
+          </RafProvider>
+        </MemoryRouter>
+      )
+      container = rendered.container as HTMLDivElement
+      component = logRef.current!
     })
 
     it("engages autoscrolls on scroll down", () => {

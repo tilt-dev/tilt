@@ -43,7 +43,7 @@ describe("AnalyticsNudge", () => {
     expect(screen.queryByLabelText("Tilt analytics options")).toBeNull()
   })
 
-  it("shows request-in-progress message when a request is in progress", () => {
+  it("shows request-in-progress message when a request is in progress", async () => {
     mockAnalyticsOptInOnce(false)
 
     render(<AnalyticsNudge needsNudge={true} />)
@@ -51,6 +51,12 @@ describe("AnalyticsNudge", () => {
     userEvent.click(screen.getByRole("button", { name: /nope/i }))
 
     expect(screen.getByTestId("opt-loading"))
+
+    // Wait for the async opt request to settle so its setState calls happen
+    // inside act(...) rather than firing after the test finishes.
+    await waitFor(() => {
+      expect(screen.getByTestId("optout-success")).toBeInTheDocument()
+    })
   })
 
   it("shows success message for opt out", async () => {

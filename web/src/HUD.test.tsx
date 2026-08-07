@@ -1,12 +1,11 @@
-import React, { Component } from "react"
-import { findRenderedComponentWithType } from "react-dom/test-utils"
+import { act, render } from "@testing-library/react"
+import { createRef } from "react"
 import ReactModal from "react-modal"
 import { useNavigate, useLocation } from "react-router-dom"
 import { MemoryRouter } from "react-router"
 import HUD, { mergeAppUpdate } from "./HUD"
 import LogStore from "./LogStore"
 import { SocketBarRoot } from "./SocketBar"
-import { renderTestComponent } from "./test-helpers"
 import {
   logList,
   nButtonView,
@@ -28,29 +27,33 @@ ReactModal.setAppElement(document.body)
 
 const interfaceVersion = { isNewDefault: () => false, toggleDefault: () => {} }
 
-let InjectHUD = () => {
-  let navigate = useNavigate()
-  let location = useLocation()
-  return (
-    <HUD
-      navigate={navigate}
-      location={location}
-      interfaceVersion={interfaceVersion}
-    />
-  )
-}
-
-class RouterHUD extends Component {
-  render() {
+// Renders the HUD inside a router and hands back the underlying HUD class
+// instance (captured via ref) so tests can drive it directly. React 18 no
+// longer lets you read an instance back from render(), so we use a ref instead
+// of the old ReactDOM.render + findRenderedComponentWithType approach.
+function renderHUD() {
+  const hudRef = createRef<HUD>()
+  const InjectHUD = () => {
+    let navigate = useNavigate()
+    let location = useLocation()
     return (
-      <MemoryRouter
-        initialEntries={["/"]}
-        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-      >
-        <InjectHUD />
-      </MemoryRouter>
+      <HUD
+        ref={hudRef}
+        navigate={navigate}
+        location={location}
+        interfaceVersion={interfaceVersion}
+      />
     )
   }
+  const { container } = render(
+    <MemoryRouter
+      initialEntries={["/"]}
+      future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+    >
+      <InjectHUD />
+    </MemoryRouter>
+  )
+  return { container, hud: hudRef.current! }
 }
 
 beforeEach(() => {
@@ -58,14 +61,14 @@ beforeEach(() => {
 })
 
 it("renders reconnecting bar", async () => {
-  const { rootTree, container } = renderTestComponent(<RouterHUD />)
+  const { hud, container } = renderHUD()
   expect(container.textContent).toEqual(expect.stringContaining("Loading"))
 
-  const hud = findRenderedComponentWithType(rootTree, HUD)
-
-  hud.setState({
-    view: oneResourceView(),
-    socketState: SocketState.Reconnecting,
+  act(() => {
+    hud.setState({
+      view: oneResourceView(),
+      socketState: SocketState.Reconnecting,
+    })
   })
 
   let socketBar = Array.from(container.querySelectorAll(SocketBarRoot))
@@ -76,8 +79,7 @@ it("renders reconnecting bar", async () => {
 })
 
 it("loads logs incrementally", async () => {
-  const { rootTree } = renderTestComponent(<RouterHUD />)
-  const hud = findRenderedComponentWithType(rootTree, HUD)
+  const { hud } = renderHUD()
 
   let now = new Date().toString()
   let resourceView = oneResourceView()
@@ -92,7 +94,7 @@ it("loads logs incrementally", async () => {
     fromCheckpoint: 0,
     toCheckpoint: 2,
   }
-  hud.onAppChange({ view: resourceView })
+  act(() => hud.onAppChange({ view: resourceView }))
 
   let resourceView2 = oneResourceView()
   resourceView2.logList = {
@@ -106,7 +108,7 @@ it("loads logs incrementally", async () => {
     fromCheckpoint: 2,
     toCheckpoint: 4,
   }
-  hud.onAppChange({ view: resourceView2 })
+  act(() => hud.onAppChange({ view: resourceView2 }))
 
   let snapshot = hud.snapshotFromState(hud.state)
   expect(snapshot.view?.logList).toEqual({
@@ -123,8 +125,7 @@ it("loads logs incrementally", async () => {
 })
 
 it("renders logs to snapshot", async () => {
-  const { rootTree } = renderTestComponent(<RouterHUD />)
-  const hud = findRenderedComponentWithType(rootTree, HUD)
+  const { hud } = renderHUD()
 
   let now = new Date().toString()
   let resourceView = oneResourceView()
@@ -139,7 +140,7 @@ it("renders logs to snapshot", async () => {
     fromCheckpoint: 0,
     toCheckpoint: 2,
   }
-  hud.onAppChange({ view: resourceView })
+  act(() => hud.onAppChange({ view: resourceView }))
 
   let snapshot = hud.snapshotFromState(hud.state)
   expect(snapshot.view?.logList).toEqual({

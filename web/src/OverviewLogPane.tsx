@@ -662,6 +662,10 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
 type OverviewLogPaneProps = {
   manifestName: string
   filterSet: FilterSet
+  // Test-only: capture the underlying class component instance. React 18
+  // dropped the ability to read an instance back from a render() call, so
+  // tests that need to poke at OverviewLogComponent directly pass a ref here.
+  innerRef?: React.Ref<OverviewLogComponent>
 }
 
 export default function OverviewLogPane(props: OverviewLogPaneProps) {
@@ -674,6 +678,7 @@ export default function OverviewLogPane(props: OverviewLogPaneProps) {
 
   return (
     <OverviewLogComponent
+      ref={props.innerRef}
       manifestName={props.manifestName}
       pathBuilder={pathBuilder}
       logStore={logStore}
