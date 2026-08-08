@@ -95,6 +95,15 @@ export class LogDisplay {
     return true
   }
 
+  matchesContainerFilter(line: LogLine): boolean {
+    const { containers } = this.filterSet
+    // Empty selection = show all. Lines without a container field always pass through.
+    if (containers.length === 0 || !line.containerName) {
+      return true
+    }
+    return containers.includes(line.containerName)
+  }
+
   matchesFilter(line: LogLine): boolean {
     if (line.buildEvent) {
       return true
@@ -108,7 +117,11 @@ export class LogDisplay {
       return false
     }
 
-    return this.matchesLevelFilter(line) && this.matchesTermFilter(line)
+    return (
+      this.matchesLevelFilter(line) &&
+      this.matchesTermFilter(line) &&
+      this.matchesContainerFilter(line)
+    )
   }
 
   trackPrologueLine(line: LogLine) {
