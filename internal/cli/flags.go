@@ -24,6 +24,7 @@ var (
 	webPortFlag          = 0
 	snapshotViewPortFlag = 0
 	namespaceOverride    = ""
+	portForwardsFlag     = true
 )
 
 func readEnvDefaults() error {
@@ -64,6 +65,7 @@ func addConnectServerFlags(cmd *cobra.Command) {
 func addStartServerFlags(cmd *cobra.Command) {
 	cmd.Flags().IntVar(&webPortFlag, "port", defaultWebPort, "Port for the Tilt HTTP server. Set to 0 to disable. Overrides TILT_PORT env variable.")
 	cmd.Flags().StringVar(&webHostFlag, "host", defaultWebHost, "Host for the Tilt HTTP server and default host for any port-forwards. Defaults to localhost; only change this if you need remote access and understand the security implications. Overrides TILT_HOST env variable.")
+	cmd.Flags().BoolVar(&portForwardsFlag, "port-forwards", true, "Enable Kubernetes port-forwards to the local machine. Use --port-forwards=false to disable all port-forwards.")
 }
 
 // For commands that start a random snapshot view web server.
@@ -136,4 +138,8 @@ func ProvideKubeContextOverride() k8s.KubeContextOverride {
 
 func ProvideNamespaceOverride() k8s.NamespaceOverride {
 	return k8s.NamespaceOverride(namespaceOverride)
+}
+
+func ProvidePortForwardsFlag() k8s.PortForwardsFlag {
+	return k8s.PortForwardsFlag(portForwardsFlag)
 }

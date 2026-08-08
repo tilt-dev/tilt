@@ -717,10 +717,14 @@ type fixture struct {
 }
 
 func newFixture(t *testing.T) *fixture {
+	return newFixtureWithPortForwards(t, true)
+}
+
+func newFixtureWithPortForwards(t *testing.T, portForwards k8s.PortForwardsFlag) *fixture {
 	rd := NewContainerRestartDetector()
 	cfb := fake.NewControllerFixtureBuilder(t)
 	clients := cluster.NewFakeClientProvider(t, cfb.Client)
-	pw := NewReconciler(cfb.Client, cfb.Scheme(), clients, rd, cfb.Store)
+	pw := NewReconciler(cfb.Client, cfb.Scheme(), clients, rd, cfb.Store, portForwards)
 
 	ret := &fixture{
 		ControllerFixture: cfb.WithRequeuer(pw.requeuer).Build(pw),

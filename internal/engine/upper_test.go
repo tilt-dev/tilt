@@ -3287,7 +3287,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 		&server.HeadsUpServer{}, assets.NewFakeServer(), model.WebURL{})
 	ns := k8s.Namespace("default")
 	rd := kubernetesdiscovery.NewContainerRestartDetector()
-	kdc := kubernetesdiscovery.NewReconciler(cdc, sch, clusterClients, rd, st)
+	kdc := kubernetesdiscovery.NewReconciler(cdc, sch, clusterClients, rd, st, true)
 	sw := k8swatch.NewServiceWatcher(clusterClients, ns)
 	ewm := k8swatch.NewEventWatchManager(clusterClients, ns)
 	tcum := cloud.NewStatusManager(httptest.NewFakeClientEmptyJSON(), clock)
@@ -3323,7 +3323,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	dcds := dockercomposeservice.NewDisableSubscriber(ctx, fakeDcc, clock)
 	dcr := dockercomposeservice.NewReconciler(cdc, fakeDcc, dockerClient, st, sch, dcds, model.ProvideStartTime())
 
-	tfr := ctrltiltfile.NewReconciler(st, tfl, dockerClient, cdc, sch, engineMode, "", "", 0, false)
+	tfr := ctrltiltfile.NewReconciler(st, tfl, dockerClient, cdc, sch, engineMode, "", "", 0)
 	tbr := togglebutton.NewReconciler(cdc, sch)
 	extr := extension.NewReconciler(cdc, sch, ta)
 	extrr, err := extensionrepo.NewReconciler(cdc, st, base)

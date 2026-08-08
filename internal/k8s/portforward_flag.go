@@ -1,4 +1,4 @@
 package k8s
 
-// DisablePortForwardsFlag controls whether Tilt starts Kubernetes port-forwards.
-type DisablePortForwardsFlag bool
+// PortForwardsFlag controls whether Tilt starts Kubernetes port-forwards.
+type PortForwardsFlag bool

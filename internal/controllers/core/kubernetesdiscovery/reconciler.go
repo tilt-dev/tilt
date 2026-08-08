@@ -52,11 +52,12 @@ func (w watcherID) String() string {
 }
 
 type Reconciler struct {
-	clients    *cluster.ClientManager
-	st         store.Dispatcher
-	indexer    *indexer.Indexer
-	ctrlClient ctrlclient.Client
-	requeuer   *indexer.Requeuer
+	clients      *cluster.ClientManager
+	st           store.Dispatcher
+	indexer      *indexer.Indexer
+	ctrlClient   ctrlclient.Client
+	requeuer     *indexer.Requeuer
+	portForwards k8s.PortForwardsFlag
 
 	// restartDetector compares a previous version of status with the latest and emits log events
 	// for any containers on the pod that restarted.
@@ -115,13 +116,14 @@ func (w *Reconciler) CreateBuilder(mgr ctrl.Manager) (*builder.Builder, error) {
 }
 
 func NewReconciler(ctrlClient ctrlclient.Client, scheme *runtime.Scheme, clients cluster.ClientProvider, restartDetector *ContainerRestartDetector,
-	st store.RStore) *Reconciler {
+	st store.RStore, portForwards k8s.PortForwardsFlag) *Reconciler {
 	return &Reconciler{
 		ctrlClient:             ctrlClient,
 		clients:                cluster.NewClientManager(clients),
 		restartDetector:        restartDetector,
 		requeuer:               indexer.NewRequeuer(),
 		st:                     st,
+		portForwards:           portForwards,
 		indexer:                indexer.NewIndexer(scheme, indexKubernetesDiscovery),
 		watchedNamespaces:      make(map[nsKey]nsWatch),
 		uidWatchers:            make(map[uidKey]watcherSet),
