@@ -116,3 +116,15 @@ RUN --mount=type=cache,id=pip,target=/root/.cache/pip pip install python-dateuti
 		assert.Equal(t, "docker.io/library/python2-base", images[0].String())
 	}
 }
+
+func TestFindImagesWithCheckDirective(t *testing.T) {
+	df := Dockerfile(`
+# check=skip=SecretsUsedInArgOrEnv
+FROM alpine:3
+`)
+	images, err := df.FindImages(nil)
+	assert.NoError(t, err)
+	if assert.Len(t, images, 1) {
+		assert.Equal(t, "docker.io/library/alpine:3", images[0].String())
+	}
+}

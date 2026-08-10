@@ -10,6 +10,7 @@ import (
 	"github.com/docker/cli/opts"
 	"github.com/moby/buildkit/frontend/dockerfile/command"
 	"github.com/moby/buildkit/frontend/dockerfile/instructions"
+	"github.com/moby/buildkit/frontend/dockerfile/linter"
 	"github.com/moby/buildkit/frontend/dockerfile/parser"
 	"github.com/moby/buildkit/frontend/dockerfile/shell"
 	"github.com/pkg/errors"
@@ -40,12 +41,12 @@ func ParseAST(df Dockerfile) (AST, error) {
 	}, nil
 }
 
-func (a AST) extractBaseNameInFromCommand(node *parser.Node, shlex *shell.Lex, metaArgs []instructions.ArgCommand) string {
+func (a AST) extractBaseNameInFromCommand(node *parser.Node, shlex *shell.Lex, metaArgs []instructions.ArgCommand, lint *linter.Linter) string {
 	if node.Next == nil {
 		return ""
 	}
 
-	inst, err := instructions.ParseInstruction(node)
+	inst, err := instructions.ParseInstructionWithLinter(node, lint)
 	if err != nil {
 		return node.Next.Value // if there's a parsing error, fallback to the first arg
 	}
@@ -72,11 +73,12 @@ func (a AST) extractBaseNameInFromCommand(node *parser.Node, shlex *shell.Lex, m
 func (a AST) traverseImageRefs(visitor func(node *parser.Node, ref reference.Named) reference.Named, dockerfileArgs []instructions.ArgCommand) error {
 	metaArgs := append([]instructions.ArgCommand(nil), dockerfileArgs...)
 	shlex := shell.NewLex(a.result.EscapeToken)
+	lint := linter.New(&linter.Config{})
 
 	return a.Traverse(func(node *parser.Node) error {
 		switch strings.ToLower(node.Value) {
 		case command.Arg:
-			inst, err := instructions.ParseInstruction(node)
+			inst, err := instructions.ParseInstructionWithLinter(node, lint)
 			if err != nil {
 				return nil // ignore parsing error
 			}
@@ -90,7 +92,7 @@ func (a AST) traverseImageRefs(visitor func(node *parser.Node, ref reference.Nam
 			metaArgs = append([]instructions.ArgCommand{*argCmd}, metaArgs...)
 
 		case command.From:
-			baseName := a.extractBaseNameInFromCommand(node, shlex, metaArgs)
+			baseName := a.extractBaseNameInFromCommand(node, shlex, metaArgs, lint)
 			if baseName == "" {
 				return nil // ignore parsing error
 			}
@@ -109,7 +111,7 @@ func (a AST) traverseImageRefs(visitor func(node *parser.Node, ref reference.Nam
 				return nil
 			}
 
-			inst, err := instructions.ParseInstruction(node)
+			inst, err := instructions.ParseInstructionWithLinter(node, lint)
 			if err != nil {
 				return nil // ignore parsing error
 			}
