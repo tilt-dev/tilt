@@ -1535,6 +1535,71 @@ func TestInitialSync_UsesSourceFileWatchIgnores(t *testing.T) {
 	assert.NotContains(t, names, "app/build/output.bin")
 }
 
+func TestInitialSync_SyncsStopPathsButLaterChangesStillStop(t *testing.T) {
+	f := newFixture(t)
+
+	tmpDir := t.TempDir()
+	srcDir := filepath.Join(tmpDir, "src")
+	privateDir := filepath.Join(srcDir, "private")
+	require.NoError(t, os.MkdirAll(privateDir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "app.go"), []byte("package main"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, ".env"), []byte("SECRET=value"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(privateDir, "secret.txt"), []byte("secret"), 0644))
+
+	f.setupFrontend()
+
+	var lu v1alpha1.LiveUpdate
+	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
+	luUpdate := lu.DeepCopy()
+	luUpdate.Spec.BasePath = tmpDir
+	luUpdate.Spec.Syncs = []v1alpha1.LiveUpdateSync{
+		{LocalPath: "src", ContainerPath: "/app"},
+	}
+	luUpdate.Spec.StopPaths = []string{"src/.env", "src/private"}
+	luUpdate.Spec.InitialSync = &v1alpha1.LiveUpdateInitialSync{}
+	f.Update(luUpdate)
+
+	f.cu.Calls = nil
+	f.kdUpdateStatus("frontend-discovery", v1alpha1.KubernetesDiscoveryStatus{
+		Pods: []v1alpha1.Pod{
+			{
+				Name:      "pod-1",
+				Namespace: "default",
+				Phase:     "Running",
+				Containers: []v1alpha1.Container{
+					{
+						Name:  "main",
+						ID:    "container-1",
+						Image: "local-registry:12345/frontend-image:my-tag",
+						State: v1alpha1.ContainerState{
+							Running: &v1alpha1.ContainerStateRunning{},
+						},
+					},
+				},
+			},
+		},
+	})
+	f.MustReconcile(types.NamespacedName{Name: "frontend-liveupdate"})
+
+	require.Len(t, f.cu.Calls, 1)
+	names := tarEntryNames(t, f.cu.Calls[0])
+	assert.Contains(t, names, "app/app.go")
+	assert.Contains(t, names, "app/.env")
+	assert.Contains(t, names, "app/private/secret.txt")
+
+	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
+	require.Len(t, lu.Status.Containers, 1)
+	stopChangeTime := metav1.MicroTime{Time: lu.Status.Containers[0].LastFileTimeSynced.Add(time.Second)}
+	f.addFileEvent("frontend-fw", filepath.Join(srcDir, ".env"), stopChangeTime)
+	f.MustReconcile(types.NamespacedName{Name: "frontend-liveupdate"})
+
+	f.MustGet(types.NamespacedName{Name: "frontend-liveupdate"}, &lu)
+	if assert.NotNil(t, lu.Status.Failed) {
+		assert.Equal(t, "UpdateStopped", lu.Status.Failed.Reason)
+	}
+	assert.Len(t, f.cu.Calls, 1, "stop path changes after initial sync must not be copied")
+}
+
 func TestInitialSync_MultipleSyncPaths(t *testing.T) {
 	f := newFixture(t)
 
