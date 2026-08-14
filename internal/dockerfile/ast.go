@@ -10,6 +10,7 @@ import (
 	"github.com/docker/cli/opts"
 	"github.com/moby/buildkit/frontend/dockerfile/command"
 	"github.com/moby/buildkit/frontend/dockerfile/instructions"
+	"github.com/moby/buildkit/frontend/dockerfile/linter"
 	"github.com/moby/buildkit/frontend/dockerfile/parser"
 	"github.com/moby/buildkit/frontend/dockerfile/shell"
 	"github.com/pkg/errors"
@@ -20,6 +21,12 @@ import (
 type AST struct {
 	directives []*parser.Directive
 	result     *parser.Result
+}
+
+// parseInstruction wraps buildkit's instructions.ParseInstruction with a
+// non-nil linter.
+func parseInstruction(node *parser.Node) (any, error) {
+	return instructions.ParseInstructionWithLinter(node, linter.New(&linter.Config{}))
 }
 
 func ParseAST(df Dockerfile) (AST, error) {
@@ -45,7 +52,7 @@ func (a AST) extractBaseNameInFromCommand(node *parser.Node, shlex *shell.Lex, m
 		return ""
 	}
 
-	inst, err := instructions.ParseInstruction(node)
+	inst, err := parseInstruction(node)
 	if err != nil {
 		return node.Next.Value // if there's a parsing error, fallback to the first arg
 	}
@@ -76,7 +83,7 @@ func (a AST) traverseImageRefs(visitor func(node *parser.Node, ref reference.Nam
 	return a.Traverse(func(node *parser.Node) error {
 		switch strings.ToLower(node.Value) {
 		case command.Arg:
-			inst, err := instructions.ParseInstruction(node)
+			inst, err := parseInstruction(node)
 			if err != nil {
 				return nil // ignore parsing error
 			}
@@ -109,7 +116,7 @@ func (a AST) traverseImageRefs(visitor func(node *parser.Node, ref reference.Nam
 				return nil
 			}
 
-			inst, err := instructions.ParseInstruction(node)
+			inst, err := parseInstruction(node)
 			if err != nil {
 				return nil // ignore parsing error
 			}
