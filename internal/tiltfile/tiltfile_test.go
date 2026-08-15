@@ -915,6 +915,29 @@ k8s_resource('foo', port_forwards=EXPR)
 	}
 }
 
+func TestPortForwardsDisabled(t *testing.T) {
+	f := newFixture(t)
+	f.portForwards = false
+
+	f.setupFoo()
+	f.file("Tiltfile", `
+docker_build('gcr.io/foo', 'foo')
+k8s_yaml('foo.yaml')
+k8s_resource('foo', port_forwards=8000)
+`)
+
+	f.load()
+
+	// With --port-forwards=false, the Tiltfile loader drops port-forwards at the
+	// source, so no PortForwardTemplateSpec reaches the manifest. This keeps them
+	// out of the API objects (so the controllers never start them) and out of the
+	// web UI (which derives endpoint links from the template spec).
+	f.assertNextManifest("foo",
+		[]model.PortForward{},
+		db(image("gcr.io/foo")),
+		deployment("foo"))
+}
+
 func TestResourceLinks(t *testing.T) {
 	cases := []resourceLinkCase{
 		newResourceLinkErrorCase("invalid_type", "123",
@@ -5824,6 +5847,7 @@ type fixture struct {
 	k8sNamespace k8s.Namespace
 	k8sEnv       clusterid.Product
 	webHost      model.WebHost
+	portForwards k8s.PortForwardsFlag
 
 	ta *tiltanalytics.TiltAnalytics
 	an *analytics.MemoryAnalytics
@@ -5849,7 +5873,7 @@ func (f *fixture) newTiltfileLoader() TiltfileLoader {
 	extPlugin := tiltextension.NewFakePlugin(extrr, extr)
 	ciSettingsPlugin := cisettings.NewPlugin(0)
 	return ProvideTiltfileLoader(f.ta, k8sContextPlugin, versionPlugin, configPlugin,
-		extPlugin, ciSettingsPlugin, dcc, f.webHost, execer, f.features, f.k8sEnv, model.ProvideStartTime())
+		extPlugin, ciSettingsPlugin, dcc, f.webHost, execer, f.features, f.k8sEnv, f.portForwards, model.ProvideStartTime())
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -5874,6 +5898,7 @@ func newFixture(t *testing.T) *fixture {
 		k8sContext:     "fake-context",
 		k8sNamespace:   "fake-namespace",
 		k8sEnv:         clusterid.ProductDockerDesktop,
+		portForwards:   true,
 		features:       features,
 	}
 

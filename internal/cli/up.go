@@ -18,7 +18,6 @@ import (
 	"github.com/tilt-dev/tilt/internal/controllers"
 	engineanalytics "github.com/tilt-dev/tilt/internal/engine/analytics"
 	"github.com/tilt-dev/tilt/internal/hud/prompt"
-	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/internal/store/liveupdates"
 	"github.com/tilt-dev/tilt/pkg/assets"
@@ -51,7 +50,6 @@ var starterTiltfile []byte
 type upCmd struct {
 	fileName             string
 	outputSnapshotOnExit string
-	disablePortForwards  bool
 
 	legacy bool
 	stream bool
@@ -88,8 +86,6 @@ local resources--i.e. those using serve_cmd--are terminated when you exit Tilt.
 		fmt.Sprintf("Control the strategy Tilt uses for updating instances. Possible values: %v", liveupdates.AllUpdateModes))
 	cmd.Flags().BoolVar(&c.legacy, "legacy", false, "If true, tilt will open in legacy terminal mode.")
 	cmd.Flags().BoolVar(&c.stream, "stream", false, "If true, tilt will stream logs in the terminal.")
-	cmd.Flags().BoolVar(&c.disablePortForwards, "disable-port-forwards", false,
-		"Disable all Kubernetes port-forwards to the local machine.")
 	cmd.Flags().BoolVar(&logActionsFlag, "logactions", false, "log all actions and state changes")
 	addStartServerFlags(cmd)
 	addDevServerFlags(cmd)
@@ -132,9 +128,9 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 	termMode := c.initialTermMode(isTTY)
 
 	cmdUpTags := engineanalytics.CmdTags(map[string]string{
-		"update_mode":           updateModeFlag, // before 7/8/20 this was just called "mode"
-		"term_mode":             strconv.Itoa(int(termMode)),
-		"disable_port_forwards": strconv.FormatBool(c.disablePortForwards),
+		"update_mode":   updateModeFlag, // before 7/8/20 this was just called "mode"
+		"term_mode":     strconv.Itoa(int(termMode)),
+		"port_forwards": strconv.FormatBool(portForwardsFlag),
 	})
 
 	generateTiltfileResult, err := maybeGenerateTiltfile(c.fileName)
@@ -160,7 +156,7 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 		log.Printf("Tilt analytics disabled: %s", reason)
 	}
 
-	cmdUpDeps, err := wireCmdUp(ctx, a, cmdUpTags, "up", k8s.DisablePortForwardsFlag(c.disablePortForwards))
+	cmdUpDeps, err := wireCmdUp(ctx, a, cmdUpTags, "up")
 	if err != nil {
 		deferred.SetOutput(deferred.Original())
 		return err
