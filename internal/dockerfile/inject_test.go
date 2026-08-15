@@ -150,6 +150,33 @@ ADD . .
 	}
 }
 
+func TestInjectWithCheckDirective(t *testing.T) {
+	// Regression test for https://github.com/tilt-dev/tilt/issues/6821
+	// A buildkit `# check=` directive attached as a comment to an instruction
+	// caused buildkit's ParseInstruction to dereference a nil *linter.Linter,
+	// panicking with a SIGSEGV during Tiltfile assembly.
+	df := Dockerfile(`FROM golang:1.10 AS base
+
+# check=skip=SecretsUsedInArgOrEnv
+FROM gcr.io/windmill/foo
+ADD . .
+`)
+	ref := container.MustParseNamedTagged("gcr.io/windmill/foo:deadbeef")
+	newDf, modified, err := InjectImageDigest(df, container.NameSelector(ref), ref, nil)
+	if assert.NoError(t, err) {
+		assert.True(t, modified)
+		// N.B. Print() doesn't preserve inline comments (it renders them as a
+		// blank line); the point of this test is that injection no longer
+		// panics on the `# check=` directive.
+		assert.Equal(t, `FROM golang:1.10 AS base
+
+
+FROM gcr.io/windmill/foo:deadbeef
+ADD . .
+`, string(newDf))
+	}
+}
+
 func TestInjectBuildArgDefault(t *testing.T) {
 	df := Dockerfile(`
 ARG TAG="latest"
