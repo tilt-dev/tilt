@@ -774,7 +774,7 @@ func (r *Reconciler) maybeSync(ctx context.Context, lu *v1alpha1.LiveUpdate, mon
 		// Create a plan to update the container.
 		filesApplied := false
 		var oneUpdateStatus v1alpha1.LiveUpdateStatus
-		plan, failed := r.createLiveUpdatePlan(lu.Spec, filesChanged)
+		plan, failed := r.createLiveUpdatePlan(lu.Spec, filesChanged, isInitialSync)
 		if failed != nil {
 			// The plan told us to stop updating - this container is unrecoverable.
 			oneUpdateStatus.Failed = failed
@@ -873,7 +873,7 @@ func (r *Reconciler) maybeSync(ctx context.Context, lu *v1alpha1.LiveUpdate, mon
 	return status
 }
 
-func (r *Reconciler) createLiveUpdatePlan(spec v1alpha1.LiveUpdateSpec, filesChanged []string) (liveupdates.LiveUpdatePlan, *v1alpha1.LiveUpdateStateFailed) {
+func (r *Reconciler) createLiveUpdatePlan(spec v1alpha1.LiveUpdateSpec, filesChanged []string, isInitialSync bool) (liveupdates.LiveUpdatePlan, *v1alpha1.LiveUpdateStateFailed) {
 	plan, err := liveupdates.NewLiveUpdatePlan(spec, filesChanged)
 	if err != nil {
 		return plan, &v1alpha1.LiveUpdateStateFailed{
@@ -890,8 +890,9 @@ func (r *Reconciler) createLiveUpdatePlan(spec v1alpha1.LiveUpdateSpec, filesCha
 		}
 	}
 
-	// If any changed files match a FallBackOn file, fall back to next BuildAndDeployer
-	if len(plan.StopPaths) != 0 {
+	// A new container needs the complete sync contents, including FallBackOn files.
+	// Only subsequent changes to those files should fall back to the next BuildAndDeployer.
+	if !isInitialSync && len(plan.StopPaths) != 0 {
 		return plan, &v1alpha1.LiveUpdateStateFailed{
 			Reason:  "UpdateStopped",
 			Message: fmt.Sprintf("Detected change to stop file %q", plan.StopPaths[0]),
