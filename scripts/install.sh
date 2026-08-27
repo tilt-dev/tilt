@@ -13,17 +13,30 @@ BREW=$(command -v brew)
 set -e
 
 function copy_binary() {
+  local binary_path="${1:-tilt}"
   if [[ ":$PATH:" == *":$HOME/.local/bin:"* ]]; then
       if [ ! -d "$HOME/.local/bin" ]; then
         mkdir -p "$HOME/.local/bin"
       fi
-      mv tilt "$HOME/.local/bin/tilt"
+      mv "$binary_path" "$HOME/.local/bin/tilt"
   else
       echo "Installing Tilt to /usr/local/bin which is write protected"
       echo "If you'd prefer to install Tilt without sudo permissions, add \$HOME/.local/bin to your \$PATH and rerun the installer"
-      sudo mv tilt /usr/local/bin/tilt
+      sudo mv "$binary_path" /usr/local/bin/tilt
   fi
 }
+
+function install_from_archive() (
+  local url="$1"
+  local temp_dir
+  temp_dir=$(mktemp -d)
+  trap 'rm -rf "$temp_dir"' EXIT
+
+  set -o pipefail
+  set -x
+  curl -fsSL "$url" | tar -xzv -C "$temp_dir" tilt
+  copy_binary "$temp_dir/tilt"
+)
 
 function brew_install_or_upgrade() {
   set -x
@@ -62,9 +75,7 @@ function install_tilt() {
               armv7l)  ARCH=arm;;
               *)       ARCH=$(uname -m);;
           esac
-          set -x
-          curl -fsSL https://github.com/tilt-dev/tilt/releases/download/v$VERSION/tilt.$VERSION.linux.$ARCH.tar.gz | tar -xzv tilt
-          copy_binary
+          install_from_archive "https://github.com/tilt-dev/tilt/releases/download/v$VERSION/tilt.$VERSION.linux.$ARCH.tar.gz"
       fi
   elif [[ "$OSTYPE" == "darwin"* ]]; then
       if [[ "$BREW" != "" ]]; then
@@ -72,9 +83,7 @@ function install_tilt() {
       else
           # On macOS, "uname -m" reports "arm64" on ARM 64 bits machines
           ARCH=$(uname -m)
-          set -x
-          curl -fsSL https://github.com/tilt-dev/tilt/releases/download/v$VERSION/tilt.$VERSION.mac.$ARCH.tar.gz | tar -xzv tilt
-          copy_binary
+          install_from_archive "https://github.com/tilt-dev/tilt/releases/download/v$VERSION/tilt.$VERSION.mac.$ARCH.tar.gz"
       fi
   else
       set +x
