@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"testing"
 
 	"github.com/pkg/errors"
@@ -310,6 +311,56 @@ func TestDownArgs(t *testing.T) {
 	require.Equal(t, []string{"foo", "bar"}, f.tfl.PassedArgs())
 }
 
+func TestDownPortTargetsKubeconfigIdentity(t *testing.T) {
+	f := newDownFixture(t)
+
+	origWebPortFlag := webPortFlag
+	origWebHostFlag := webHostFlag
+	t.Cleanup(func() {
+		webPortFlag = origWebPortFlag
+		webHostFlag = origWebHostFlag
+	})
+
+	kaSpec := v1alpha1.KubernetesApplySpec{
+		ApplyCmd:  &v1alpha1.KubernetesApplyCmd{Args: []string{"custom-deploy-cmd"}},
+		DeleteCmd: &v1alpha1.KubernetesApplyCmd{Args: []string{"custom-delete-cmd"}},
+	}
+	kt, err := k8s.NewTarget("fe", kaSpec, model.PodReadinessIgnore, nil)
+	require.NoError(t, err, "Failed to make KubernetesTarget")
+	f.tfl.Result = newTiltfileLoadResult(model.Manifest{Name: "fe"}.WithDeployTarget(kt))
+
+	defaultPath, err := f.xdgBase.RuntimeFile(filepath.Join("tilt-default", "cluster", "default.yml"))
+	require.NoError(t, err)
+	require.NoError(t, afero.WriteFile(f.fs, defaultPath, []byte("primary-instance"), 0600))
+	targetPath, err := f.xdgBase.RuntimeFile(filepath.Join("tilt-10351", "cluster", "default.yml"))
+	require.NoError(t, err)
+
+	f.cmd.downDepsProvider = func(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, subcommand model.TiltSubcommand) (DownDeps, error) {
+		deps := f.deps
+		deps.kubeconfigWriter = kubeconfig.NewWriter(f.xdgBase, f.fs, model.ProvideAPIServerName(provideWebPort()))
+		return deps, nil
+	}
+
+	cmd := f.cmd.register()
+	cmd.SetArgs([]string{"--port", "10351", "--", "env-b"})
+	cmd.Run = func(cmd *cobra.Command, args []string) {
+		err := f.cmd.run(f.ctx, args)
+		require.NoError(t, err)
+	}
+	require.NoError(t, cmd.Execute())
+
+	calls := f.execer.Calls()
+	require.Len(t, calls, 1)
+	require.Contains(t, calls[0].Cmd.Env, fmt.Sprintf("KUBECONFIG=%s", targetPath))
+
+	_, err = f.fs.Stat(targetPath)
+	require.ErrorIs(t, err, afero.ErrFileNotFound)
+	defaultContents, err := afero.ReadFile(f.fs, defaultPath)
+	require.NoError(t, err)
+	require.Equal(t, "primary-instance", string(defaultContents))
+	require.Equal(t, []string{"env-b"}, f.tfl.PassedArgs())
+}
+
 func newK8sManifest() model.Manifest {
 	return model.Manifest{Name: "fe"}.WithDeployTarget(k8s.MustTarget("fe", testyaml.SanchoYAML))
 }
@@ -459,15 +510,17 @@ status: {}`, name, downPolicy)
 }
 
 type downFixture struct {
-	t      *testing.T
-	ctx    context.Context
-	cancel func()
-	cmd    *downCmd
-	deps   DownDeps
-	tfl    *tiltfile.FakeTiltfileLoader
-	dcc    *dockercompose.FakeDCClient
-	kCli   *k8s.FakeK8sClient
-	execer *localexec.FakeExecer
+	t       *testing.T
+	ctx     context.Context
+	cancel  func()
+	cmd     *downCmd
+	deps    DownDeps
+	tfl     *tiltfile.FakeTiltfileLoader
+	dcc     *dockercompose.FakeDCClient
+	kCli    *k8s.FakeK8sClient
+	execer  *localexec.FakeExecer
+	fs      afero.Fs
+	xdgBase *xdg.FakeBase
 }
 
 func newDownFixture(t *testing.T) downFixture {
@@ -493,15 +546,17 @@ func newDownFixture(t *testing.T) downFixture {
 		return downDeps, nil
 	}}
 	ret := downFixture{
-		t:      t,
-		ctx:    ctx,
-		cancel: cancel,
-		cmd:    cmd,
-		deps:   downDeps,
-		tfl:    tfl,
-		dcc:    dcc,
-		kCli:   kCli,
-		execer: execer,
+		t:       t,
+		ctx:     ctx,
+		cancel:  cancel,
+		cmd:     cmd,
+		deps:    downDeps,
+		tfl:     tfl,
+		dcc:     dcc,
+		kCli:    kCli,
+		execer:  execer,
+		fs:      fs,
+		xdgBase: xdgBase,
 	}
 
 	t.Cleanup(ret.TearDown)

@@ -65,6 +65,7 @@ See https://docs.tilt.dev/tiltfile_config.html for examples.
 	addTiltfileFlag(cmd, &c.fileName)
 	addKubeContextFlag(cmd)
 	addNamespaceFlag(cmd)
+	addConnectServerFlags(cmd)
 	cmd.Flags().BoolVar(&c.deleteNamespaces, "delete-namespaces", false, "delete namespaces defined in the Tiltfile (by default, don't)")
 	cmd.Flags().BoolVar(&c.deleteVolumes, "delete-volumes", false, "delete docker volumes defined in the Tiltfile (by default, don't)")
 
