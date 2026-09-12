@@ -68,10 +68,11 @@ func (c *dockerPruneCmd) run(ctx context.Context, args []string) error {
 		ctx = logger.WithLogger(ctx, l)
 	}
 
-	deps, err := wireDockerPrune(ctx, a, "docker-prune")
+	deps, cleanup, err := wireDockerPrune(ctx, a, "docker-prune")
 	if err != nil {
 		return err
 	}
+	defer cleanup()
 
 	tlr := deps.tfl.Load(ctx, ctrltiltfile.MainTiltfile(c.fileName, args), nil)
 	if tlr.Error != nil {

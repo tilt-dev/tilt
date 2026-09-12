@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -110,6 +111,16 @@ type tiltCmd interface {
 	run(ctx context.Context, args []string) error
 }
 
+// Returned by a command that has already told the user what went wrong, and
+// just needs the process to exit with a particular code after cleanup.
+type exitCodeError struct {
+	code int
+}
+
+func (e exitCodeError) Error() string {
+	return fmt.Sprintf("exit code %d", e.code)
+}
+
 func createContext() (ctx context.Context, cleanup func()) {
 	l, cleanup := cli.NewLogger()
 	return protocol.WithLogger(context.Background(), l), cleanup
@@ -164,6 +175,11 @@ func addCommand(parent *cobra.Command, child tiltCmd) {
 
 		err := child.run(ctx, args)
 		if err != nil {
+			exitErr := exitCodeError{}
+			if errors.As(err, &exitErr) {
+				os.Exit(exitErr.code)
+			}
+
 			// TODO(maia): this shouldn't print if we've already pretty-printed it
 			_, printErr := fmt.Fprintf(output.OriginalStderr, "Error: %v\n", err)
 			if printErr != nil {

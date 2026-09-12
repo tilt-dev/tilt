@@ -1,57 +1,33 @@
+// Package kubeconfig writes the "frozen" kubeconfigs that Tilt injects into
+// the commands it shells out to -- local(), custom_build, k8s_custom_deploy --
+// so that those commands talk to exactly the cluster Tilt is talking to,
+// including any --context or --namespace overrides.
+//
+// The files go in the CLI run's workspace directory, which deletes them as the
+// command exits. See xdg.CLIWorkspace.
 package kubeconfig
 
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
 
-	"github.com/spf13/afero"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/cli-runtime/pkg/printers"
 	"k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/client-go/tools/clientcmd/api/latest"
 
 	"github.com/tilt-dev/tilt/internal/xdg"
-	"github.com/tilt-dev/tilt/pkg/model"
 )
 
+// Subdirectory of the workspace we keep frozen kubeconfigs in.
+const clusterDir = "cluster"
+
 type Writer struct {
-	base          xdg.Base
-	filesystem    afero.Fs
-	apiServerName model.APIServerName
+	workspace *xdg.CLIWorkspace
 }
 
-func NewWriter(base xdg.Base, filesystem afero.Fs, apiServerName model.APIServerName) *Writer {
-	return &Writer{
-		base:          base,
-		filesystem:    filesystem,
-		apiServerName: apiServerName,
-	}
-}
-
-func (w *Writer) openFrozenKubeConfigFile(ctx context.Context, nn types.NamespacedName) (string, afero.File, error) {
-	path, err := w.base.RuntimeFile(
-		filepath.Join(string(w.apiServerName), "cluster", fmt.Sprintf("%s.yml", nn.Name)))
-	if err == nil {
-		var f afero.File
-		f, err = w.filesystem.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
-		if err == nil {
-			return path, f, nil
-		}
-	}
-
-	path, err = w.base.StateFile(
-		filepath.Join(string(w.apiServerName), "cluster", fmt.Sprintf("%s.yml", nn.Name)))
-	if err != nil {
-		return "", nil, fmt.Errorf("storing temp kubeconfigs: %v", err)
-	}
-
-	f, err := w.filesystem.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
-	if err != nil {
-		return "", nil, fmt.Errorf("storing temp kubeconfigs: %v", err)
-	}
-	return path, f, nil
+func NewWriter(workspace *xdg.CLIWorkspace) *Writer {
+	return &Writer{workspace: workspace}
 }
 
 func (w *Writer) WriteFrozenKubeConfig(ctx context.Context, nn types.NamespacedName, config *api.Config) (string, error) {
@@ -72,9 +48,9 @@ func (w *Writer) WriteFrozenKubeConfig(ctx context.Context, nn types.NamespacedN
 	}
 
 	printer := printers.YAMLPrinter{}
-	path, f, err := w.openFrozenKubeConfigFile(ctx, nn)
+	path, f, err := w.workspace.OpenFile(ctx, clusterDir, fmt.Sprintf("%s.yml", nn.Name))
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("storing temp kubeconfigs: %v", err)
 	}
 	defer func() {
 		_ = f.Close()

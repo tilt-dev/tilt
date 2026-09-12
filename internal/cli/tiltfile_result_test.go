@@ -25,7 +25,6 @@ local_resource(name='hi', cmd='echo hi', serve_cmd='echo bye')
 	streams, _, out, _ := genericclioptions.NewTestIOStreams()
 	cmd := newTiltfileResultCmd(streams)
 	cmd.fileName = "Tiltfile"
-	cmd.exit = func(x int) {}
 
 	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
 	err := cmd.run(ctx, nil)
@@ -34,4 +33,23 @@ local_resource(name='hi', cmd='echo hi', serve_cmd='echo bye')
 	assert.Contains(t, out.String(), `"Error": null`)
 	assert.Contains(t, out.String(), `"Name": "hi"`)
 	assert.Contains(t, out.String(), `"url": "https://github.com/tilt-dev/tilt-extensions"`)
+}
+
+// A Tiltfile error gets a distinct exit code, but the command returns rather
+// than exiting -- otherwise the deferred cleanup of wired deps never runs.
+func TestTiltfileResultErrorReturnsExitCode(t *testing.T) {
+	f := tempdir.NewTempDirFixture(t)
+	f.Chdir()
+
+	f.WriteFile("Tiltfile", `this is not a Tiltfile`)
+
+	streams, _, _, errOut := genericclioptions.NewTestIOStreams()
+	cmd := newTiltfileResultCmd(streams)
+	cmd.fileName = "Tiltfile"
+
+	ctx, _, _ := testutils.CtxAndAnalyticsForTest()
+	err := cmd.run(ctx, nil)
+
+	assert.Equal(t, exitCodeError{code: TiltfileErrExitCode}, err)
+	assert.Contains(t, errOut.String(), "Tiltfile")
 }

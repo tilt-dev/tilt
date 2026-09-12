@@ -109,11 +109,12 @@ func (c *updogCmd) run(ctx context.Context, args []string) error {
 
 	log.Print("Tilt updog " + buildStamp())
 
-	deps, err := wireCmdUpdog(ctx, a, nil, "updog", clientObjects)
+	deps, cleanup, err := wireCmdUpdog(ctx, a, nil, "updog", clientObjects)
 	if err != nil {
 		deferred.SetOutput(deferred.Original())
 		return err
 	}
+	defer cleanup()
 
 	l := store.NewLogActionLogger(ctx, deps.Upper.Dispatch)
 	deferred.SetOutput(l)

@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/pkg/errors"
@@ -250,6 +251,36 @@ func TestDownK8sDeleteCmd(t *testing.T) {
 	}
 }
 
+func TestDownCleansUpItsOwnKubeconfig(t *testing.T) {
+	f := newDownFixture(t)
+	f.tfl.Result = newTiltfileLoadResult(newK8sDeleteCmdManifest(t))
+
+	require.NoError(t, f.cmd.run(f.ctx, nil))
+
+	path := f.kubeconfigPathFromDeleteCmd()
+	exists, err := afero.Exists(f.fs, path)
+	require.NoError(t, err)
+	assert.False(t, exists, "expected %s to be cleaned up", path)
+}
+
+func newK8sDeleteCmdManifest(t *testing.T) model.Manifest {
+	t.Helper()
+	kt, err := k8s.NewTarget("fe", v1alpha1.KubernetesApplySpec{
+		ApplyCmd:  &v1alpha1.KubernetesApplyCmd{Args: []string{"custom-deploy-cmd"}},
+		DeleteCmd: &v1alpha1.KubernetesApplyCmd{Args: []string{"custom-delete-cmd"}},
+	}, model.PodReadinessIgnore, nil)
+	require.NoError(t, err, "Failed to make KubernetesTarget")
+	return model.Manifest{Name: "fe"}.WithDeployTarget(kt)
+}
+
+func (f *downFixture) kubeconfigPathFromDeleteCmd() string {
+	f.t.Helper()
+	calls := f.execer.Calls()
+	require.Len(f.t, calls, 1, "Should have been exactly 1 exec call")
+	require.Len(f.t, calls[0].Cmd.Env, 1, "Should have been exactly 1 env var")
+	return strings.TrimPrefix(calls[0].Cmd.Env[0], "KUBECONFIG=")
+}
+
 func TestDownK8sDeleteCmd_Error(t *testing.T) {
 	f := newDownFixture(t)
 
@@ -459,15 +490,17 @@ status: {}`, name, downPolicy)
 }
 
 type downFixture struct {
-	t      *testing.T
-	ctx    context.Context
-	cancel func()
-	cmd    *downCmd
-	deps   DownDeps
-	tfl    *tiltfile.FakeTiltfileLoader
-	dcc    *dockercompose.FakeDCClient
-	kCli   *k8s.FakeK8sClient
-	execer *localexec.FakeExecer
+	t       *testing.T
+	ctx     context.Context
+	cancel  func()
+	cmd     *downCmd
+	deps    DownDeps
+	tfl     *tiltfile.FakeTiltfileLoader
+	dcc     *dockercompose.FakeDCClient
+	kCli    *k8s.FakeK8sClient
+	execer  *localexec.FakeExecer
+	fs      afero.Fs
+	xdgBase xdg.Base
 }
 
 func newDownFixture(t *testing.T) downFixture {
@@ -479,7 +512,8 @@ func newDownFixture(t *testing.T) downFixture {
 	execer := localexec.NewFakeExecer(t)
 	fs := afero.NewMemMapFs()
 	xdgBase := xdg.NewFakeBase(t.TempDir(), fs)
-	writer := kubeconfig.NewWriter(xdgBase, fs, model.APIServerName("test"))
+	workspace, cleanup := xdg.ProvideCLIWorkspace(ctx, xdgBase, fs, "test")
+	writer := kubeconfig.NewWriter(workspace)
 
 	downDeps := DownDeps{
 		tfl:              tfl,
@@ -487,21 +521,22 @@ func newDownFixture(t *testing.T) downFixture {
 		kClient:          kCli,
 		execer:           execer,
 		kubeconfigWriter: writer,
-		fs:               fs,
 	}
-	cmd := &downCmd{downDepsProvider: func(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, subcommand model.TiltSubcommand) (deps DownDeps, err error) {
-		return downDeps, nil
+	cmd := &downCmd{downDepsProvider: func(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, subcommand model.TiltSubcommand) (DownDeps, func(), error) {
+		return downDeps, cleanup, nil
 	}}
 	ret := downFixture{
-		t:      t,
-		ctx:    ctx,
-		cancel: cancel,
-		cmd:    cmd,
-		deps:   downDeps,
-		tfl:    tfl,
-		dcc:    dcc,
-		kCli:   kCli,
-		execer: execer,
+		t:       t,
+		ctx:     ctx,
+		cancel:  cancel,
+		cmd:     cmd,
+		deps:    downDeps,
+		tfl:     tfl,
+		dcc:     dcc,
+		kCli:    kCli,
+		execer:  execer,
+		fs:      fs,
+		xdgBase: xdgBase,
 	}
 
 	t.Cleanup(ret.TearDown)

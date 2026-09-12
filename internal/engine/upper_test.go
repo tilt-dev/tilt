@@ -3338,7 +3338,7 @@ func newTestFixture(t *testing.T, options ...fixtureOptions) *testFixture {
 	ib := build.NewImageBuilder(dockerBuilder, customBuilder, kp)
 	dir := dockerimage.NewReconciler(cdc, st, sch, dockerClient, ib)
 	cir := cmdimage.NewReconciler(cdc, st, sch, dockerClient, ib)
-	kubeconfigWriter := kubeconfig.NewWriter(base, fs, "tilt-default")
+	kubeconfigWriter := kubeconfig.NewWriter(xdg.NewCLIWorkspace(base, fs, "tilt-default"))
 	localKubeconfigPathOnce := localexec.KubeconfigPathOnce(func() string {
 		return "/path/to/kubeconfig-default.yaml"
 	})

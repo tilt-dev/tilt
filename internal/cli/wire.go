@@ -10,8 +10,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/spf13/afero"
-
 	"github.com/tilt-dev/clusterid"
 	cliclient "github.com/tilt-dev/tilt/internal/cli/client"
 	"github.com/tilt-dev/tilt/internal/controllers/core/filewatch/fsevent"
@@ -177,22 +175,22 @@ var UpWireSet = wire.NewSet(
 	engine.ProvideSubscribers,
 )
 
-func wireTiltfileResult(ctx context.Context, analytics *analytics.TiltAnalytics, subcommand model.TiltSubcommand) (cmdTiltfileResultDeps, error) {
+func wireTiltfileResult(ctx context.Context, analytics *analytics.TiltAnalytics, subcommand model.TiltSubcommand) (cmdTiltfileResultDeps, func(), error) {
 	wire.Build(UpWireSet, newTiltfileResultDeps)
-	return cmdTiltfileResultDeps{}, nil
+	return cmdTiltfileResultDeps{}, nil, nil
 }
 
-func wireDockerPrune(ctx context.Context, analytics *analytics.TiltAnalytics, subcommand model.TiltSubcommand) (dpDeps, error) {
+func wireDockerPrune(ctx context.Context, analytics *analytics.TiltAnalytics, subcommand model.TiltSubcommand) (dpDeps, func(), error) {
 	wire.Build(UpWireSet, newDPDeps)
-	return dpDeps{}, nil
+	return dpDeps{}, nil, nil
 }
 
-func wireCmdUp(ctx context.Context, analytics *analytics.TiltAnalytics, cmdTags engineanalytics.CmdTags, subcommand model.TiltSubcommand) (CmdUpDeps, error) {
+func wireCmdUp(ctx context.Context, analytics *analytics.TiltAnalytics, cmdTags engineanalytics.CmdTags, subcommand model.TiltSubcommand) (CmdUpDeps, func(), error) {
 	wire.Build(UpWireSet,
 		cloud.NewSnapshotter,
 		wire.Value(store.EngineModeUp),
 		wire.Struct(new(CmdUpDeps), "*"))
-	return CmdUpDeps{}, nil
+	return CmdUpDeps{}, nil, nil
 }
 
 type CmdUpDeps struct {
@@ -204,14 +202,14 @@ type CmdUpDeps struct {
 	Snapshotter  *cloud.Snapshotter
 }
 
-func wireCmdCI(ctx context.Context, analytics *analytics.TiltAnalytics, subcommand model.TiltSubcommand) (CmdCIDeps, error) {
+func wireCmdCI(ctx context.Context, analytics *analytics.TiltAnalytics, subcommand model.TiltSubcommand) (CmdCIDeps, func(), error) {
 	wire.Build(UpWireSet,
 		cloud.NewSnapshotter,
 		wire.Value(store.EngineModeCI),
 		wire.Value(engineanalytics.CmdTags(map[string]string{})),
 		wire.Struct(new(CmdCIDeps), "*"),
 	)
-	return CmdCIDeps{}, nil
+	return CmdCIDeps{}, nil, nil
 }
 
 type CmdCIDeps struct {
@@ -227,13 +225,13 @@ func wireCmdUpdog(ctx context.Context,
 	cmdTags engineanalytics.CmdTags,
 	subcommand model.TiltSubcommand,
 	objects []ctrlclient.Object,
-) (CmdUpdogDeps, error) {
+) (CmdUpdogDeps, func(), error) {
 	wire.Build(BaseWireSet,
 		provideUpdogSubscriber,
 		provideUpdogCmdSubscribers,
 		wire.Value(store.EngineModeCI),
 		wire.Struct(new(CmdUpdogDeps), "*"))
-	return CmdUpdogDeps{}, nil
+	return CmdUpdogDeps{}, nil, nil
 }
 
 type CmdUpdogDeps struct {
@@ -292,10 +290,10 @@ func wireDockerCompositeClient(ctx context.Context) (docker.CompositeClient, err
 	return nil, nil
 }
 
-func wireDownDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, subcommand model.TiltSubcommand) (DownDeps, error) {
+func wireDownDeps(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, subcommand model.TiltSubcommand) (DownDeps, func(), error) {
 	wire.Build(UpWireSet,
 		wire.Struct(new(DownDeps), "*"))
-	return DownDeps{}, nil
+	return DownDeps{}, nil, nil
 }
 
 type DownDeps struct {
@@ -304,7 +302,6 @@ type DownDeps struct {
 	kClient          k8s.Client
 	execer           localexec.Execer
 	kubeconfigWriter *kubeconfig.Writer
-	fs               afero.Fs
 }
 
 var LogStreamerWireSet = wire.NewSet(

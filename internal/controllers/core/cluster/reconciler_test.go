@@ -474,7 +474,7 @@ func newFixture(t *testing.T) *fixture {
 	dockerClient := docker.NewFakeClient()
 	fs := afero.NewOsFs()
 	base := xdg.NewFakeBase(tmpf.Path(), fs)
-	kubeconfigWriter := kubeconfig.NewWriter(base, fs, "tilt-default")
+	kubeconfigWriter := kubeconfig.NewWriter(xdg.NewCLIWorkspace(base, fs, "tilt-default"))
 	localKubeconfigPathOnce := localexec.KubeconfigPathOnce(func() string {
 		return "/path/to/kubeconfig-default.yaml"
 	})

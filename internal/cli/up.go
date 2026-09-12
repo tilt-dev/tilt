@@ -156,11 +156,12 @@ func (c *upCmd) run(ctx context.Context, args []string) error {
 		log.Printf("Tilt analytics disabled: %s", reason)
 	}
 
-	cmdUpDeps, err := wireCmdUp(ctx, a, cmdUpTags, "up")
+	cmdUpDeps, cleanup, err := wireCmdUp(ctx, a, cmdUpTags, "up")
 	if err != nil {
 		deferred.SetOutput(deferred.Original())
 		return err
 	}
+	defer cleanup()
 
 	upper := cmdUpDeps.Upper
 	if termMode == store.TerminalModePrompt {

@@ -25,7 +25,7 @@ type downCmd struct {
 	fileName         string
 	deleteNamespaces bool
 	deleteVolumes    bool
-	downDepsProvider func(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, subcommand model.TiltSubcommand) (DownDeps, error)
+	downDepsProvider func(ctx context.Context, tiltAnalytics *analytics.TiltAnalytics, subcommand model.TiltSubcommand) (DownDeps, func(), error)
 }
 
 type dependencyNode struct {
@@ -76,10 +76,12 @@ func (c *downCmd) run(ctx context.Context, args []string) error {
 	a.Incr("cmd.down", map[string]string{})
 	defer a.Flush(time.Second)
 
-	downDeps, err := c.downDepsProvider(ctx, a, "down")
+	downDeps, cleanup, err := c.downDepsProvider(ctx, a, "down")
 	if err != nil {
 		return err
 	}
+	defer cleanup()
+
 	return c.down(ctx, downDeps, args)
 }
 
@@ -199,9 +201,6 @@ func deleteK8sEntities(ctx context.Context, manifests []model.Manifest, updateSe
 		if err != nil {
 			return errors.Wrap(err, "Writing kubeconfig connection")
 		}
-		defer func() {
-			_ = downDeps.fs.Remove(kubeconfigPath)
-		}()
 	}
 
 	entities, _, err = k8s.Filter(entities, func(e k8s.K8sEntity) (b bool, err error) {

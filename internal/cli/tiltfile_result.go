@@ -3,7 +3,6 @@ package cli
 import (
 	"context"
 	"fmt"
-	"os"
 	"regexp"
 	"time"
 
@@ -27,7 +26,6 @@ const TiltfileErrExitCode = 5
 
 type tiltfileResultCmd struct {
 	streams genericclioptions.IOStreams
-	exit    func(code int)
 
 	fileName string
 
@@ -51,7 +49,6 @@ func newTiltfileResultDeps(tfl tiltfile.TiltfileLoader) cmdTiltfileResultDeps {
 func newTiltfileResultCmd(streams genericclioptions.IOStreams) *tiltfileResultCmd {
 	return &tiltfileResultCmd{
 		streams: streams,
-		exit:    os.Exit,
 	}
 }
 
@@ -95,11 +92,12 @@ func (c *tiltfileResultCmd) run(ctx context.Context, args []string) error {
 		ctx = logger.WithLogger(ctx, logger.NewLogger(logLvl, c.streams.ErrOut))
 	}
 
-	deps, err := wireTiltfileResult(ctx, analytics.Get(ctx), "alpha tiltfile-result")
+	deps, cleanup, err := wireTiltfileResult(ctx, analytics.Get(ctx), "alpha tiltfile-result")
 	if err != nil {
 		c.maybePrintDeferredLogsToStderr(ctx, showTiltfileLogs)
 		return errors.Wrap(err, "wiring dependencies")
 	}
+	defer cleanup()
 
 	start := time.Now()
 	tlr := deps.tfl.Load(ctx, ctrltiltfile.MainTiltfile(c.fileName, args), nil)
@@ -111,8 +109,7 @@ func (c *tiltfileResultCmd) run(ctx context.Context, args []string) error {
 		// to STDERR and use the exit code to indicate that it's an error
 		// from Tiltfile parsing.
 		fmt.Fprintln(c.streams.ErrOut, tlr.Error)
-		c.exit(TiltfileErrExitCode)
-		return nil
+		return exitCodeError{code: TiltfileErrExitCode}
 	}
 
 	// Instead of printing result JSON, print Builtin Timings instead
