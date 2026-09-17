@@ -16,4 +16,5 @@ DIGEST="$(docker inspect --format '{{.RepoDigests}}' tiltdev/tilt-releaser | tr 
 
 yq eval -i ".jobs.release-dry-run.docker[0].image = \"$DIGEST\"" .circleci/config.yml
 yq eval -i ".jobs.release.docker[0].image = \"$DIGEST\"" .circleci/config.yml
-yq eval -i ".image = \"$DIGEST\"" build.toast.yml
+sed -i.bak -E "s|^IMAGE=\".*\"|IMAGE=\"$DIGEST\"|" scripts/release-build-dry-run.sh
+rm scripts/release-build-dry-run.sh.bak

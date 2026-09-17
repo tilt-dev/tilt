@@ -110,7 +110,6 @@ Other development commands:
   - Run automatically with IDE
     - See goimports docs for IDE specific configuration instructions
     - Run with `-local github.com/tilt-dev`
-- **[toast](https://github.com/stepchowfun/toast)**: `curl https://raw.githubusercontent.com/stepchowfun/toast/master/install.sh -LSfs | sh` (local development tasks)
 
 ## Tilt APIServer
 The Tilt APIServer is our new system for managing Tilt internals:
@@ -325,7 +324,7 @@ You can build from source locally using the same toolchain as CI by running:
 ```shell
 make release-build
 ```
-> You will need `toast` installed (see optional prerequisites)
+> You will need Docker installed. The build runs in the same container image as CI.
 
 This will take quite some time, but will create a `dist/` directory in the repo
 root on your host machine.

@@ -1,5 +1,5 @@
 # Uses Node 24
-FROM cimg/go:1.26-node
+FROM cimg/go:1.27-node
 
 USER root
 
@@ -32,14 +32,14 @@ RUN set -exu \
   && which docker \
   && (docker version || true)
 
-# docker-compose v2
-ARG DOCKER_COMPOSE_V2_VERSION=v2.40.3
-RUN curl -fL "https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_V2_VERSION}/docker-compose-$(uname -s | tr '[A-Z]' '[a-z]')-$(uname -m)" -o /usr/local/bin/docker-compose \
+# docker-compose
+ARG DOCKER_COMPOSE_VERSION=v5.5.1
+RUN curl -fL "https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-$(uname -s | tr '[A-Z]' '[a-z]')-$(uname -m)" -o /usr/local/bin/docker-compose \
   && chmod a+x /usr/local/bin/docker-compose \
   && docker-compose version
 
 # install Kind (Kubernetes in Docker)
-ENV KIND_VERSION=v0.30.0
+ENV KIND_VERSION=v0.33.0
 RUN curl -fLo ./kind-linux-amd64 https://github.com/kubernetes-sigs/kind/releases/download/${KIND_VERSION}/kind-linux-amd64 \
   && chmod +x ./kind-linux-amd64 \
   && mv ./kind-linux-amd64 /usr/local/bin/kind \

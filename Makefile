@@ -170,4 +170,4 @@ update-codegen-ts:
 	cd web && yarn prettier
 
 release-build:
-	toast -f build.toast.yml
+	./scripts/release-build-dry-run.sh

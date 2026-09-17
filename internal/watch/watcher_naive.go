@@ -315,8 +315,12 @@ func newWatcher(paths []string, ignore PathMatcher, l logger.Logger) (*naiveNoti
 	}
 	MaybeIncreaseBufferSize(fsw)
 
-	err = fsw.SetRecursive()
-	isWatcherRecursive := err == nil
+	// SetRecursive() only succeeds on platforms with native recursive watches
+	// (currently Windows). The inotify/kqueue/fen implementations always return an
+	// error, so when staticcheck analyzes a single GOOS it sees a comparison that
+	// can never be true (SA4023).
+	err = fsw.SetRecursive()         //nolint:staticcheck // SA4023
+	isWatcherRecursive := err == nil //nolint:staticcheck // SA4023
 
 	wrappedEvents := make(chan FileEvent)
 	notifyList := make(map[string]bool, len(paths))
