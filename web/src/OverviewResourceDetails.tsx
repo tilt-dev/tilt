@@ -1,10 +1,11 @@
-import React from "react"
+import React, { useEffect, useState } from "react"
 import styled from "styled-components"
 import { Alert } from "./alerts"
 import { ButtonSet } from "./ApiButton"
 import { useFilterSet } from "./logfilters"
 import OverviewActionBar from "./OverviewActionBar"
 import OverviewLogPane from "./OverviewLogPane"
+import { useLogStore } from "./LogStore"
 import { Color } from "./style-helpers"
 import { ResourceName, UIResource } from "./types"
 
@@ -41,6 +42,26 @@ export default function OverviewResourceDetails(
   let notFound = !all && !starred && !manifestName
   let filterSet = useFilterSet()
 
+  const logStore = useLogStore()
+  const logTarget = starred ? name : manifestName
+  const [logContainers, setLogContainers] = useState<string[]>(() =>
+    logStore.containersForManifest(logTarget)
+  )
+
+  useEffect(() => {
+    const onUpdate = () => {
+      const next = logStore.containersForManifest(logTarget)
+      setLogContainers((prev) =>
+        prev.length === next.length && prev.every((c, i) => c === next[i])
+          ? prev
+          : next
+      )
+    }
+    onUpdate()
+    logStore.addUpdateListener(onUpdate)
+    return () => logStore.removeUpdateListener(onUpdate)
+  }, [logStore, logTarget])
+
   return (
     <OverviewResourceDetailsRoot>
       <OverviewActionBar
@@ -48,6 +69,7 @@ export default function OverviewResourceDetails(
         filterSet={filterSet}
         alerts={alerts}
         buttons={buttons}
+        logContainers={logContainers}
       />
       {notFound ? (
         <NotFound>No resource '{name}'</NotFound>

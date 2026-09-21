@@ -50,6 +50,7 @@ export type FilterSet = {
   level: FilterLevel
   source: FilterSource
   term: FilterTerm
+  containers: string[]
 }
 
 export const EMPTY_TERM = ""
@@ -122,6 +123,7 @@ export function filterSetFromLocation(l: Location): FilterSet {
     level: FilterLevel.all,
     source: FilterSource.all,
     term: EMPTY_FILTER_TERM,
+    containers: [],
   }
   switch (params.get("level")) {
     case FilterLevel.warn:
@@ -146,6 +148,11 @@ export function filterSetFromLocation(l: Location): FilterSet {
     filters.term = createFilterTermState(input)
   }
 
+  const containersParam = params.get("containers")
+  if (containersParam) {
+    filters.containers = containersParam.split(",").filter(Boolean)
+  }
+
   return filters
 }
 
@@ -154,5 +161,10 @@ export function filterSetsEqual(a: FilterSet, b: FilterSet): boolean {
   const levelEqual = a.level === b.level
   // Filter terms are case-insensitive, so we can ignore casing when comparing terms
   const termEqual = a.term.input.toLowerCase() === b.term.input.toLowerCase()
-  return sourceEqual && levelEqual && termEqual
+  const sortedA = [...a.containers].sort()
+  const sortedB = [...b.containers].sort()
+  const containersEqual =
+    sortedA.length === sortedB.length &&
+    sortedA.every((c, i) => c === sortedB[i])
+  return sourceEqual && levelEqual && termEqual && containersEqual
 }
