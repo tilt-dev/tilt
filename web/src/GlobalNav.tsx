@@ -151,6 +151,7 @@ class GlobalNavShortcuts extends Component<GlobalNavShortcutsProps> {
       ) as HTMLInputElement | null
       if (filter) {
         filter.focus()
+        filter.select()
         e.preventDefault()
       }
     }
