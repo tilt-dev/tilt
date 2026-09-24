@@ -1,0 +1,82 @@
+name: Docs
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-docs:
+    runs-on: ubuntu-latest
+    container:
+      image: docker/tilt-ci@sha256:3b83314ab36d9a529f5af8ca788b00d0926d16ed981a929317aab62696a88d77
+      options: --group-add 118
+      volumes:
+        - /var/run/docker.sock:/var/run/docker.sock
+    steps:
+      - name: Check docker sock permissions
+        run: |
+          ls -n /var/run/docker.sock
+          gid=$(ls -n /var/run/docker.sock | awk '{print$4}')
+          if [ "$gid" -ne 118 ]; then
+            echo "::error::Unexpected Group ID ($gid) for Docker socket" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          path: tilt
+
+      - name: Configure Git safe directory
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE/tilt"
+
+      - name: Fetch master branch
+        run: |
+          git fetch origin master:refs/remotes/origin/master
+          git branch -f master origin/master
+        working-directory: tilt
+
+      - name: Check for Go changes
+        id: changes
+        run: |
+          if ! ./scripts/ci-has-go-changes.sh; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+          fi
+        working-directory: tilt
+
+      - name: Checkout tilt.build repo
+        if: steps.changes.outputs.skip != 'true'
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: tilt-dev/tilt.build
+          path: tilt.build
+
+      - name: Build Tilt
+        if: steps.changes.outputs.skip != 'true'
+        run: make install
+        working-directory: tilt
+
+      - name: Generate and verify docs
+        if: steps.changes.outputs.skip != 'true'
+        working-directory: tilt.build
+        run: |
+          tilt dump cli-docs --dir="./docs/cli"
+          tilt dump api-docs --dir="./api"
+          make cli-toc
+          make api
+
+      - name: Notify Slack on failure
+        if: failure() && github.ref == 'refs/heads/master'
+        uses: slackapi/slack-github-action@91efab103c0de0a537f72a35f6b8cda0ee76bf0a # v2.1.1
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "check-docs failed on master: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }
