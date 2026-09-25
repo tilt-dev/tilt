@@ -118,7 +118,19 @@ func (ibd *ImageBuildAndDeployer) BuildAndDeploy(ctx context.Context, st store.R
 		if err != nil {
 			return nil, err
 		}
-		imageMapSet[nn] = im.DeepCopy()
+		imageMap := im.DeepCopy()
+
+		// For an image we're reusing (not rebuilding this pass), trust the
+		// engine's result over the ImageMap status from the apiserver. The
+		// apiserver status is flushed asynchronously, so it can lag behind a
+		// base image that was just rebuilt and shared with another manifest,
+		// leaving a child built FROM a stale base tag.
+		// https://github.com/tilt-dev/tilt/issues/6634
+		if reusedResult, ok := reused[iTarget.ID()]; ok {
+			imageMap.Status = reusedResult.ImageMapStatus
+		}
+
+		imageMapSet[nn] = imageMap
 	}
 
 	err = q.RunBuilds(func(target model.TargetSpec, depResults []store.ImageBuildResult) (store.ImageBuildResult, error) {
