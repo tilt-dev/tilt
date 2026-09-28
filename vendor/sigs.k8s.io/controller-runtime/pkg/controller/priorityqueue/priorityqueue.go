@@ -1,3 +1,19 @@
+/*
+Copyright The Kubernetes Authors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package priorityqueue
 
 import (
@@ -397,7 +413,16 @@ func (w *priorityqueue[T]) handleReadyItems() {
 				w.waiters--
 				delete(w.items, item.Key)
 				toDelete = append(toDelete, item)
-				w.get <- *item
+				// w.get is unbuffered, so this send blocks until a GetWithPriority
+				// consumer receives. A consumer that is parked in GetWithPriority can
+				// instead return via <-w.done once ShutDown closes it, leaving no one
+				// to receive here. Also watch w.done so the send does not block forever
+				// and deadlock the queue (the whole queue stalls because w.lock is held).
+				select {
+				case w.get <- *item:
+				case <-w.done:
+					return false
+				}
 
 				return w.waiters > 0
 			})
@@ -512,20 +537,26 @@ func (w *priorityqueue[T]) logState() {
 		if !w.log.V(5).Enabled() {
 			continue
 		}
-		w.lock.Lock()
-		items := make([]*item[T], 0, len(w.items))
-		w.waiting.Ascend(func(item *item[T]) bool {
-			items = append(items, item)
-			return true
-		})
-		w.ready.Ascend(func(item *item[T]) bool {
-			items = append(items, item)
-			return true
-		})
-		w.lock.Unlock()
 
-		w.log.V(5).Info("workqueue_items", "items", items)
+		w.log.V(5).Info("workqueue_items", "items", w.cloneItems())
 	}
+}
+
+// cloneItems returns a deep copy of all queued items, taken under the lock, so that callers
+// like logState can use them after it is released without racing with writers of ReadyAt.
+func (w *priorityqueue[T]) cloneItems() []item[T] {
+	w.lock.Lock()
+	defer w.lock.Unlock()
+
+	items := make([]item[T], 0, len(w.items))
+	appendItem := func(it *item[T]) bool {
+		items = append(items, it.clone())
+		return true
+	}
+	w.waiting.Ascend(appendItem)
+	w.ready.Ascend(appendItem)
+
+	return items
 }
 
 func lessWaiting[T comparable](a, b *item[T]) bool {
@@ -547,6 +578,15 @@ type item[T comparable] struct {
 	AddedCounter uint64     `json:"addedCounter"`
 	Priority     int        `json:"priority"`
 	ReadyAt      *time.Time `json:"readyAt,omitempty"`
+}
+
+// clone returns a copy of the item that shares no memory with it.
+func (i *item[T]) clone() item[T] {
+	clone := *i
+	if i.ReadyAt != nil {
+		clone.ReadyAt = new(*i.ReadyAt)
+	}
+	return clone
 }
 
 func (w *priorityqueue[T]) updateUnfinishedWorkLoop() {

@@ -185,11 +185,21 @@ func (o *TiltServerOptions) Config() (*apiserver.Config, error) {
 		return nil, fmt.Errorf("internal error: no serve config")
 	}
 	serverConfig.ExternalAddress = serving.Listener.Addr().String()
+	authz, err := union.New(
+		union.NamedAuthorizer{
+			AuthorizerName: "privileged-groups",
+			Authorizer:     authorizerfactory.NewPrivilegedGroups("system:masters"),
+		},
+		union.NamedAuthorizer{
+			AuthorizerName: "always-deny",
+			Authorizer:     authorizerfactory.NewAlwaysDenyAuthorizer(),
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
 	serverConfig.Authorization = genericapiserver.AuthorizationInfo{
-		Authorizer: union.New(
-			authorizerfactory.NewPrivilegedGroups("system:masters"),
-			authorizerfactory.NewAlwaysDenyAuthorizer(),
-		),
+		Authorizer: authz,
 	}
 	serverConfig.Authentication = genericapiserver.AuthenticationInfo{
 		Authenticator: anonymous.NewAuthenticator(nil),
