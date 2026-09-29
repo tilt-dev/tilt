@@ -71,7 +71,8 @@ export class LogDisplay {
   }
 
   shouldDisplayPrologues(): boolean {
-    return this.filterSet.level !== FilterLevel.all
+    const { level, term } = this.filterSet
+    return level !== FilterLevel.all || term.state === TermState.Parsed
   }
 
   matchesTermFilter(line: LogLine): boolean {
@@ -95,6 +96,11 @@ export class LogDisplay {
     return true
   }
 
+  // Whether a line is a "hit" that prologue context should lead up to.
+  matchesPrologueFilter(line: LogLine): boolean {
+    return this.matchesLevelFilter(line) && this.matchesTermFilter(line)
+  }
+
   matchesFilter(line: LogLine): boolean {
     if (line.buildEvent) {
       return true
@@ -108,14 +114,18 @@ export class LogDisplay {
       return false
     }
 
-    return this.matchesLevelFilter(line) && this.matchesTermFilter(line)
+    return this.matchesPrologueFilter(line)
   }
 
   trackPrologueLine(line: LogLine) {
     if (!this.prologuesBySpanId[line.spanId]) {
       this.prologuesBySpanId[line.spanId] = []
     }
-    this.prologuesBySpanId[line.spanId].push(line)
+    let spanLines = this.prologuesBySpanId[line.spanId]
+    spanLines.push(line)
+    if (spanLines.length > DISPLAY_LOG_PROLOGUE_LENGTH) {
+      spanLines.shift()
+    }
   }
 
   getAndClearPrologue(spanId: string): LogLine[] {
