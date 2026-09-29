@@ -35,8 +35,6 @@ import (
 // Strategy defines functions that are invoked prior to storing a Kubernetes resource.
 type Strategy interface {
 	WarningsOnCreate(ctx context.Context, obj runtime.Object) []string
-	AllowCreateOnUpdate() bool
-	AllowUnconditionalUpdate() bool
 	Match(label labels.Selector, field fields.Selector) storage.SelectionPredicate
 	rest.RESTUpdateStrategy
 	rest.RESTCreateStrategy
@@ -128,7 +126,7 @@ func (DefaultStrategy) Validate(ctx context.Context, obj runtime.Object) field.E
 }
 
 // AllowCreateOnUpdate is used by the Store
-func (d DefaultStrategy) AllowCreateOnUpdate() bool {
+func (d DefaultStrategy) AllowCreateOnUpdate(ctx context.Context) bool {
 	if d.Object == nil {
 		return false
 	}
@@ -139,7 +137,7 @@ func (d DefaultStrategy) AllowCreateOnUpdate() bool {
 }
 
 // AllowUnconditionalUpdate is used by the Store
-func (d DefaultStrategy) AllowUnconditionalUpdate() bool {
+func (d DefaultStrategy) AllowUnconditionalUpdate(ctx context.Context) bool {
 	if d.Object == nil {
 		return false
 	}

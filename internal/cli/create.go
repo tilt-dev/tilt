@@ -108,6 +108,6 @@ func (c *createCmd) run(ctx context.Context, args []string) error {
 		return nil
 	}
 	cmdutil.CheckErr(o.Complete(f, cmd, args))
-	cmdutil.CheckErr(o.RunCreate(f, cmd))
+	cmdutil.CheckErr(o.RunCreate(f))
 	return nil
 }
