@@ -1,6 +1,7 @@
 import {
   AnimDuration,
   Color,
+  ColorRGB,
   ColorRGBA,
   Font,
   mixinResetButtonStyle,
@@ -16,7 +17,7 @@ export const OverviewButtonMixin = `
 
   background: transparent;
 
-  border: 1px solid ${ColorRGBA(Color.grayLightest, 0.5)};
+  border: 1px solid ${ColorRGBA(ColorRGB.grayLightest, 0.5)};
   box-sizing: border-box;
   border-radius: 4px;
   cursor: pointer;
@@ -35,7 +36,7 @@ export const OverviewButtonMixin = `
 
   &:disabled {
     opacity: 0.33;
-    border: 1px solid ${ColorRGBA(Color.grayLightest, 0.5)};
+    border: 1px solid ${ColorRGBA(ColorRGB.grayLightest, 0.5)};
     color: ${Color.gray70};
   }
 

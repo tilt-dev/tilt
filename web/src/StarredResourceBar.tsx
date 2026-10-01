@@ -17,6 +17,7 @@ import {
   barberpole,
   Color,
   ColorAlpha,
+  ColorRGB,
   ColorRGBA,
   Font,
   FontSize,
@@ -80,33 +81,33 @@ const StarredResourceRoot = styled.div`
   position: relative; // Anchor the .isBuilding::after pseudo-element
 
   &:hover {
-    background-color: ${ColorRGBA(Color.gray30, ColorAlpha.translucent)};
+    background-color: ${ColorRGBA(ColorRGB.gray30, ColorAlpha.translucent)};
   }
 
   &.isWarning {
     color: ${Color.yellow};
-    border-color: ${ColorRGBA(Color.yellow, ColorAlpha.translucent)};
+    border-color: ${ColorRGBA(ColorRGB.yellow, ColorAlpha.translucent)};
   }
   &.isHealthy {
     color: ${Color.green};
-    border-color: ${ColorRGBA(Color.green, ColorAlpha.translucent)};
+    border-color: ${ColorRGBA(ColorRGB.green, ColorAlpha.translucent)};
   }
   &.isUnhealthy {
     color: ${Color.red};
-    border-color: ${ColorRGBA(Color.red, ColorAlpha.translucent)};
+    border-color: ${ColorRGBA(ColorRGB.red, ColorAlpha.translucent)};
   }
   &.isBuilding {
-    color: ${ColorRGBA(Color.white, ColorAlpha.translucent)};
+    color: ${ColorRGBA(ColorRGB.white, ColorAlpha.translucent)};
   }
   .isSelected &.isBuilding {
-    color: ${ColorRGBA(Color.gray30, ColorAlpha.translucent)};
+    color: ${ColorRGBA(ColorRGB.gray30, ColorAlpha.translucent)};
   }
   &.isPending {
-    color: ${ColorRGBA(Color.white, ColorAlpha.translucent)};
+    color: ${ColorRGBA(ColorRGB.white, ColorAlpha.translucent)};
     animation: ${Glow.white} 2s linear infinite;
   }
   .isSelected &.isPending {
-    color: ${ColorRGBA(Color.gray30, ColorAlpha.translucent)};
+    color: ${ColorRGBA(ColorRGB.gray30, ColorAlpha.translucent)};
     animation: ${Glow.dark} 2s linear infinite;
   }
   &.isNone {
@@ -127,17 +128,17 @@ const StarredResourceRoot = styled.div`
     bottom: 0;
     background: repeating-linear-gradient(
       225deg,
-      ${ColorRGBA(Color.gray50, ColorAlpha.translucent)},
-      ${ColorRGBA(Color.gray50, ColorAlpha.translucent)} 1px,
-      ${ColorRGBA(Color.black, 0)} 1px,
-      ${ColorRGBA(Color.black, 0)} 6px
+      ${ColorRGBA(ColorRGB.gray50, ColorAlpha.translucent)},
+      ${ColorRGBA(ColorRGB.gray50, ColorAlpha.translucent)} 1px,
+      ${ColorRGBA(ColorRGB.black, 0)} 1px,
+      ${ColorRGBA(ColorRGB.black, 0)} 6px
     );
     background-size: 200% 200%;
     animation: ${barberpole} 8s linear infinite;
   }
 
   &.isDisabled {
-    border-color: ${ColorRGBA(Color.gray60, ColorAlpha.translucent)};
+    border-color: ${ColorRGBA(ColorRGB.gray60, ColorAlpha.translucent)};
 
     &:not(.isSelected) {
       color: ${Color.gray60};

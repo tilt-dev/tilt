@@ -7,6 +7,7 @@ import { ReactComponent as InfoSvg } from "./assets/svg/info.svg"
 import { InstrumentedButton } from "./instrumentedComponents"
 import {
   Color,
+  ColorRGB,
   ColorRGBA,
   Font,
   FontSize,
@@ -59,7 +60,7 @@ const InfoIcon = styled(InfoSvg)`
 
   &.shadow {
     border-radius: 50%;
-    box-shadow: 0px 0px 5px 2px ${ColorRGBA(Color.gray20, 0.6)};
+    box-shadow: 0px 0px 5px 2px ${ColorRGBA(ColorRGB.gray20, 0.6)};
   }
 
   .fillStd {

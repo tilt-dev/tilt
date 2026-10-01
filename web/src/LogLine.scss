@@ -16,14 +16,14 @@
   font-size: var(--log-font-scale);
 
   &.is-highlighted {
-    background-color: rgba($color-blue, $translucent);
+    background-color: rgba(var(--color-blue-rgb), $translucent);
   }
 
   &.is-buildEvent-init {
     background-color: $color-gray-30;
     text-align: right;
     padding-right: $spacing-unit;
-    border-top: 1px solid rgba($color-gray-50, $translucent);
+    border-top: 1px solid rgba(var(--color-gray-50-rgb), $translucent);
     border-bottom: 1px solid $color-blue-dark;
     
     &.is-sticky {
