@@ -155,6 +155,14 @@ func HandleConfigsReloaded(
 		old := mt.Manifest
 		mt.Manifest = m
 
+		// K8sRuntimeState caches PodReadinessMode, but the ManifestTarget is
+		// reused across reloads, so keep the cache in sync with the manifest.
+		if krs, ok := mt.State.RuntimeState.(store.K8sRuntimeState); ok &&
+			krs.PodReadinessMode != m.PodReadinessMode() {
+			krs.PodReadinessMode = m.PodReadinessMode()
+			mt.State.RuntimeState = krs
+		}
+
 		if model.ChangesInvalidateBuild(old, m) {
 			// Manifest has changed such that the current build is invalid;
 			// ensure we do an image build so that we apply the changes
