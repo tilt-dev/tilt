@@ -623,7 +623,7 @@ func NewManifestState(m model.Manifest) *ManifestState {
 	ms.ResetBuildStatus(m)
 
 	if m.IsK8s() {
-		ms.RuntimeState = NewK8sRuntimeState(m)
+		ms.RuntimeState = NewK8sRuntimeState()
 	} else if m.IsLocal() {
 		ms.RuntimeState = LocalRuntimeState{}
 	}
@@ -883,15 +883,15 @@ func (ms *ManifestState) UpdateStatus(triggerMode model.TriggerMode) v1alpha1.Up
 // The individual status fields don't know anything about how resources are
 // triggered (i.e., whether they're waiting on a dependent resource to build or
 // a manual trigger). So we need to consider that information here.
-func (ms *ManifestState) RuntimeStatus(triggerMode model.TriggerMode) v1alpha1.RuntimeStatus {
+func (ms *ManifestState) RuntimeStatus(m model.Manifest) v1alpha1.RuntimeStatus {
 	runStatus := v1alpha1.RuntimeStatusUnknown
 	if ms.RuntimeState != nil {
-		runStatus = ms.RuntimeState.RuntimeStatus()
+		runStatus = ms.RuntimeState.RuntimeStatus(m)
 	}
 
 	if runStatus == v1alpha1.RuntimeStatusPending || runStatus == v1alpha1.RuntimeStatusUnknown {
 		// Let's just borrow the trigger analysis logic from UpdateStatus().
-		updateStatus := ms.UpdateStatus(triggerMode)
+		updateStatus := ms.UpdateStatus(m.TriggerMode)
 		if updateStatus == v1alpha1.UpdateStatusNone {
 			runStatus = v1alpha1.RuntimeStatusNone
 		} else if updateStatus == v1alpha1.UpdateStatusPending || updateStatus == v1alpha1.UpdateStatusInProgress {

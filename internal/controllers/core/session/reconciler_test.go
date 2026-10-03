@@ -125,7 +125,7 @@ func TestExitControlCI_FirstRuntimeFailure(t *testing.T) {
 
 	f.Store.WithState(func(state *store.EngineState) {
 		mt := state.ManifestTargets["fe"]
-		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, v1alpha1.Pod{
+		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(v1alpha1.Pod{
 			Name:   "pod-a",
 			Status: "ErrImagePull",
 			Containers: []v1alpha1.Container{
@@ -212,7 +212,7 @@ func TestExitControlCI_PodRunningContainerError(t *testing.T) {
 
 	f.Store.WithState(func(state *store.EngineState) {
 		mt := state.ManifestTargets["fe"]
-		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, v1alpha1.Pod{
+		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(v1alpha1.Pod{
 			Name:  "pod-a",
 			Phase: string(v1.PodRunning),
 			Containers: []v1alpha1.Container{
@@ -286,7 +286,7 @@ func TestExitControlCI_Success(t *testing.T) {
 			FinishTime: f.clock.Now(),
 		})
 		// pod-a: ready / pod-b: doesn't exist
-		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeStateWithPods(m, f.pod(k8s.PodID("pod-a"), true))
+		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeStateWithPods(f.pod(k8s.PodID("pod-a"), true))
 	})
 
 	f.MustReconcile(sessionKey)
@@ -295,7 +295,7 @@ func TestExitControlCI_Success(t *testing.T) {
 	// pod-a: ready / pod-b: ready
 	f.Store.WithState(func(state *store.EngineState) {
 		mt := state.ManifestTargets["fe2"]
-		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, f.pod(k8s.PodID("pod-b"), true))
+		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(f.pod(k8s.PodID("pod-b"), true))
 	})
 
 	f.MustReconcile(sessionKey)
@@ -316,7 +316,7 @@ func TestExitControlCI_PodReadinessMode_Wait(t *testing.T) {
 			FinishTime: f.clock.Now(),
 		})
 
-		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeStateWithPods(m,
+		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeStateWithPods(
 			f.pod(k8s.PodID("pod-a"), false))
 	})
 
@@ -325,7 +325,7 @@ func TestExitControlCI_PodReadinessMode_Wait(t *testing.T) {
 
 	f.Store.WithState(func(state *store.EngineState) {
 		mt := state.ManifestTargets["fe"]
-		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest,
+		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(
 			f.pod(k8s.PodID("pod-a"), true),
 		)
 	})
@@ -350,7 +350,7 @@ func TestExitControlCI_PodReadinessMode_Ignore_Pods(t *testing.T) {
 		})
 
 		// created but no pods yet
-		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeState(m)
+		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeState()
 	})
 
 	f.MustReconcile(sessionKey)
@@ -359,7 +359,7 @@ func TestExitControlCI_PodReadinessMode_Ignore_Pods(t *testing.T) {
 	f.Store.WithState(func(state *store.EngineState) {
 		mt := state.ManifestTargets["fe"]
 		// pod deployed, but explicitly not ready - we should not care and exit anyway
-		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, f.pod(k8s.PodID("pod-a"), false))
+		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(f.pod(k8s.PodID("pod-a"), false))
 	})
 
 	f.MustReconcile(sessionKey)
@@ -382,7 +382,7 @@ func TestExitControlCI_PodReadinessMode_Ignore_NoPods(t *testing.T) {
 			FinishTime: f.clock.Now(),
 		})
 
-		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeState(m)
+		state.ManifestTargets["fe"].State.RuntimeState = store.NewK8sRuntimeState()
 	})
 
 	f.MustReconcile(sessionKey)
@@ -390,7 +390,7 @@ func TestExitControlCI_PodReadinessMode_Ignore_NoPods(t *testing.T) {
 
 	f.Store.WithState(func(state *store.EngineState) {
 		mt := state.ManifestTargets["fe"]
-		krs := store.NewK8sRuntimeState(mt.Manifest)
+		krs := store.NewK8sRuntimeState()
 		// entities were created, but there's no pods in sight!
 		krs.HasEverDeployedSuccessfully = true
 		mt.State.RuntimeState = krs
@@ -413,7 +413,7 @@ func TestExitControlCI_JobSuccess(t *testing.T) {
 			StartTime:  f.clock.Now(),
 			FinishTime: f.clock.Now(),
 		})
-		krs := store.NewK8sRuntimeStateWithPods(m, f.pod(k8s.PodID("pod-a"), true))
+		krs := store.NewK8sRuntimeStateWithPods(f.pod(k8s.PodID("pod-a"), true))
 		state.ManifestTargets["fe"].State.RuntimeState = krs
 	})
 
@@ -422,7 +422,7 @@ func TestExitControlCI_JobSuccess(t *testing.T) {
 
 	f.Store.WithState(func(state *store.EngineState) {
 		mt := state.ManifestTargets["fe"]
-		krs := store.NewK8sRuntimeStateWithPods(mt.Manifest, successPod("pod-a"))
+		krs := store.NewK8sRuntimeStateWithPods(successPod("pod-a"))
 		mt.State.RuntimeState = krs
 	})
 
@@ -450,7 +450,7 @@ func TestExitControlCI_JobSuccessWithNoPods(t *testing.T) {
 
 	f.Store.WithState(func(state *store.EngineState) {
 		mt := state.ManifestTargets["fe"]
-		krs := store.NewK8sRuntimeState(mt.Manifest)
+		krs := store.NewK8sRuntimeState()
 		krs.HasEverDeployedSuccessfully = true
 		// There are no pods but the job completed successfully.
 		krs.Conditions = []metav1.Condition{
@@ -567,7 +567,7 @@ func TestExitControlCI_TriggerMode_K8s(t *testing.T) {
 						StartTime:  f.clock.Now(),
 						FinishTime: f.clock.Now(),
 					})
-					mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, successPod("pod-a"))
+					mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(successPod("pod-a"))
 				})
 			}
 
@@ -790,7 +790,7 @@ func (f *fixture) upsertFailingPod(mn model.ManifestName) {
 			FinishTime: f.clock.Now(),
 		})
 		mt.State.LastSuccessfulDeployTime = f.clock.Now()
-		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, v1alpha1.Pod{
+		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(v1alpha1.Pod{
 			Name:   "pod-a",
 			Status: "ErrImagePull",
 			Containers: []v1alpha1.Container{
@@ -888,7 +888,7 @@ func TestExitControlCI_ReadinessTimeout(t *testing.T) {
 		})
 		// Set runtime state with a pod that is not ready.
 		mt.State.LastSuccessfulDeployTime = f.clock.Now()
-		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, f.pod(k8s.PodID("pod-test"), false))
+		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(f.pod(k8s.PodID("pod-test"), false))
 	})
 
 	// Initial reconcile: the readiness timeout should not have been reached yet.
@@ -930,7 +930,7 @@ func TestExitControlCI_ReadinessTimeoutJob(t *testing.T) {
 		})
 		// Set runtime state with a pod that is not ready.
 		mt.State.LastSuccessfulDeployTime = f.clock.Now()
-		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(mt.Manifest, f.pod(k8s.PodID("pod-test"), false))
+		mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(f.pod(k8s.PodID("pod-test"), false))
 	})
 
 	// Advance the clock by 35 seconds to exceed the 30-second readiness timeout.

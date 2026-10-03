@@ -46,7 +46,7 @@ func TestBuildControllerLocalResource(t *testing.T) {
 
 	f.WaitUntilManifestState("local target manifest state not updated", "local", func(ms store.ManifestState) bool {
 		lrs := ms.RuntimeState.(store.LocalRuntimeState)
-		return !lrs.LastReadyOrSucceededTime.IsZero() && lrs.RuntimeStatus() == v1alpha1.RuntimeStatusNotApplicable
+		return !lrs.LastReadyOrSucceededTime.IsZero() && lrs.RuntimeStatus(manifest) == v1alpha1.RuntimeStatusNotApplicable
 	})
 
 	err := f.Stop()

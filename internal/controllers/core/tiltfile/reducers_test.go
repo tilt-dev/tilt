@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/tilt-dev/tilt/internal/store"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
@@ -86,50 +87,44 @@ func TestManifestOrder(t *testing.T) {
 		state.ManifestDefinitionOrder)
 }
 
-// Editing pod_readiness must take effect on reload. The ManifestTarget's
-// K8sRuntimeState caches PodReadinessMode, so a reused target has to pick up
-// the new mode: a pod-less resource flipped to 'ignore' should become ready
-// instead of staying pending.
+// Editing pod_readiness must take effect on reload. The ManifestTarget (and
+// its RuntimeState) is reused across reloads, so the runtime status has to be
+// read off the new Manifest: a pod-less resource flipped to 'ignore' should
+// become ready instead of staying pending.
+// https://github.com/tilt-dev/tilt/issues/6058
 func TestConfigsReloadedUpdatesPodReadinessMode(t *testing.T) {
 	ctx := logger.WithLogger(context.Background(), logger.NewTestLogger(os.Stdout))
 	state := store.NewState()
 
 	name := model.ManifestName("restore")
-	waitManifest := model.Manifest{Name: name}.WithDeployTarget(model.K8sTarget{
-		Name:             model.TargetName(name),
-		PodReadinessMode: model.PodReadinessWait,
-	})
+	manifestWithReadiness := func(mode model.PodReadinessMode) model.Manifest {
+		return model.Manifest{Name: name}.WithDeployTarget(model.K8sTarget{
+			Name:             model.TargetName(name),
+			PodReadinessMode: mode,
+		})
+	}
 
 	HandleConfigsReloaded(ctx, state, ConfigsReloadedAction{
 		Name:      model.MainTiltfileManifestName,
-		Manifests: []model.Manifest{waitManifest},
+		Manifests: []model.Manifest{manifestWithReadiness(model.PodReadinessWait)},
 	})
 
 	mt, ok := state.ManifestTargets[name]
-	assert.True(t, ok)
+	require.True(t, ok)
 
 	// A successful deploy that produced no pods (e.g. replicas: 0) is pending
 	// under the default 'wait' mode.
 	krs := mt.State.K8sRuntimeState()
 	krs.HasEverDeployedSuccessfully = true
 	mt.State.RuntimeState = krs
+	assert.Equal(t, v1alpha1.RuntimeStatusPending, mt.RuntimeStatus())
 
-	assert.Equal(t, model.PodReadinessWait, mt.State.K8sRuntimeState().PodReadinessMode)
-	assert.Equal(t, v1alpha1.RuntimeStatusPending,
-		mt.State.K8sRuntimeState().RuntimeStatus())
-
-	ignoreManifest := model.Manifest{Name: name}.WithDeployTarget(model.K8sTarget{
-		Name:             model.TargetName(name),
-		PodReadinessMode: model.PodReadinessIgnore,
-	})
 	HandleConfigsReloaded(ctx, state, ConfigsReloadedAction{
 		Name:      model.MainTiltfileManifestName,
-		Manifests: []model.Manifest{ignoreManifest},
+		Manifests: []model.Manifest{manifestWithReadiness(model.PodReadinessIgnore)},
 	})
 
 	mt, ok = state.ManifestTargets[name]
-	assert.True(t, ok)
-	assert.Equal(t, model.PodReadinessIgnore, mt.State.K8sRuntimeState().PodReadinessMode)
-	assert.Equal(t, v1alpha1.RuntimeStatusOK,
-		mt.State.K8sRuntimeState().RuntimeStatus())
+	require.True(t, ok)
+	assert.Equal(t, v1alpha1.RuntimeStatusOK, mt.RuntimeStatus())
 }

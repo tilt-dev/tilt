@@ -18,6 +18,17 @@ import (
 	"github.com/tilt-dev/tilt/pkg/model"
 )
 
+// RuntimeState holds the observed state of a resource's runtime (pods,
+// containers, processes).
+//
+// It deliberately holds no Tiltfile configuration. A ManifestTarget is reused
+// across Tiltfile reloads, so anything copied out of the Manifest into here
+// would outlive the Manifest it came from and go stale
+// (https://github.com/tilt-dev/tilt/issues/6058).
+//
+// Instead, the Manifest is supplied at read time and each implementation reads
+// whatever configuration it needs out of it. Today only K8sRuntimeState needs
+// anything (pod_readiness).
 type RuntimeState interface {
 	RuntimeState()
 
@@ -29,13 +40,13 @@ type RuntimeState interface {
 	// In the future, it might make sense to check "IsBlocking()" or something,
 	// and alter the behavior based on whether the underlying resource is a server
 	// or a task.
-	HasEverBeenReadyOrSucceeded() bool
+	HasEverBeenReadyOrSucceeded(m model.Manifest) bool
 
-	RuntimeStatus() v1alpha1.RuntimeStatus
+	RuntimeStatus(m model.Manifest) v1alpha1.RuntimeStatus
 
 	// If the runtime status is in Error mode,
 	// RuntimeStatusError() should report a reason.
-	RuntimeStatusError() error
+	RuntimeStatusError(m model.Manifest) error
 }
 
 type LocalRuntimeState struct {
@@ -53,7 +64,12 @@ var _ RuntimeState = LocalRuntimeState{}
 
 func (LocalRuntimeState) RuntimeState() {}
 
-func (l LocalRuntimeState) RuntimeStatus() v1alpha1.RuntimeStatus {
+func (l LocalRuntimeState) RuntimeStatus(model.Manifest) v1alpha1.RuntimeStatus {
+	return l.runtimeStatus()
+}
+
+// Local runtime status doesn't depend on anything in the Manifest.
+func (l LocalRuntimeState) runtimeStatus() v1alpha1.RuntimeStatus {
 	status := l.Status
 	if status == "" {
 		status = v1alpha1.RuntimeStatusUnknown
@@ -61,15 +77,14 @@ func (l LocalRuntimeState) RuntimeStatus() v1alpha1.RuntimeStatus {
 	return status
 }
 
-func (l LocalRuntimeState) RuntimeStatusError() error {
-	status := l.RuntimeStatus()
-	if status != v1alpha1.RuntimeStatusError {
+func (l LocalRuntimeState) RuntimeStatusError(model.Manifest) error {
+	if l.runtimeStatus() != v1alpha1.RuntimeStatusError {
 		return nil
 	}
 	return fmt.Errorf("Process %d exited with non-zero status", l.PID)
 }
 
-func (l LocalRuntimeState) HasEverBeenReadyOrSucceeded() bool {
+func (l LocalRuntimeState) HasEverBeenReadyOrSucceeded(model.Manifest) bool {
 	return !l.LastReadyOrSucceededTime.IsZero()
 }
 
@@ -89,31 +104,28 @@ type K8sRuntimeState struct {
 	HasEverDeployedSuccessfully bool
 
 	UpdateStartTime map[k8s.PodID]time.Time
-
-	PodReadinessMode model.PodReadinessMode
 }
 
 func (K8sRuntimeState) RuntimeState() {}
 
 var _ RuntimeState = K8sRuntimeState{}
 
-func NewK8sRuntimeStateWithPods(m model.Manifest, pods ...v1alpha1.Pod) K8sRuntimeState {
-	state := NewK8sRuntimeState(m)
+func NewK8sRuntimeStateWithPods(pods ...v1alpha1.Pod) K8sRuntimeState {
+	state := NewK8sRuntimeState()
 	state.FilteredPods = pods
 	state.HasEverDeployedSuccessfully = len(pods) > 0
 	return state
 }
 
-func NewK8sRuntimeState(m model.Manifest) K8sRuntimeState {
+func NewK8sRuntimeState() K8sRuntimeState {
 	return K8sRuntimeState{
-		PodReadinessMode: m.PodReadinessMode(),
-		LBs:              make(map[k8s.ServiceName]*url.URL),
-		UpdateStartTime:  make(map[k8s.PodID]time.Time),
+		LBs:             make(map[k8s.ServiceName]*url.URL),
+		UpdateStartTime: make(map[k8s.PodID]time.Time),
 	}
 }
 
-func (s K8sRuntimeState) RuntimeStatusError() error {
-	status := s.RuntimeStatus()
+func (s K8sRuntimeState) RuntimeStatusError(m model.Manifest) error {
+	status := s.RuntimeStatus(m)
 	if status != v1alpha1.RuntimeStatusError {
 		return nil
 	}
@@ -121,12 +133,14 @@ func (s K8sRuntimeState) RuntimeStatusError() error {
 	return fmt.Errorf("Pod %s in error state: %s", pod.Name, pod.Status)
 }
 
-func (s K8sRuntimeState) RuntimeStatus() v1alpha1.RuntimeStatus {
+func (s K8sRuntimeState) RuntimeStatus(m model.Manifest) v1alpha1.RuntimeStatus {
+	podReadinessMode := m.PodReadinessMode()
+
 	if !s.HasEverDeployedSuccessfully {
 		return v1alpha1.RuntimeStatusPending
 	}
 
-	if s.PodReadinessMode == model.PodReadinessIgnore {
+	if podReadinessMode == model.PodReadinessIgnore {
 		return v1alpha1.RuntimeStatusOK
 	}
 
@@ -140,7 +154,7 @@ func (s K8sRuntimeState) RuntimeStatus() v1alpha1.RuntimeStatus {
 	pod := s.MostRecentPod()
 	switch v1.PodPhase(pod.Phase) {
 	case v1.PodRunning:
-		if AllPodContainersReady(pod) && s.PodReadinessMode != model.PodReadinessSucceeded {
+		if AllPodContainersReady(pod) && podReadinessMode != model.PodReadinessSucceeded {
 			return v1alpha1.RuntimeStatusOK
 		}
 		return v1alpha1.RuntimeStatusPending
@@ -161,11 +175,11 @@ func (s K8sRuntimeState) RuntimeStatus() v1alpha1.RuntimeStatus {
 	return v1alpha1.RuntimeStatusPending
 }
 
-func (s K8sRuntimeState) HasEverBeenReadyOrSucceeded() bool {
+func (s K8sRuntimeState) HasEverBeenReadyOrSucceeded(m model.Manifest) bool {
 	if !s.HasEverDeployedSuccessfully {
 		return false
 	}
-	if s.PodReadinessMode == model.PodReadinessIgnore {
+	if m.PodReadinessMode() == model.PodReadinessIgnore {
 		return true
 	}
 	return !s.LastReadyOrSucceededTime.IsZero()
