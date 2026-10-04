@@ -8,6 +8,7 @@ import {
   AnimDuration,
   Color,
   ColorAlpha,
+  ColorRGB,
   ColorRGBA,
   Glow,
   Width,
@@ -40,17 +41,17 @@ let SidebarIconRoot = styled.div`
     background-color: ${Color.red};
   }
   &.isBuilding {
-    background-color: ${ColorRGBA(Color.white, ColorAlpha.translucent)};
+    background-color: ${ColorRGBA(ColorRGB.white, ColorAlpha.translucent)};
   }
   .isSelected &.isBuilding {
-    background-color: ${ColorRGBA(Color.gray30, ColorAlpha.translucent)};
+    background-color: ${ColorRGBA(ColorRGB.gray30, ColorAlpha.translucent)};
   }
   &.isPending {
-    background-color: ${ColorRGBA(Color.white, ColorAlpha.translucent)};
+    background-color: ${ColorRGBA(ColorRGB.white, ColorAlpha.translucent)};
     animation: ${Glow.white} 2s linear infinite;
   }
   .isSelected &.isPending {
-    background-color: ${ColorRGBA(Color.gray30, ColorAlpha.translucent)};
+    background-color: ${ColorRGBA(ColorRGB.gray30, ColorAlpha.translucent)};
     animation: ${Glow.dark} 2s linear infinite;
   }
   &.isNone {

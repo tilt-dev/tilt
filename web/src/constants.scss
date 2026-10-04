@@ -7,30 +7,113 @@ $font-size-small: 16px;
 $font-size-smallest: 13px;
 $font-size-icon: 24px;
 
-// COLORS
-// Monochrome
-$color-white: #ffffff;
-$color-off-white: #eef1f1;
-$color-black: #000000;
-$color-gray-50: #586e75; // Solarized base01
-$color-gray-30: #073642; // Solarized base02
-$color-gray-20: #002b36; // Solarized base03 (darkest bg tone)
-$color-gray-10: #001b20; // Brand
+// COLORS — CSS custom properties for theme support
 
-// Legacy grayscale
-$color-gray-darker: #00242d;
-$color-gray-lightest: #93a1a1; // Solarized base1 (darkest content tone)
+:root {
+  // Monochrome
+  --color-white: #ffffff;
+  --color-off-white: #eef1f1;
+  --color-black: #000000;
+  --color-gray-70: #CCDADE;
+  --color-gray-60: #7095A0;
+  --color-gray-50: #586e75; // Solarized base01
+  --color-gray-40: #2D4D55;
+  --color-gray-30: #073642; // Solarized base02
+  --color-gray-20: #002b36; // Solarized base03 (darkest bg tone)
+  --color-gray-10: #001b20; // Brand
+  --color-gray-darker: #00242d;
+  --color-gray-lightest: #93a1a1; // Solarized base1 (darkest content tone)
 
-// Brand Colors
-$color-green: #20ba31;
-$color-green-light: #70d37b;
-$color-blue: #03c7d3;
-$color-blue-light: #5edbe3;
-$color-blue-dark: #007d82;
-$color-purple: #6378ba;
-$color-red: #f6685c;
-$color-pink: #ef5aa0;
-$color-yellow: #fcb41e;
+  // Brand Colors
+  --color-green: #20ba31;
+  --color-green-light: #70d37b;
+  --color-blue: #03c7d3;
+  --color-blue-light: #5edbe3;
+  --color-blue-dark: #007d82;
+  --color-purple: #6378ba;
+  --color-red: #f6685c;
+  --color-red-light: #f7aaa4;
+  --color-pink: #ef5aa0;
+  --color-yellow: #fcb41e;
+  --color-yellow-light: #fdcf6f;
+
+  // RGB variants for use with rgba()
+  --color-white-rgb: 255, 255, 255;
+  --color-black-rgb: 0, 0, 0;
+  --color-gray-60-rgb: 112, 149, 160;
+  --color-gray-50-rgb: 88, 110, 117;
+  --color-gray-30-rgb: 7, 54, 66;
+  --color-gray-20-rgb: 0, 43, 54;
+  --color-gray-10-rgb: 0, 27, 32;
+  --color-gray-lightest-rgb: 147, 161, 161;
+  --color-blue-rgb: 3, 199, 211;
+  --color-green-rgb: 32, 186, 49;
+  --color-red-rgb: 246, 104, 92;
+  --color-yellow-rgb: 252, 180, 30;
+}
+
+[data-theme="light"] {
+  // Monochrome — inverted for light
+  --color-white: #002b36;
+  --color-off-white: #073642;
+  --color-black: #ffffff;
+  --color-gray-70: #2D4D55;
+  --color-gray-60: #586e75;
+  --color-gray-50: #93a1a1;
+  --color-gray-40: #CCDADE;
+  --color-gray-30: #dde4e4;
+  --color-gray-20: #f8fafa;
+  --color-gray-10: #ffffff;
+  --color-gray-darker: #eef1f1;
+  --color-gray-lightest: #586e75;
+
+  // Brand Colors — adjusted for light backgrounds
+  --color-green: #1a9928;
+  --color-green-light: #4db858;
+  --color-blue: #0298a3;
+  --color-blue-light: #03c7d3;
+  --color-blue-dark: #006b70;
+  --color-purple: #4f63a3;
+  --color-red: #e5564a;
+  --color-red-light: #f7aaa4;
+  --color-pink: #d94d8c;
+  --color-yellow: #e09c10;
+  --color-yellow-light: #fcb41e;
+
+  // RGB variants for light theme
+  --color-white-rgb: 0, 43, 54;
+  --color-black-rgb: 255, 255, 255;
+  --color-gray-60-rgb: 88, 110, 117;
+  --color-gray-50-rgb: 147, 161, 161;
+  --color-gray-30-rgb: 221, 228, 228;
+  --color-gray-20-rgb: 248, 250, 250;
+  --color-gray-10-rgb: 255, 255, 255;
+  --color-gray-lightest-rgb: 88, 110, 117;
+  --color-blue-rgb: 2, 152, 163;
+  --color-green-rgb: 26, 153, 40;
+  --color-red-rgb: 229, 86, 74;
+  --color-yellow-rgb: 224, 156, 16;
+}
+
+// SCSS convenience variables referencing CSS vars
+$color-white: var(--color-white);
+$color-off-white: var(--color-off-white);
+$color-black: var(--color-black);
+$color-gray-50: var(--color-gray-50);
+$color-gray-30: var(--color-gray-30);
+$color-gray-20: var(--color-gray-20);
+$color-gray-10: var(--color-gray-10);
+$color-gray-darker: var(--color-gray-darker);
+$color-gray-lightest: var(--color-gray-lightest);
+$color-green: var(--color-green);
+$color-green-light: var(--color-green-light);
+$color-blue: var(--color-blue);
+$color-blue-light: var(--color-blue-light);
+$color-blue-dark: var(--color-blue-dark);
+$color-purple: var(--color-purple);
+$color-red: var(--color-red);
+$color-pink: var(--color-pink);
+$color-yellow: var(--color-yellow);
 
 $translucent: 0.3;
 $translucent-ish: 0.7;
