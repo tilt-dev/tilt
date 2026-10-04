@@ -15,7 +15,7 @@ import { RafContext, useRaf } from "./raf"
 import { useStarredResources } from "./StarredResourcesContext"
 import { Color, FontSize, SizeUnit } from "./style-helpers"
 import Anser from "./third-party/anser/index.js"
-import { LogLine, ResourceName } from "./types"
+import { LogLine, LogPatchSet, ResourceName } from "./types"
 
 // The number of lines to display before an error.
 export const PROLOGUE_LENGTH = DISPLAY_LOG_PROLOGUE_LENGTH
@@ -150,6 +150,10 @@ class LineHashList {
     return this.byStoredLineIndex[storedLineIndex]
   }
 
+  getLast(): LineHashListEntry | null {
+    return this.last
+  }
+
   append(line: LogLine) {
     let existing = this.byStoredLineIndex[line.storedLineIndex]
     if (existing) {
@@ -232,7 +236,8 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
     }
 
     if (e.action === LogUpdateAction.truncate) {
-      this.resetRender()
+      this.handleTruncate()
+      return
     }
 
     this.readLogsFromLogStore()
@@ -410,21 +415,184 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
     }
   }
 
-  // Render new logs that have come in since the current checkpoint.
-  readLogsFromLogStore() {
+  // Read the lines for the current view, starting from the given checkpoint.
+  readPatch(checkpoint: number): LogPatchSet {
     let mn = this.props.manifestName
     let logStore = this.props.logStore
-    let startCheckpoint = this.logCheckpoint
-
-    let patch = mn
+    return mn
       ? mn === ResourceName.starred
-        ? logStore.starredLogPatchSet(
-            this.props.starredResources,
-            startCheckpoint
-          )
-        : logStore.manifestLogPatchSet(mn, startCheckpoint)
-      : logStore.allLogPatchSet(startCheckpoint)
+        ? logStore.starredLogPatchSet(this.props.starredResources, checkpoint)
+        : logStore.manifestLogPatchSet(mn, checkpoint)
+      : logStore.allLogPatchSet(checkpoint)
+  }
 
+  // When the log store is truncated, the log lines are rebuilt and all
+  // surviving lines get new storedLineIndex values.
+  //
+  // Truncation only drops the oldest segments of each manifest, so the
+  // surviving lines of this view are a suffix of the lines we've already
+  // rendered (possibly followed by fresh lines appended since we last read
+  // the store). Rather than wipe the DOM and re-render everything (which
+  // flickers and loses the scroll position, see
+  // https://github.com/tilt-dev/tilt/issues/6096), match the new lines
+  // against the rendered ones from the end, re-use their elements under the
+  // new indices, and remove only the elements of trimmed lines.
+  handleTruncate() {
+    let root = this.rootRef.current
+    let patch = this.readPatch(0)
+    let logDisplay = new LogDisplay(this.props.filterSet)
+    let newLines = logDisplay.filterLines(patch.lines)
+
+    // Find the last line we've seen in the new line list. Lines after it
+    // were appended after the truncation and just need a normal incremental
+    // render. The last line we've seen may have been extended by a new
+    // segment in the meantime, so allow a prefix match.
+    let oldLast = this.lineHashList.getLast()
+    let lastSeenIndex = -1
+    for (let i = newLines.length - 1; oldLast && i >= 0; i--) {
+      let newLine = newLines[i]
+      let oldLine = oldLast.line
+      if (
+        newLine.spanId === oldLine.spanId &&
+        newLine.level === oldLine.level &&
+        newLine.buildEvent === oldLine.buildEvent &&
+        newLine.manifestName === oldLine.manifestName &&
+        newLine.text.startsWith(oldLine.text)
+      ) {
+        lastSeenIndex = i
+        break
+      }
+    }
+
+    if (lastSeenIndex === -1) {
+      // Nothing we've seen survived (e.g., all the spans in this view were
+      // removed). Fall back to a full re-render.
+      this.resetRender()
+      this.readLogsFromLogStore()
+      return
+    }
+
+    // Walk backwards from the last seen line, matching new lines against
+    // old entries. The first pair already matched above.
+    let oldEntry = this.lineHashList.getLast()
+    let matchedCount = 0
+    while (matchedCount <= lastSeenIndex && oldEntry) {
+      let newLine = newLines[lastSeenIndex - matchedCount]
+      let oldLine = oldEntry.line
+      if (
+        matchedCount > 0 &&
+        (newLine.spanId !== oldLine.spanId ||
+          newLine.text !== oldLine.text ||
+          newLine.level !== oldLine.level ||
+          newLine.buildEvent !== oldLine.buildEvent ||
+          newLine.manifestName !== oldLine.manifestName)
+      ) {
+        break
+      }
+      matchedCount++
+      oldEntry = oldEntry.prev ?? null
+    }
+
+    // Build the new hash list, transplanting the rendered elements of the
+    // matched lines. Also remember how the old lines map to the new ones,
+    // so we can remap the render buffers below.
+    let newList = new LineHashList()
+    newLines.forEach((line) => newList.append(line))
+
+    let remap: { [key: number]: LogLine } = {}
+    let matchedEntry = this.lineHashList.getLast()
+    for (let i = 0; i < matchedCount && matchedEntry; i++) {
+      let newLine = newLines[lastSeenIndex - i]
+      remap[matchedEntry.line.storedLineIndex] = newLine
+      let el = matchedEntry.el
+      if (el) {
+        el.setAttribute("data-sl-index", String(newLine.storedLineIndex))
+        let newEntry = newList.lookup(newLine)
+        if (newEntry) {
+          newEntry.el = el
+        }
+      }
+      matchedEntry = matchedEntry.prev ?? null
+    }
+
+    // `oldEntry` now points at the newest trimmed line. Trimmed lines are
+    // the oldest lines of the view, so their elements sit above all the
+    // surviving elements. Remove them, keeping the viewport anchored on the
+    // surviving content. (Some browsers do this scroll anchoring natively;
+    // measuring after the removals makes the compensation a no-op there.)
+    let anchorEntry = newList.getLast()
+    while (anchorEntry && !anchorEntry.el) {
+      anchorEntry = anchorEntry.prev ?? null
+    }
+    let anchorEl = this.autoscroll ? null : anchorEntry?.el
+    let anchorTopBefore = anchorEl ? anchorEl.getBoundingClientRect().top : 0
+
+    for (let entry = oldEntry; entry; entry = entry.prev ?? null) {
+      if (entry.el) {
+        root.removeChild(entry.el)
+      }
+    }
+
+    if (anchorEl && root) {
+      let delta = anchorEl.getBoundingClientRect().top - anchorTopBefore
+      if (delta !== 0) {
+        root.scrollTop += delta
+      }
+    }
+
+    this.lineHashList = newList
+    this.logDisplay = logDisplay
+    this.logCheckpoint = patch.checkpoint
+
+    // Remap any lines waiting in the render buffers to their new indices,
+    // dropping the ones that were trimmed. Fresh lines after the last seen
+    // line get an incremental render, via the forward buffer. Unmatched
+    // surviving lines before the matched region (only possible in
+    // multi-manifest views, where the surviving lines are a subsequence
+    // rather than a suffix) get a full render, via the backward buffer.
+    let remapBuffer = (buffer: LogLine[]) =>
+      buffer
+        .map((line) => remap[line.storedLineIndex])
+        .filter((line): line is LogLine => !!line)
+
+    this.forwardBuffer = remapBuffer(this.forwardBuffer).concat(
+      newLines.slice(lastSeenIndex + 1)
+    )
+
+    let oldestMatchedIndex = lastSeenIndex - matchedCount + 1
+    this.backwardBuffer = newLines
+      .slice(0, oldestMatchedIndex)
+      .concat(remapBuffer(this.backwardBuffer))
+
+    // Re-render the oldest matched line: its predecessor changed, which can
+    // affect its display classes (e.g. is-contextChange). Same for the last
+    // seen line, if it was extended by a new segment.
+    let oldestMatchedLine = newLines[oldestMatchedIndex]
+    if (!this.backwardBuffer.includes(oldestMatchedLine)) {
+      this.backwardBuffer.push(oldestMatchedLine)
+    }
+    let lastSeenLine = newLines[lastSeenIndex]
+    if (
+      oldLast &&
+      lastSeenLine.text !== oldLast.line.text &&
+      !this.forwardBuffer.includes(lastSeenLine) &&
+      !this.backwardBuffer.includes(lastSeenLine)
+    ) {
+      this.forwardBuffer.unshift(lastSeenLine)
+    }
+
+    this.scrollTop = -1
+    if (this.autoscroll) {
+      this.scrollCursorIntoView()
+    }
+
+    this.maybeScheduleRender()
+  }
+
+  // Render new logs that have come in since the current checkpoint.
+  readLogsFromLogStore() {
+    let startCheckpoint = this.logCheckpoint
+    let patch = this.readPatch(startCheckpoint)
     let lines = this.logDisplay.filterLines(patch.lines)
 
     this.logCheckpoint = patch.checkpoint
