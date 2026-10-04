@@ -138,6 +138,7 @@ export type LogLine = {
   level: string
   buildEvent?: string
   spanId: string
+  containerName?: string
 
   // The index of this line in the LogStore StoredLine list.
   storedLineIndex: number
