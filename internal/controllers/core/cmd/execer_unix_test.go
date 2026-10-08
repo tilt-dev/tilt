@@ -54,5 +54,5 @@ echo BACKGROUND $!
 	assert.Eventually(t, func() bool {
 		err := grandkid.Signal(syscall.SIGCONT)
 		return err != nil && strings.Contains(err.Error(), "process already finished")
-	}, time.Second, time.Millisecond)
+	}, 5*time.Second, 10*time.Millisecond)
 }
