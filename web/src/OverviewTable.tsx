@@ -14,6 +14,7 @@ import React, {
 } from "react"
 import {
   HeaderGroup,
+  MetaBase,
   Row,
   SortingRule,
   TableHeaderProps,
@@ -93,7 +94,17 @@ type TableGroupProps = {
   label: string
   setGlobalSortBy: (id: string) => void
   focused: string
+  children?: React.ReactNode
 } & TableOptions<RowValues>
+
+type RecursiveTableGroups = {
+  labels: string[]
+  rootLabel?: string | undefined
+  data: { labelsToResources: { [x: string]: readonly RowValues[] } }
+  useControlledState: TableOptions<RowValues>["useControlledState"]
+  setGlobalSortBy: (id: string) => void
+  focused: string
+}
 
 type TableProps = {
   setGlobalSortBy?: (id: string) => void
@@ -753,9 +764,54 @@ function TableGroup(props: TableGroupProps) {
       </OverviewGroupSummary>
       <OverviewGroupDetails>
         <Table {...tableProps} />
+        {props.children}
       </OverviewGroupDetails>
     </OverviewGroup>
   )
+}
+
+function RecursiveTableGroup(props: RecursiveTableGroups) {
+  var rootLabel = props.rootLabel
+  var depthOfRootLabel = getRecursionDepth(rootLabel)
+  var myLabels =
+    rootLabel == undefined
+      ? props.labels.filter((s) => s.indexOf(".") == -1)
+      : props.labels.filter(
+          (s) =>
+            s.startsWith(rootLabel as string) &&
+            getRecursionDepth(s) == depthOfRootLabel + 1
+        )
+
+  return (
+    <>
+      {myLabels.map((label: string) => {
+        return (
+          <TableGroup
+            key={label}
+            label={label}
+            data={props.data.labelsToResources[label]}
+            columns={COLUMNS}
+            useControlledState={props.useControlledState}
+            setGlobalSortBy={props.setGlobalSortBy}
+            focused={props.focused}
+          >
+            <RecursiveTableGroup
+              labels={props.labels}
+              rootLabel={label}
+              data={props.data}
+              useControlledState={props.useControlledState}
+              setGlobalSortBy={props.setGlobalSortBy}
+              focused={props.focused}
+            />
+          </TableGroup>
+        )
+      })}
+    </>
+  )
+
+  function getRecursionDepth(str?: string) {
+    return str?.match(new RegExp("\\.", "g") || [])?.length || 0
+  }
 }
 
 export function TableGroupedByLabels({
@@ -798,17 +854,13 @@ export function TableGroupedByLabels({
 
   return (
     <>
-      {data.labels.map((label) => (
-        <TableGroup
-          key={label}
-          label={label}
-          data={data.labelsToResources[label]}
-          columns={COLUMNS}
-          useControlledState={useControlledState}
-          setGlobalSortBy={setGlobalSortBy}
-          focused={focused}
-        />
-      ))}
+      <RecursiveTableGroup
+        labels={data.labels}
+        data={data}
+        useControlledState={useControlledState}
+        setGlobalSortBy={setGlobalSortBy}
+        focused={focused}
+      />
       <TableGroup
         label={UNLABELED_LABEL}
         data={data.unlabeled}
