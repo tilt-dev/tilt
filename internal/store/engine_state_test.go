@@ -113,6 +113,82 @@ func TestBuildStatusGC(t *testing.T) {
 	assert.Equal(t, 0, len(bs.DependencyChanges))
 }
 
+func twoImageManifestState() (*ManifestState, model.TargetID, model.TargetID) {
+	app := model.ImageID(container.MustParseSelector("app"))
+	migrate := model.ImageID(container.MustParseSelector("migrate"))
+	ms := &ManifestState{
+		Name:          "fe",
+		CurrentBuilds: make(map[string]model.BuildRecord),
+		BuildStatuses: map[model.TargetID]*BuildStatus{
+			app:     newBuildStatus(),
+			migrate: newBuildStatus(),
+		},
+	}
+	return ms, app, migrate
+}
+
+// Two image targets watch the same file. One edit reaches both FileWatches,
+// but the build starts after the first target's change is recorded and before
+// the second target's is.
+func TestAddPendingFileChangeSharedFileDuringBuild(t *testing.T) {
+	ms, app, migrate := twoImageManifestState()
+	seen := time.Now()
+
+	ms.AddPendingFileChange(app, "main.go", seen)
+	assert.False(t, ms.BuildStatuses[migrate].HasPendingFileChanges())
+
+	start := time.Now()
+	ms.CurrentBuilds["buildcontrol"] = model.BuildRecord{
+		StartTime: start,
+		Edits:     ms.BuildStatuses[app].PendingFileChangesSorted(),
+	}
+
+	ms.AddPendingFileChange(migrate, "main.go", seen)
+	assert.True(t, ms.BuildStatuses[migrate].HasPendingFileChanges(),
+		"the running build doesn't rebuild migrate, so its change must stay pending")
+
+	delete(ms.CurrentBuilds, "buildcontrol")
+	for _, status := range ms.BuildStatuses {
+		status.ConsumeChangesBefore(start)
+	}
+	assert.False(t, ms.BuildStatuses[app].HasPendingFileChanges())
+	assert.True(t, ms.BuildStatuses[migrate].HasPendingFileChanges())
+}
+
+// A repeat of a change the target already had pending when the build started
+// was consumed by that build.
+func TestAddPendingFileChangeDuplicateDuringBuild(t *testing.T) {
+	ms, app, _ := twoImageManifestState()
+	seen := time.Now()
+
+	ms.AddPendingFileChange(app, "main.go", seen)
+	start := time.Now()
+	ms.CurrentBuilds["buildcontrol"] = model.BuildRecord{StartTime: start, Edits: []string{"main.go"}}
+
+	ms.AddPendingFileChange(app, "main.go", seen)
+
+	delete(ms.CurrentBuilds, "buildcontrol")
+	ms.BuildStatuses[app].ConsumeChangesBefore(start)
+	assert.False(t, ms.BuildStatuses[app].HasPendingFileChanges())
+}
+
+// A change the target saw and consumed in an earlier build doesn't count as
+// pending for the current one.
+func TestAddPendingFileChangeConsumedEarlierDuringBuild(t *testing.T) {
+	ms, app, migrate := twoImageManifestState()
+
+	ms.BuildStatuses[migrate].FileChanges["main.go"] = time.Now()
+	ms.BuildStatuses[migrate].ConsumeChangesBefore(time.Now())
+
+	seen := time.Now()
+	ms.AddPendingFileChange(app, "main.go", seen)
+	start := time.Now()
+	ms.CurrentBuilds["buildcontrol"] = model.BuildRecord{StartTime: start, Edits: []string{"main.go"}}
+
+	ms.AddPendingFileChange(migrate, "main.go", seen)
+	assert.True(t, ms.BuildStatuses[migrate].HasPendingFileChanges())
+}
+
 func TestManifestTargetEndpoints(t *testing.T) {
 	cases := []endpointsCase{
 		{
