@@ -127,17 +127,25 @@ func twoImageManifestState() (*ManifestState, model.TargetID, model.TargetID) {
 	return ms, app, migrate
 }
 
+// pastSeenAndStart returns a file change time and a later build start time,
+// both in the past. AddPendingFileChange stamps changes that arrive during a
+// build with time.Now(), and that stamp has to land strictly after the build
+// start even on platforms whose clock can return the same value twice in a row.
+func pastSeenAndStart() (seen, start time.Time) {
+	seen = time.Now().Add(-10 * time.Second)
+	return seen, seen.Add(time.Second)
+}
+
 // Two image targets watch the same file. One edit reaches both FileWatches,
 // but the build starts after the first target's change is recorded and before
 // the second target's is.
 func TestAddPendingFileChangeSharedFileDuringBuild(t *testing.T) {
 	ms, app, migrate := twoImageManifestState()
-	seen := time.Now()
+	seen, start := pastSeenAndStart()
 
 	ms.AddPendingFileChange(app, "main.go", seen)
 	assert.False(t, ms.BuildStatuses[migrate].HasPendingFileChanges())
 
-	start := time.Now()
 	ms.CurrentBuilds["buildcontrol"] = model.BuildRecord{
 		StartTime: start,
 		Edits:     ms.BuildStatuses[app].PendingFileChangesSorted(),
@@ -159,10 +167,9 @@ func TestAddPendingFileChangeSharedFileDuringBuild(t *testing.T) {
 // was consumed by that build.
 func TestAddPendingFileChangeDuplicateDuringBuild(t *testing.T) {
 	ms, app, _ := twoImageManifestState()
-	seen := time.Now()
+	seen, start := pastSeenAndStart()
 
 	ms.AddPendingFileChange(app, "main.go", seen)
-	start := time.Now()
 	ms.CurrentBuilds["buildcontrol"] = model.BuildRecord{StartTime: start, Edits: []string{"main.go"}}
 
 	ms.AddPendingFileChange(app, "main.go", seen)
@@ -177,12 +184,11 @@ func TestAddPendingFileChangeDuplicateDuringBuild(t *testing.T) {
 func TestAddPendingFileChangeConsumedEarlierDuringBuild(t *testing.T) {
 	ms, app, migrate := twoImageManifestState()
 
-	ms.BuildStatuses[migrate].FileChanges["main.go"] = time.Now()
-	ms.BuildStatuses[migrate].ConsumeChangesBefore(time.Now())
+	seen, start := pastSeenAndStart()
+	ms.BuildStatuses[migrate].FileChanges["main.go"] = seen.Add(-2 * time.Second)
+	ms.BuildStatuses[migrate].ConsumeChangesBefore(seen.Add(-time.Second))
 
-	seen := time.Now()
 	ms.AddPendingFileChange(app, "main.go", seen)
-	start := time.Now()
 	ms.CurrentBuilds["buildcontrol"] = model.BuildRecord{StartTime: start, Edits: []string{"main.go"}}
 
 	ms.AddPendingFileChange(migrate, "main.go", seen)
