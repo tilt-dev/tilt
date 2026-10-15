@@ -1,8 +1,11 @@
-import React from "react"
+import React, { useEffect, useRef } from "react"
 import styled from "styled-components"
 import { Alert } from "./alerts"
 import { ButtonSet } from "./ApiButton"
+import LogDetailsDrawer from "./LogDetailsDrawer"
 import { useFilterSet } from "./logfilters"
+import { useSelectedLogLine } from "./logselection"
+import { useLogStore } from "./LogStore"
 import OverviewActionBar from "./OverviewActionBar"
 import OverviewLogPane from "./OverviewLogPane"
 import { Color } from "./style-helpers"
@@ -20,6 +23,15 @@ let OverviewResourceDetailsRoot = styled.div`
   flex-grow: 1;
   flex-shrink: 1;
   flex-direction: column;
+`
+
+// Positions the log details drawer over the log pane.
+let LogPaneContainer = styled.div`
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
 `
 
 let NotFound = styled.div`
@@ -40,6 +52,18 @@ export default function OverviewResourceDetails(
   let starred = name === "" || name === ResourceName.starred
   let notFound = !all && !starred && !manifestName
   let filterSet = useFilterSet()
+  let logStore = useLogStore()
+  let [selectedLineIndex, setSelectedLineIndex] = useSelectedLogLine()
+
+  // The selected line belongs to the resource it was selected in,
+  // so clear it when switching resources.
+  let prevName = useRef(name)
+  useEffect(() => {
+    if (prevName.current !== name) {
+      prevName.current = name
+      setSelectedLineIndex(null)
+    }
+  }, [name, setSelectedLineIndex])
 
   return (
     <OverviewResourceDetailsRoot>
@@ -52,10 +76,19 @@ export default function OverviewResourceDetails(
       {notFound ? (
         <NotFound>No resource '{name}'</NotFound>
       ) : (
-        <OverviewLogPane
-          manifestName={starred ? name : manifestName}
-          filterSet={filterSet}
-        />
+        <LogPaneContainer>
+          <OverviewLogPane
+            manifestName={starred ? name : manifestName}
+            filterSet={filterSet}
+          />
+          {selectedLineIndex !== null && (
+            <LogDetailsDrawer
+              logStore={logStore}
+              selectedLineIndex={selectedLineIndex}
+              onClose={() => setSelectedLineIndex(null)}
+            />
+          )}
+        </LogPaneContainer>
       )}
     </OverviewResourceDetailsRoot>
   )

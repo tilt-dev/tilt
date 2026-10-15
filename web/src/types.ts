@@ -139,6 +139,9 @@ export type LogLine = {
   buildEvent?: string
   spanId: string
 
+  // RFC3339 timestamp of when the line was first logged, if known.
+  time?: string
+
   // The index of this line in the LogStore StoredLine list.
   storedLineIndex: number
 }
