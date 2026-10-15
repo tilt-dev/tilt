@@ -202,19 +202,73 @@ function levelColor(level: string): string {
   }
 }
 
-// Shows "Copied" for a moment after copying something.
-function useCopy(): [string | null, (id: string, text: string) => void] {
-  let [copied, setCopied] = useState<string | null>(null)
-  let timer = useRef<ReturnType<typeof setTimeout>>()
-  useEffect(() => () => clearTimeout(timer.current), [])
-
-  let copy = (id: string, text: string) => {
-    navigator.clipboard?.writeText(text)
-    setCopied(id)
-    clearTimeout(timer.current)
-    timer.current = setTimeout(() => setCopied(null), 1500)
+// Copies text to the clipboard. Returns whether it succeeded.
+//
+// navigator.clipboard only exists in secure contexts (https or localhost),
+// so fall back to execCommand when Tilt is accessed over plain http
+// (e.g., with --host 0.0.0.0).
+export async function copyText(text: string): Promise<boolean> {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text)
+      return true
+    } catch (e) {
+      // fall through to the fallback
+    }
   }
-  return [copied, copy]
+
+  let textarea = document.createElement("textarea")
+  textarea.value = text
+  textarea.setAttribute("readonly", "")
+  textarea.style.position = "fixed"
+  textarea.style.top = "-1000px"
+  textarea.style.opacity = "0"
+  document.body.appendChild(textarea)
+  let activeEl = document.activeElement as HTMLElement | null
+  try {
+    textarea.focus()
+    textarea.select()
+    return !!document.execCommand?.("copy")
+  } catch (e) {
+    return false
+  } finally {
+    document.body.removeChild(textarea)
+    activeEl?.focus?.()
+  }
+}
+
+type CopyStatus = { id: string; ok: boolean } | null
+
+// Shows whether the copy worked for a moment after copying something.
+function useCopy(): [CopyStatus, (id: string, text: string) => void] {
+  let [status, setStatus] = useState<CopyStatus>(null)
+  let timer = useRef<ReturnType<typeof setTimeout>>()
+  let mounted = useRef(true)
+  useEffect(
+    () => () => {
+      mounted.current = false
+      clearTimeout(timer.current)
+    },
+    []
+  )
+
+  let copy = async (id: string, text: string) => {
+    let ok = await copyText(text)
+    if (!mounted.current) {
+      return
+    }
+    setStatus({ id, ok })
+    clearTimeout(timer.current)
+    timer.current = setTimeout(() => setStatus(null), 1500)
+  }
+  return [status, copy]
+}
+
+function copyLabel(status: CopyStatus, id: string, label: string) {
+  if (status?.id !== id) {
+    return label
+  }
+  return status.ok ? "Copied!" : "Copy failed"
 }
 
 // Re-renders when the log store changes, so that progress lines that update
@@ -329,7 +383,7 @@ export default function LogDetailsDrawer(props: LogDetailsDrawerProps) {
         <Section>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <ActionButton onClick={() => copy("line", plainText)}>
-              {copied === "line" ? "Copied!" : "Copy line"}
+              {copyLabel(copied, "line", "Copy line")}
             </ActionButton>
             {structured && (
               <ActionButton
@@ -337,11 +391,11 @@ export default function LogDetailsDrawer(props: LogDetailsDrawerProps) {
                   copy("json", JSON.stringify(structured!.data, null, 2))
                 }
               >
-                {copied === "json" ? "Copied!" : "Copy JSON"}
+                {copyLabel(copied, "json", "Copy JSON")}
               </ActionButton>
             )}
             <ActionButton onClick={() => copy("link", window.location.href)}>
-              {copied === "link" ? "Copied!" : "Copy link"}
+              {copyLabel(copied, "link", "Copy link")}
             </ActionButton>
           </div>
         </Section>
@@ -372,7 +426,7 @@ export default function LogDetailsDrawer(props: LogDetailsDrawerProps) {
                     key={key}
                     fieldKey={key}
                     value={value}
-                    copied={copied === `field:${key}`}
+                    status={copied?.id === `field:${key}` ? copied.ok : null}
                     onCopy={() =>
                       copy(`field:${key}`, formatValueCompact(value))
                     }
@@ -397,7 +451,8 @@ export default function LogDetailsDrawer(props: LogDetailsDrawerProps) {
 function FieldRow(props: {
   fieldKey: string
   value: JSONValue
-  copied: boolean
+  // null if the field hasn't just been copied
+  status: boolean | null
   onCopy: () => void
 }) {
   return (
@@ -409,7 +464,7 @@ function FieldRow(props: {
           aria-label={`Copy ${props.fieldKey}`}
           onClick={props.onCopy}
         >
-          {props.copied ? "✓" : "copy"}
+          {props.status === null ? "copy" : props.status ? "✓" : "✗"}
         </IconButton>
       </td>
     </tr>

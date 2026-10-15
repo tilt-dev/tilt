@@ -181,24 +181,61 @@ describe("log line details", () => {
     expect(screen.queryByLabelText("Log details")).toBeNull()
   })
 
-  it("copies the line and the json", () => {
-    let writeText = jest.fn()
-    Object.assign(navigator, { clipboard: { writeText } })
-    renderHarness(newLogStore(), "/r/fe/overview?line=1")
-
-    fireEvent.click(screen.getByText("Copy JSON"))
-    expect(JSON.parse(writeText.mock.calls[0][0])).toEqual({
-      level: "info",
-      msg: "request done",
-      status: 200,
-      user: { id: 7 },
+  describe("copy buttons", () => {
+    let originalClipboard = navigator.clipboard
+    let originalExecCommand = document.execCommand
+    afterEach(() => {
+      Object.assign(navigator, { clipboard: originalClipboard })
+      document.execCommand = originalExecCommand
     })
-    expect(screen.getByText("Copied!")).toBeInTheDocument()
 
-    fireEvent.click(screen.getByText("Copy line"))
-    expect(writeText.mock.calls[1][0]).toEqual(
-      `{"level":"info","msg":"request done","status":200,"user":{"id":7}}`
-    )
+    it("copies the line and the json", async () => {
+      let writeText = jest.fn().mockResolvedValue(undefined)
+      Object.assign(navigator, { clipboard: { writeText } })
+      renderHarness(newLogStore(), "/r/fe/overview?line=1")
+
+      fireEvent.click(screen.getByText("Copy JSON"))
+      expect(await screen.findByText("Copied!")).toBeInTheDocument()
+      expect(JSON.parse(writeText.mock.calls[0][0])).toEqual({
+        level: "info",
+        msg: "request done",
+        status: 200,
+        user: { id: 7 },
+      })
+
+      fireEvent.click(screen.getByText("Copy line"))
+      await waitFor(() => expect(writeText).toHaveBeenCalledTimes(2))
+      expect(writeText.mock.calls[1][0]).toEqual(
+        `{"level":"info","msg":"request done","status":200,"user":{"id":7}}`
+      )
+    })
+
+    it("falls back to execCommand without the clipboard api (plain http)", async () => {
+      Object.assign(navigator, { clipboard: undefined })
+      let copied = ""
+      document.execCommand = jest.fn(() => {
+        copied = (document.activeElement as HTMLTextAreaElement).value
+        return true
+      })
+      renderHarness(newLogStore(), "/r/fe/overview?line=0")
+
+      fireEvent.click(screen.getByText("Copy line"))
+      expect(await screen.findByText("Copied!")).toBeInTheDocument()
+      expect(document.execCommand).toHaveBeenCalledWith("copy")
+      expect(copied).toEqual("plain line")
+      expect(document.querySelector("textarea")).toBeNull()
+    })
+
+    it("says when copying failed", async () => {
+      Object.assign(navigator, {
+        clipboard: { writeText: jest.fn().mockRejectedValue(new Error("no")) },
+      })
+      document.execCommand = jest.fn(() => false)
+      renderHarness(newLogStore(), "/r/fe/overview?line=0")
+
+      fireEvent.click(screen.getByText("Copy link"))
+      expect(await screen.findByText("Copy failed")).toBeInTheDocument()
+    })
   })
 
   it("shows a message when the selected line no longer exists", () => {
