@@ -8,6 +8,7 @@ import React, {
 import { matchPath, useNavigate, useLocation } from "react-router-dom"
 import { usePathBuilder } from "./PathBuilder"
 import { ResourceName } from "./types"
+import { searchWithSelectedLine } from "./logselection"
 
 // Resource navigation semantics.
 // 1. standardizes navigation
@@ -95,7 +96,13 @@ export function ResourceNavProvider(
       //
       // We're not sure if this is the right behavior, and do not
       // store it in any sort of persistent store.
-      let storedFilter = filterByResource[name] || ""
+      //
+      // The selected log line is not sticky, though: coming back to a
+      // resource shouldn't re-open the log details drawer.
+      let storedFilter = searchWithSelectedLine(
+        filterByResource[name] || "",
+        null
+      )
       navigate(url + storedFilter)
     },
     [navigate, filterByResource]
