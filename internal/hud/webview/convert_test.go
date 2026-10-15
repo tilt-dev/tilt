@@ -244,7 +244,7 @@ func TestReadinessCheckFailing(t *testing.T) {
 		Name: "foo",
 	}.WithDeployTarget(model.K8sTarget{})
 	state := newState([]model.Manifest{m})
-	state.ManifestTargets[m.Name].State.RuntimeState = store.NewK8sRuntimeStateWithPods(m, v1alpha1.Pod{
+	state.ManifestTargets[m.Name].State.RuntimeState = store.NewK8sRuntimeStateWithPods(v1alpha1.Pod{
 		Name:   "pod-id",
 		Status: "Running",
 		Phase:  "Running",
@@ -268,7 +268,7 @@ func TestRuntimeErrorAndDisabled(t *testing.T) {
 	}.WithDeployTarget(model.K8sTarget{})
 	state := newState([]model.Manifest{m})
 	mt := state.ManifestTargets[m.Name]
-	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(m, v1alpha1.Pod{
+	mt.State.RuntimeState = store.NewK8sRuntimeStateWithPods(v1alpha1.Pod{
 		Name:   "pod-id",
 		Status: "Error",
 		Phase:  string(v1.PodFailed),

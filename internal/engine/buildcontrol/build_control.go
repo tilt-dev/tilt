@@ -133,8 +133,9 @@ func waitingOnDependencies(state store.EngineState, mt *store.ManifestTarget) []
 
 	var waitingOn []model.TargetID
 	for _, mn := range mt.Manifest.ResourceDependencies {
-		ms, ok := state.ManifestState(mn)
-		if !ok || ms == nil || ms.RuntimeState == nil || !ms.RuntimeState.HasEverBeenReadyOrSucceeded() {
+		dep, ok := state.ManifestTargets[mn]
+		if !ok || dep.State == nil || dep.State.RuntimeState == nil ||
+			!dep.State.RuntimeState.HasEverBeenReadyOrSucceeded(dep.Manifest) {
 			waitingOn = append(waitingOn, mn.TargetID())
 		}
 	}
@@ -509,7 +510,7 @@ func IsLiveUpdateTargetWaitingOnDeploy(state store.EngineState, mt *store.Manife
 	}
 
 	// Never hold back a deploy in an error state.
-	if mt.State.RuntimeState.RuntimeStatus() == v1alpha1.RuntimeStatusError {
+	if mt.State.RuntimeState.RuntimeStatus(mt.Manifest) == v1alpha1.RuntimeStatusError {
 		return false
 	}
 

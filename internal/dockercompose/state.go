@@ -39,7 +39,12 @@ type State struct {
 
 func (State) RuntimeState() {}
 
-func (s State) RuntimeStatus() v1alpha1.RuntimeStatus {
+func (s State) RuntimeStatus(model.Manifest) v1alpha1.RuntimeStatus {
+	return s.runtimeStatus()
+}
+
+// Docker Compose runtime status doesn't depend on anything in the Manifest.
+func (s State) runtimeStatus() v1alpha1.RuntimeStatus {
 	if s.ContainerState.Error != "" || s.ContainerState.ExitCode != 0 {
 		return v1alpha1.RuntimeStatusError
 	}
@@ -54,8 +59,8 @@ func (s State) RuntimeStatus() v1alpha1.RuntimeStatus {
 	return v1alpha1.RuntimeStatusPending
 }
 
-func (s State) RuntimeStatusError() error {
-	status := s.RuntimeStatus()
+func (s State) RuntimeStatusError(model.Manifest) error {
+	status := s.runtimeStatus()
 	if status != v1alpha1.RuntimeStatusError {
 		return nil
 	}
@@ -71,7 +76,7 @@ func (s State) RuntimeStatusError() error {
 func (s State) WithContainerState(state v1alpha1.DockerContainerState) State {
 	s.ContainerState = state
 
-	if s.RuntimeStatus() == v1alpha1.RuntimeStatusOK {
+	if s.runtimeStatus() == v1alpha1.RuntimeStatusOK {
 		s.LastReadyTime = time.Now()
 	}
 
@@ -97,7 +102,7 @@ func (s State) WithContainerID(cID container.ID) State {
 	return s
 }
 
-func (s State) HasEverBeenReadyOrSucceeded() bool {
+func (s State) HasEverBeenReadyOrSucceeded(model.Manifest) bool {
 	return !s.LastReadyTime.IsZero()
 }
 
