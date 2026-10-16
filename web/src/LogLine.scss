@@ -136,3 +136,94 @@
     border-left: $logLine-gutter-width solid $color-blue-dark;
   }
 }
+
+// Clicking a line opens the log details drawer.
+.LogLine:not(.is-buildEvent) {
+  cursor: pointer;
+
+  // index.scss gives all <code> a text cursor
+  .LogLine-content {
+    cursor: pointer;
+  }
+
+  &:hover {
+    background-color: rgba($color-white, 0.04);
+  }
+  &.is-highlighted,
+  &.is-highlighted:hover {
+    background-color: rgba($color-blue, 0.2);
+    box-shadow: inset 2px 0 0 $color-blue;
+  }
+}
+
+// Timestamp gutter, toggled by LogsTimestampToggle
+.LogLine-time {
+  display: none;
+  user-select: none;
+  flex-shrink: 0;
+  color: $color-gray-lightest;
+  opacity: 0.7;
+  padding: 0 $spacing-unit * 0.25;
+  white-space: nowrap;
+
+  .log-show-timestamps & {
+    display: block;
+  }
+}
+
+// Compact key=value summary of JSON / logfmt lines
+.LogLine-content.is-structured {
+  .LogLine-structPrefix {
+    color: $color-gray-lightest;
+    margin-right: 1ch;
+  }
+
+  .LogLine-structLevel {
+    font-weight: bold;
+    margin-right: 1ch;
+    color: $color-blue-light;
+
+    &[data-level^="warn"] {
+      color: $color-yellow;
+    }
+    &[data-level^="err"],
+    &[data-level^="fatal"],
+    &[data-level^="crit"],
+    &[data-level^="panic"] {
+      color: $color-red;
+    }
+    &[data-level^="debug"],
+    &[data-level^="trace"] {
+      color: $color-gray-lightest;
+    }
+  }
+
+  .LogLine-structMsg {
+    color: $color-white;
+    font-weight: bold;
+    margin-right: 1ch;
+  }
+
+  .LogLine-field {
+    margin-right: 1.5ch;
+  }
+
+  .LogLine-key {
+    color: $color-gray-lightest;
+    opacity: 0.8;
+
+    &::after {
+      content: "=";
+    }
+  }
+
+  .LogLine-val {
+    color: $color-off-white;
+
+    &.is-string::before,
+    &.is-string::after {
+      content: '"';
+      opacity: 0.5;
+    }
+  }
+}

@@ -89,6 +89,16 @@ export interface LogUpdateEvent {
 
 type callback = (e: LogUpdateEvent) => void
 
+export type LogLineDetails = {
+  text: string
+  time: string
+  level: string
+  spanId: string
+  manifestName: string
+  fields: { [key: string]: string }
+  storedLineIndex: number
+}
+
 class LogStore implements LogAlertIndex {
   // Track which segments we've received from the server.
   checkpoint: number
@@ -378,6 +388,29 @@ class LogStore implements LogAlertIndex {
     return -1
   }
 
+  // Returns the full record of a single stored line, including fields that
+  // aren't part of the LogLine render model. Returns null if the index is out
+  // of range (e.g., after truncation).
+  lineDetails(storedLineIndex: number): LogLineDetails | null {
+    let storedLine = this.lines[storedLineIndex]
+    if (!storedLine) {
+      return null
+    }
+    let text = storedLine.text
+    if (text[text.length - 1] === "\n") {
+      text = text.substring(0, text.length - 1)
+    }
+    return {
+      text: text,
+      time: storedLine.time,
+      level: storedLine.level,
+      spanId: storedLine.spanId,
+      manifestName: this.spans[storedLine.spanId]?.manifestName ?? "",
+      fields: storedLine.fields ?? {},
+      storedLineIndex: storedLineIndex,
+    }
+  }
+
   allLog(): LogLine[] {
     return this.logHelper(this.spans, 0).lines
   }
@@ -631,6 +664,7 @@ class LogStore implements LogAlertIndex {
           manifestName: span.manifestName,
           buildEvent: storedLine.fields?.buildEvent,
           spanId: spanId,
+          time: storedLine.time || undefined,
           storedLineIndex: i,
         }
 

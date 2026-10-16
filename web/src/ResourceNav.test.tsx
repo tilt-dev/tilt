@@ -134,6 +134,24 @@ describe("ResourceNavContext", () => {
     expect(screen.getByLabelText("selectedResource")).toHaveTextContent("foo")
   })
 
+  it("preserves filters but not the selected log line", () => {
+    customRender()
+
+    let nav = (res: string) => {
+      userEvent.clear(screen.getByRole("textbox"))
+      userEvent.type(screen.getByRole("textbox"), res)
+      userEvent.click(screen.getByRole("button", { name: "openResource" }))
+    }
+
+    nav("foo")
+    act(() => navigate("/r/foo/overview?term=hi&line=12"))
+    nav("bar")
+    expect(location.search).toEqual("")
+    nav("foo")
+    expect(location.pathname).toEqual("/r/foo/overview")
+    expect(location.search).toEqual("?term=hi")
+  })
+
   // Make sure that useResourceNav() doesn't break memoization.
   it("memoizes renders", () => {
     let renderCount = 0

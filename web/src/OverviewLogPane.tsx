@@ -9,9 +9,20 @@ import LogStore, {
   LogUpdateEvent,
   useLogStore,
 } from "./LogStore"
-import { DISPLAY_LOG_PROLOGUE_LENGTH, LogDisplay } from "./logs"
+import {
+  findKey,
+  formatValueCompact,
+  levelKeys,
+  messageKeys,
+  parseStructured,
+  ParsedLogLine,
+  StructuredKind,
+} from "./logparse"
+import { DISPLAY_LOG_PROLOGUE_LENGTH, formatLogTime, LogDisplay } from "./logs"
+import { useSelectedLogLine } from "./logselection"
 import PathBuilder, { usePathBuilder } from "./PathBuilder"
 import { RafContext, useRaf } from "./raf"
+import { isTargetEditable } from "./shortcut"
 import { useStarredResources } from "./StarredResourcesContext"
 import { Color, FontSize, SizeUnit } from "./style-helpers"
 import Anser from "./third-party/anser/index.js"
@@ -29,6 +40,10 @@ type OverviewLogComponentProps = {
   navigate: ReturnType<typeof useNavigate>
   scrollToStoredLineIndex: number | null
   starredResources: string[]
+
+  // The storedLineIndex of the line shown in the details drawer, if any.
+  selectedLineIndex: number | null
+  onSelectLine: (index: number | null) => void
 }
 
 let LogPaneRoot = styled.section`
@@ -112,6 +127,24 @@ function newLineEl(
     span.appendChild(prefix)
   }
 
+  if (buildEvent !== "init") {
+    let time = document.createElement("span")
+    time.className = "LogLine-time"
+    time.textContent = formatLogTime(line.time)
+    if (line.time) {
+      time.title = line.time
+    }
+    span.appendChild(time)
+  }
+
+  let parsed: ParsedLogLine = buildEvent
+    ? { kind: StructuredKind.Text }
+    : parseStructured(text)
+  if (parsed.kind !== StructuredKind.Text) {
+    span.appendChild(newStructuredContentEl(parsed))
+    return span
+  }
+
   let code = document.createElement("code")
   code.classList.add("LogLine-content")
 
@@ -125,6 +158,59 @@ function newLineEl(
   )
   span.appendChild(code)
   return span
+}
+
+function appendTextEl(parent: Element, className: string, text: string) {
+  let el = document.createElement("span")
+  el.className = className
+  el.textContent = text
+  parent.appendChild(el)
+  return el
+}
+
+// Renders a JSON/logfmt line as a compact summary:
+//   [prefix] LEVEL message key=value key=value
+function newStructuredContentEl(
+  parsed: Exclude<ParsedLogLine, { kind: StructuredKind.Text }>
+): Element {
+  let code = document.createElement("code")
+  code.classList.add("LogLine-content", "is-structured")
+
+  let data = parsed.data
+  if (parsed.prefix) {
+    appendTextEl(code, "LogLine-structPrefix", parsed.prefix)
+  }
+
+  let levelKey = findKey(data, levelKeys)
+  if (levelKey) {
+    let level = String(data[levelKey])
+    let el = appendTextEl(code, "LogLine-structLevel", level.toUpperCase())
+    el.setAttribute("data-level", level.toLowerCase())
+  }
+
+  let msgKey = findKey(data, messageKeys)
+  if (msgKey) {
+    appendTextEl(code, "LogLine-structMsg", String(data[msgKey]))
+  }
+
+  for (let key of Object.keys(data)) {
+    if (key === msgKey || key === levelKey) {
+      continue
+    }
+    let field = document.createElement("span")
+    field.className = "LogLine-field"
+    appendTextEl(field, "LogLine-key", key)
+    let value = data[key]
+    let valueEl = appendTextEl(field, "LogLine-val", formatValueCompact(value))
+    if (typeof value === "string") {
+      valueEl.classList.add("is-string")
+    }
+    code.appendChild(field)
+  }
+
+  // newline ensures this takes up at least one line
+  code.appendChild(document.createTextNode("\n"))
+  return code
 }
 
 // An index of lines such that lets us find:
@@ -183,6 +269,7 @@ export const renderWindow = 250
 export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
   autoscroll: boolean = true
   needsScrollToLine: boolean = false
+  scrollTarget: number | null | undefined = null
 
   // The element containing all the log lines.
   rootRef: React.RefObject<any> = React.createRef()
@@ -218,6 +305,8 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
     this.onScroll = this.onScroll.bind(this)
     this.onLogUpdate = this.onLogUpdate.bind(this)
     this.renderBuffer = this.renderBuffer.bind(this)
+    this.onClick = this.onClick.bind(this)
+    this.onKeydown = this.onKeydown.bind(this)
   }
 
   scrollCursorIntoView() {
@@ -233,12 +322,22 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
 
     if (e.action === LogUpdateAction.truncate) {
       this.resetRender()
+
+      // Truncation re-numbers the stored lines, so the selection
+      // no longer points at the same line.
+      if (this.props.selectedLineIndex !== null) {
+        this.props.onSelectLine(null)
+      }
     }
 
     this.readLogsFromLogStore()
   }
 
   componentDidUpdate(prevProps: OverviewLogComponentProps) {
+    if (prevProps.selectedLineIndex !== this.props.selectedLineIndex) {
+      this.updateSelectedLineEl()
+    }
+
     if (prevProps.logStore !== this.props.logStore) {
       prevProps.logStore.removeUpdateListener(this.onLogUpdate)
       this.props.logStore.addUpdateListener(this.onLogUpdate)
@@ -250,7 +349,8 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
     ) {
       this.resetRender()
 
-      if (typeof this.props.scrollToStoredLineIndex === "number") {
+      this.scrollTarget = this.props.scrollToStoredLineIndex
+      if (typeof this.scrollTarget === "number") {
         this.needsScrollToLine = true
       }
       this.autoscroll = !this.needsScrollToLine
@@ -268,7 +368,11 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
       return
     }
 
-    if (typeof this.props.scrollToStoredLineIndex == "number") {
+    // On first load, scroll to either the line we navigated to,
+    // or the line selected in the URL (i.e., a permalink).
+    this.scrollTarget =
+      this.props.scrollToStoredLineIndex ?? this.props.selectedLineIndex
+    if (typeof this.scrollTarget == "number") {
       this.needsScrollToLine = true
     }
     this.autoscroll = !this.needsScrollToLine
@@ -276,6 +380,8 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
     rootEl.addEventListener("scroll", this.onScroll, {
       passive: true,
     })
+    rootEl.addEventListener("click", this.onClick)
+    document.body.addEventListener("keydown", this.onKeydown)
     this.resetRender()
     this.readLogsFromLogStore()
 
@@ -284,15 +390,121 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
 
   componentWillUnmount() {
     this.props.logStore.removeUpdateListener(this.onLogUpdate)
+    document.body.removeEventListener("keydown", this.onKeydown)
 
     let rootEl = this.rootRef.current
     if (!rootEl) {
       return
     }
     rootEl.removeEventListener("scroll", this.onScroll)
+    rootEl.removeEventListener("click", this.onClick)
 
     if (this.autoscrollRafId) {
       this.props.raf.cancelAnimationFrame(this.autoscrollRafId)
+    }
+  }
+
+  // Clicking a line selects it (opening the details drawer).
+  onClick(e: MouseEvent) {
+    let target = e.target as Element | null
+    if (!target || !target.closest) {
+      return
+    }
+
+    // Let links and buttons (e.g., the alert nav) do their own thing.
+    if (target.closest("a, button")) {
+      return
+    }
+
+    // Don't steal clicks from users selecting text to copy.
+    let selection = window.getSelection()
+    if (selection && !selection.isCollapsed && selection.toString()) {
+      return
+    }
+
+    let lineEl = target.closest(".LogLine[data-sl-index]")
+    if (!lineEl || lineEl.classList.contains("is-buildEvent")) {
+      return
+    }
+
+    let index = Number(lineEl.getAttribute("data-sl-index"))
+    if (index === this.props.selectedLineIndex) {
+      this.props.onSelectLine(null)
+      return
+    }
+
+    // The user is inspecting a line, so stop following new logs.
+    this.autoscroll = false
+    this.props.onSelectLine(index)
+  }
+
+  // While a line is selected, up/down move the selection and escape clears it.
+  onKeydown(e: KeyboardEvent) {
+    let selected = this.props.selectedLineIndex
+    if (selected === null || isTargetEditable(e)) {
+      return
+    }
+    if (e.shiftKey || e.altKey || e.metaKey || e.ctrlKey || e.isComposing) {
+      return
+    }
+
+    switch (e.key) {
+      case "Escape":
+        this.props.onSelectLine(null)
+        e.preventDefault()
+        return
+
+      case "ArrowUp":
+      case "ArrowDown":
+        let el = this.lineHashList.lookupByStoredLineIndex(selected)?.el
+        if (!el) {
+          return
+        }
+        e.preventDefault()
+
+        let next = this.adjacentSelectableLineEl(el, e.key === "ArrowDown")
+        if (!next) {
+          return
+        }
+
+        this.autoscroll = false
+        next.scrollIntoView?.({ block: "nearest" })
+        this.props.onSelectLine(Number(next.getAttribute("data-sl-index")))
+        return
+    }
+  }
+
+  private adjacentSelectableLineEl(el: Element, forward: boolean) {
+    let cur: Element | null = el
+    while (true) {
+      cur = forward ? cur.nextElementSibling : cur.previousElementSibling
+      if (!cur) {
+        return null
+      }
+      if (
+        cur.hasAttribute("data-sl-index") &&
+        !cur.classList.contains("is-buildEvent")
+      ) {
+        return cur
+      }
+    }
+  }
+
+  // The element currently marked as selected.
+  private selectedLineEl: Element | null = null
+
+  private updateSelectedLineEl() {
+    this.selectedLineEl?.classList.remove("is-highlighted")
+    this.selectedLineEl = null
+
+    let selected = this.props.selectedLineIndex
+    if (selected === null) {
+      return
+    }
+    let el = this.lineHashList.lookupByStoredLineIndex(selected)?.el
+    if (el) {
+      el.classList.add("is-highlighted")
+      this.selectedLineEl = el
     }
   }
 
@@ -395,6 +607,7 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
     }
 
     this.lineHashList = new LineHashList()
+    this.selectedLineEl = null
     this.logDisplay = new LogDisplay(this.props.filterSet)
     this.logCheckpoint = 0
     this.scrollTop = -1
@@ -528,9 +741,13 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
 
     if (this.needsScrollToLine) {
       let entry = this.lineHashList.lookupByStoredLineIndex(
-        this.props.scrollToStoredLineIndex as number
+        this.scrollTarget as number
       )
-      if (entry?.el) {
+      if (!entry) {
+        // The line isn't in this view (e.g., it's been filtered out),
+        // so it will never render.
+        this.needsScrollToLine = false
+      } else if (entry.el) {
         entry.el.scrollIntoView({ block: "center" })
         this.needsScrollToLine = false
       }
@@ -606,7 +823,14 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
       extraClasses.push("is-startOfAlert")
     }
 
+    if (line.storedLineIndex === this.props.selectedLineIndex) {
+      extraClasses.push("is-highlighted")
+    }
+
     let lineEl = newLineEl(entry.line, showManifestName, extraClasses)
+    if (line.storedLineIndex === this.props.selectedLineIndex) {
+      this.selectedLineEl = lineEl
+    }
     if (isStartOfAlert) {
       lineEl.appendChild(this.newAlertNavEl(entry.line))
     }
@@ -675,6 +899,7 @@ export default function OverviewLogPane(props: OverviewLogPaneProps) {
   let logStore = useLogStore()
   let raf = useRaf()
   let starredContext = useStarredResources()
+  let [selectedLineIndex, setSelectedLineIndex] = useSelectedLogLine()
 
   return (
     <OverviewLogComponent
@@ -687,6 +912,8 @@ export default function OverviewLogPane(props: OverviewLogPaneProps) {
       navigate={navigate}
       scrollToStoredLineIndex={location?.state?.storedLineIndex}
       starredResources={starredContext.starredResources}
+      selectedLineIndex={selectedLineIndex}
+      onSelectLine={setSelectedLineIndex}
     />
   )
 }
