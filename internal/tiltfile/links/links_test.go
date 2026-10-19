@@ -27,6 +27,31 @@ func TestMaybeAddScheme(t *testing.T) {
 			expectURL: "http://www.zombo.com",
 		},
 		{
+			name:      "adds_http_to_host_port",
+			url:       "localhost:8000",
+			expectURL: "http://localhost:8000",
+		},
+		{
+			name:      "adds_http_to_host_port_with_path",
+			url:       "localhost:8000/v1/app",
+			expectURL: "http://localhost:8000/v1/app",
+		},
+		{
+			name:      "adds_http_to_ip_port",
+			url:       "127.0.0.1:8000",
+			expectURL: "http://127.0.0.1:8000",
+		},
+		{
+			name:      "preserves_scheme_with_port",
+			url:       "https://localhost:8000",
+			expectURL: "https://localhost:8000",
+		},
+		{
+			name:      "preserves_opaque_scheme",
+			url:       "mailto:hello@zombo.com",
+			expectURL: "mailto:hello@zombo.com",
+		},
+		{
 			name:              "empty",
 			url:               "",
 			expectErrContains: "url empty",
@@ -57,7 +82,7 @@ print(l.name)
 
 	_, err := f.ExecFile("Tiltfile")
 	require.NoError(t, err)
-	assert.Equal(t, "localhost:4000\nweb\n", f.PrintOutput())
+	assert.Equal(t, "http://localhost:4000\nweb\n", f.PrintOutput())
 }
 func TestLinkPropsImmutable(t *testing.T) {
 	f := starkit.NewFixture(t, NewPlugin())

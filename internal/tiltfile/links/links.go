@@ -3,6 +3,7 @@ package links
 import (
 	"fmt"
 	"net/url"
+	"regexp"
 
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
@@ -54,10 +55,21 @@ func strToLink(s starlark.String) (model.Link, error) {
 	return model.Link{URL: withScheme}, nil
 }
 
+// Matches a URL that starts with host:port and has no scheme, e.g.
+// "localhost:8000" or "127.0.0.1:8000/path".
+var hostPortRe = regexp.MustCompile(`^[^/?#:]+:[0-9]+([/?#]|$)`)
+
 func parseAndMaybeAddScheme(uStr string) (*url.URL, error) {
 	if uStr == "" {
 		return nil, fmt.Errorf("url empty")
 	}
+
+	// url.Parse reads the host in "localhost:8000" as a scheme, and rejects
+	// "127.0.0.1:8000" outright, so add the scheme before parsing.
+	if hostPortRe.MatchString(uStr) {
+		uStr = "http://" + uStr
+	}
+
 	u, err := url.Parse(uStr)
 	if err != nil {
 		// NOTE(maia): this unfortunately isn't a very robust check, `url.Parse`
