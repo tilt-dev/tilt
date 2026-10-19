@@ -5,6 +5,9 @@ html {
   height: 100%;
   color-scheme: dark;
 }
+html:has([data-theme="light"]) {
+  color-scheme: light;
+}
 body {
   margin: 0;
   padding: 0;

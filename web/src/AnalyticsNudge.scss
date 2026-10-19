@@ -11,7 +11,7 @@
   position: fixed;
   z-index: $z-analyticsNudge;
   border: 1px solid $color-gray-50;
-  box-shadow: 0px 3px 10px 0px rgba($color-gray-20, $translucent-ish);
+  box-shadow: 0px 3px 10px 0px rgba(var(--color-gray-20-rgb), $translucent-ish);
 
   // by default, it's hidden
   display: flex;
