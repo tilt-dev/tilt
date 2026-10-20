@@ -71,7 +71,7 @@ func (mt *ManifestTarget) RuntimeStatus() v1alpha1.RuntimeStatus {
 	if m.IsLocal() && m.LocalTarget().ServeCmd.Empty() {
 		return v1alpha1.RuntimeStatusNotApplicable
 	}
-	return mt.State.RuntimeStatus(m.TriggerMode)
+	return mt.State.RuntimeStatus(m)
 }
 
 var _ model.Target = &ManifestTarget{}

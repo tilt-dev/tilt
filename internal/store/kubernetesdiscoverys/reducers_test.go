@@ -78,12 +78,12 @@ func TestReadyJob(t *testing.T) {
 	krs := ms.K8sRuntimeState()
 	krs.HasEverDeployedSuccessfully = true
 	ms.RuntimeState = krs
-	assert.False(t, krs.HasEverBeenReadyOrSucceeded())
+	assert.False(t, krs.HasEverBeenReadyOrSucceeded(mt.Manifest))
 
 	HandleKubernetesDiscoveryUpsertAction(state, KubernetesDiscoveryUpsertAction{
 		KubernetesDiscovery: kd,
 	})
-	assert.True(t, ms.K8sRuntimeState().HasEverBeenReadyOrSucceeded())
+	assert.True(t, ms.K8sRuntimeState().HasEverBeenReadyOrSucceeded(mt.Manifest))
 }
 
 func TestNewKubernetesApplyFilterOnlyUsesYaml(t *testing.T) {

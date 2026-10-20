@@ -74,8 +74,9 @@ func RefreshKubernetesResource(state *store.EngineState, name string) {
 
 	if a != nil {
 		mn := model.ManifestName(a.Annotations[v1alpha1.AnnotationManifest])
-		ms, ok := state.ManifestState(mn)
+		mt, ok := state.ManifestTargets[mn]
 		if ok {
+			ms := mt.State
 			krs := ms.K8sRuntimeState()
 
 			if d == nil {
@@ -88,7 +89,7 @@ func RefreshKubernetesResource(state *store.EngineState, name string) {
 			krs.FilteredPods = r.FilteredPods
 			krs.Conditions = r.ApplyStatus.Conditions
 
-			if krs.RuntimeStatus() == v1alpha1.RuntimeStatusOK {
+			if krs.RuntimeStatus(mt.Manifest) == v1alpha1.RuntimeStatusOK {
 				// NOTE(nick): It doesn't seem right to update this timestamp everytime
 				// we get a new event, but it's what the old code did.
 				krs.LastReadyOrSucceededTime = time.Now()

@@ -49,8 +49,7 @@ func TestMostRecentPod(t *testing.T) {
 	podA := v1alpha1.Pod{Name: "pod-a", CreatedAt: apis.Now()}
 	podB := v1alpha1.Pod{Name: "pod-b", CreatedAt: apis.NewTime(time.Now().Add(time.Minute))}
 	podC := v1alpha1.Pod{Name: "pod-c", CreatedAt: apis.NewTime(time.Now().Add(-time.Minute))}
-	m := model.Manifest{Name: "fe"}
-	podSet := NewK8sRuntimeStateWithPods(m, podA, podB, podC)
+	podSet := NewK8sRuntimeStateWithPods(podA, podB, podC)
 	assert.Equal(t, "pod-b", podSet.MostRecentPod().Name)
 }
 
@@ -364,7 +363,7 @@ func newManifestTargetWithLoadBalancerURLs(m model.Manifest, urls []string) *Man
 		name := k8s.ServiceName(fmt.Sprintf("svc#%d", i))
 		lbs[name] = u
 	}
-	k8sState := NewK8sRuntimeState(m)
+	k8sState := NewK8sRuntimeState()
 	k8sState.LBs = lbs
 	mt.State.RuntimeState = k8sState
 

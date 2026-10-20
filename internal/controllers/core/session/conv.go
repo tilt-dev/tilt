@@ -185,7 +185,7 @@ func (r *Reconciler) localServeTarget(mt *store.ManifestTarget, holds buildcontr
 
 	lrs := mt.State.LocalRuntimeState()
 	lastReadyTime := apis.NewMicroTime(lrs.LastReadyOrSucceededTime)
-	if runtimeErr := lrs.RuntimeStatusError(); runtimeErr != nil {
+	if runtimeErr := lrs.RuntimeStatusError(mt.Manifest); runtimeErr != nil {
 		target.State.Terminated = &session.TargetStateTerminated{
 			StartTime:  apis.NewMicroTime(lrs.StartTime),
 			FinishTime: apis.NewMicroTime(lrs.FinishTime),
@@ -241,7 +241,7 @@ func (r *Reconciler) genericRuntimeTarget(mt *store.ManifestTarget, holds buildc
 			LastReadyTime: apis.NewMicroTime(mt.State.LastSuccessfulDeployTime),
 		}
 	case v1alpha1.RuntimeStatusError:
-		errMsg := errToString(mt.State.RuntimeState.RuntimeStatusError())
+		errMsg := errToString(mt.State.RuntimeState.RuntimeStatusError(mt.Manifest))
 		if errMsg == "" {
 			errMsg = "Server target %q failed"
 		}
@@ -311,8 +311,7 @@ func k8sTargetType(mt *store.ManifestTarget) session.TargetType {
 		return ""
 	}
 
-	krs := mt.State.K8sRuntimeState()
-	if krs.PodReadinessMode == model.PodReadinessSucceeded {
+	if mt.Manifest.PodReadinessMode() == model.PodReadinessSucceeded {
 		return session.TargetTypeJob
 	}
 

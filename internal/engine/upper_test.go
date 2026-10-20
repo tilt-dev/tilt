@@ -2051,7 +2051,7 @@ func TestDockerComposeBuildCompletedSetsStatusToUpIfSuccessful(t *testing.T) {
 			t.Fatal("expected RuntimeState to be docker compose, but it wasn't")
 		}
 		assert.Equal(t, expected, state.ContainerID)
-		assert.Equal(t, v1alpha1.RuntimeStatusOK, state.RuntimeStatus())
+		assert.Equal(t, v1alpha1.RuntimeStatusOK, state.RuntimeStatus(m1))
 	})
 }
 
@@ -2587,12 +2587,12 @@ func TestHasEverBeenReadyK8s(t *testing.T) {
 
 	f.waitForCompletedBuildCount(1)
 	f.withManifestState(m.Name, func(ms store.ManifestState) {
-		require.False(t, ms.RuntimeState.HasEverBeenReadyOrSucceeded())
+		require.False(t, ms.RuntimeState.HasEverBeenReadyOrSucceeded(m))
 	})
 
 	f.podEvent(pb.WithContainerReady(true).Build())
 	f.WaitUntilManifestState("flagged ready", m.Name, func(state store.ManifestState) bool {
-		return state.RuntimeState.HasEverBeenReadyOrSucceeded()
+		return state.RuntimeState.HasEverBeenReadyOrSucceeded(m)
 	})
 }
 
@@ -2605,12 +2605,12 @@ func TestHasEverBeenCompleteK8s(t *testing.T) {
 
 	f.waitForCompletedBuildCount(1)
 	f.withManifestState(m.Name, func(ms store.ManifestState) {
-		require.False(t, ms.RuntimeState.HasEverBeenReadyOrSucceeded())
+		require.False(t, ms.RuntimeState.HasEverBeenReadyOrSucceeded(m))
 	})
 
 	f.podEvent(pb.WithPhase(string(v1.PodSucceeded)).Build())
 	f.WaitUntilManifestState("flagged ready", m.Name, func(state store.ManifestState) bool {
-		return state.RuntimeState.HasEverBeenReadyOrSucceeded()
+		return state.RuntimeState.HasEverBeenReadyOrSucceeded(m)
 	})
 }
 
@@ -2628,13 +2628,13 @@ func TestHasEverBeenReadyLocal(t *testing.T) {
 	// first build will fail, HasEverBeenReadyOrSucceeded should be false
 	f.waitForCompletedBuildCount(1)
 	f.withManifestState(m.Name, func(ms store.ManifestState) {
-		require.False(t, ms.RuntimeState.HasEverBeenReadyOrSucceeded())
+		require.False(t, ms.RuntimeState.HasEverBeenReadyOrSucceeded(m))
 	})
 
 	// second build will succeed, HasEverBeenReadyOrSucceeded should be true
 	f.fsWatcher.Events <- watch.NewFileEvent(f.JoinPath("bar", "main.go"))
 	f.WaitUntilManifestState("flagged ready", m.Name, func(state store.ManifestState) bool {
-		return state.RuntimeState.HasEverBeenReadyOrSucceeded()
+		return state.RuntimeState.HasEverBeenReadyOrSucceeded(m)
 	})
 }
 
@@ -3086,13 +3086,14 @@ local_resource('bar', serve_cmd='while true; do echo hi; sleep 30; done', resour
 	})
 
 	// foo should indicate that it has succeeded since there is no serve_cmd and thus no runtime status
-	f.withManifestState("foo", func(ms store.ManifestState) {
-		require.True(t, ms.RuntimeState.HasEverBeenReadyOrSucceeded())
-		require.Equal(t, v1alpha1.RuntimeStatusNotApplicable, ms.RuntimeState.RuntimeStatus())
+	f.withManifestTarget("foo", func(mt store.ManifestTarget) {
+		require.True(t, mt.State.RuntimeState.HasEverBeenReadyOrSucceeded(mt.Manifest))
+		require.Equal(t, v1alpha1.RuntimeStatusNotApplicable, mt.State.RuntimeState.RuntimeStatus(mt.Manifest))
 	})
 
-	f.WaitUntilManifestState("bar ready", "bar", func(ms store.ManifestState) bool {
-		return ms.RuntimeState.HasEverBeenReadyOrSucceeded() && ms.RuntimeState.RuntimeStatus() == v1alpha1.RuntimeStatusOK
+	f.WaitUntilManifest("bar ready", "bar", func(mt store.ManifestTarget) bool {
+		return mt.State.RuntimeState.HasEverBeenReadyOrSucceeded(mt.Manifest) &&
+			mt.State.RuntimeState.RuntimeStatus(mt.Manifest) == v1alpha1.RuntimeStatusOK
 	})
 }
 

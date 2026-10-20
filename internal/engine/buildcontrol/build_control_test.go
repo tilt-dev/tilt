@@ -134,7 +134,6 @@ func TestLocalDependsOnNonWorkloadK8s(t *testing.T) {
 		FinishTime: time.Now(),
 	})
 	k8s1.State.RuntimeState = store.K8sRuntimeState{
-		PodReadinessMode:            model.PodReadinessIgnore,
 		HasEverDeployedSuccessfully: true,
 	}
 

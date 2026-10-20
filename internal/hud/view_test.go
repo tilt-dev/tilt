@@ -134,11 +134,11 @@ func TestRuntimeStateNonWorkload(t *testing.T) {
 		Build()
 	state := newState([]model.Manifest{m})
 	runtimeState := state.ManifestTargets[m.Name].State.K8sRuntimeState()
-	assert.Equal(t, v1alpha1.RuntimeStatusPending, runtimeState.RuntimeStatus())
+	assert.Equal(t, v1alpha1.RuntimeStatusPending, runtimeState.RuntimeStatus(m))
 
 	runtimeState.HasEverDeployedSuccessfully = true
 
-	assert.Equal(t, v1alpha1.RuntimeStatusOK, runtimeState.RuntimeStatus())
+	assert.Equal(t, v1alpha1.RuntimeStatusOK, runtimeState.RuntimeStatus(m))
 }
 
 func TestRuntimeStateJob(t *testing.T) {
@@ -159,7 +159,7 @@ func TestRuntimeStateJob(t *testing.T) {
 				Build()
 			state := newState([]model.Manifest{m})
 			runtimeState := state.ManifestTargets[m.Name].State.K8sRuntimeState()
-			assert.Equal(t, v1alpha1.RuntimeStatusPending, runtimeState.RuntimeStatus())
+			assert.Equal(t, v1alpha1.RuntimeStatusPending, runtimeState.RuntimeStatus(m))
 
 			runtimeState.HasEverDeployedSuccessfully = true
 
@@ -170,7 +170,7 @@ func TestRuntimeStateJob(t *testing.T) {
 			}
 			runtimeState.FilteredPods = []v1alpha1.Pod{pod}
 
-			assert.Equal(t, tc.expectedRuntimeStatus, runtimeState.RuntimeStatus())
+			assert.Equal(t, tc.expectedRuntimeStatus, runtimeState.RuntimeStatus(m))
 		})
 	}
 }
@@ -185,7 +185,7 @@ func TestRuntimeStateJobCompleteMissingPods(t *testing.T) {
 	state := newState([]model.Manifest{m})
 	runtimeState := state.ManifestTargets[m.Name].State.K8sRuntimeState()
 	runtimeState.HasEverDeployedSuccessfully = true
-	assert.Equal(t, v1alpha1.RuntimeStatusPending, runtimeState.RuntimeStatus())
+	assert.Equal(t, v1alpha1.RuntimeStatusPending, runtimeState.RuntimeStatus(m))
 
 	// N.B. there are no pods but a condition attached
 	runtimeState.Conditions = []metav1.Condition{
@@ -194,7 +194,7 @@ func TestRuntimeStateJobCompleteMissingPods(t *testing.T) {
 			Status: metav1.ConditionTrue,
 		},
 	}
-	assert.Equal(t, v1alpha1.RuntimeStatusOK, runtimeState.RuntimeStatus())
+	assert.Equal(t, v1alpha1.RuntimeStatusOK, runtimeState.RuntimeStatus(m))
 }
 
 func TestStateToTerminalViewUnresourcedYAMLManifest(t *testing.T) {
