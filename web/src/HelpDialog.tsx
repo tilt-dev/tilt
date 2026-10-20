@@ -128,6 +128,12 @@ export default function HelpDialog(props: props) {
       <Shortcut label="Select Resource Row">
         <ShortcutBox>x</ShortcutBox>
       </Shortcut>
+      <Shortcut label="Navigate Log Lines (when a line is selected)">
+        <ShortcutBox>↑</ShortcutBox> or <ShortcutBox>↓</ShortcutBox>
+      </Shortcut>
+      <Shortcut label="Close Log Details">
+        <ShortcutBox>Esc</ShortcutBox>
+      </Shortcut>
       <Shortcut label="Clear Logs">{cmdOrCtrlShortcut("Backspace")}</Shortcut>
       <Shortcut label="Make Snapshot">
         <ShortcutBox>s</ShortcutBox>
