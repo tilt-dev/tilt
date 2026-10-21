@@ -968,6 +968,8 @@ func TestResourceLinks(t *testing.T) {
 			[]model.Link{model.MustNewLink("https://www.apple.edu", ""), model.MustNewLink("https://www.zombo.com", "")}),
 		newResourceLinkSuccessCase("list_strings_add_scheme", "['www.apple.edu', 'www.zombo.com']",
 			[]model.Link{model.MustNewLink("http://www.apple.edu", ""), model.MustNewLink("http://www.zombo.com", "")}),
+		newResourceLinkSuccessCase("list_strings_host_port_add_scheme", "['localhost:8000', '127.0.0.1:8001/api']",
+			[]model.Link{model.MustNewLink("http://localhost:8000", ""), model.MustNewLink("http://127.0.0.1:8001/api", "")}),
 		newResourceLinkSuccessCase("value_list_links",
 			"[link('www.apple.edu'), link('www.zombo.com', 'zombo')]",
 			[]model.Link{model.MustNewLink("http://www.apple.edu", ""), model.MustNewLink("http://www.zombo.com", "zombo")}),
