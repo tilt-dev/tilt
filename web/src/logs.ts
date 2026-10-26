@@ -29,6 +29,25 @@ export function stripAnsiCodes(text: string): string {
   return text.replace(ansiRegex, "")
 }
 
+function pad(n: number, width: number): string {
+  return String(n).padStart(width, "0")
+}
+
+// Formats an RFC3339 log timestamp as local HH:MM:SS.mmm
+export function formatLogTime(time?: string): string {
+  if (!time) {
+    return ""
+  }
+  let d = new Date(time)
+  if (isNaN(d.getTime())) {
+    return ""
+  }
+  return `${pad(d.getHours(), 2)}:${pad(d.getMinutes(), 2)}:${pad(
+    d.getSeconds(),
+    2
+  )}.${pad(d.getMilliseconds(), 3)}`
+}
+
 export function logLinesToString(
   lines: LogLine[],
   showManifestPrefix: boolean

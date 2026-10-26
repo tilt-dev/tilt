@@ -15,6 +15,9 @@ import {
 export const LogFontSizeScaleLocalStorageKey = "tilt.global.log-font-scale"
 export const LogFontSizeScaleCSSProperty = "--log-font-scale"
 export const LogFontSizeScaleMinimumPercentage = 10
+export const LogShowTimestampsLocalStorageKey =
+  "tilt.global.log-show-timestamps"
+export const LogShowTimestampsClassName = "log-show-timestamps"
 
 const LogActionsGroup = styled.div`
   margin-left: auto;
@@ -114,6 +117,48 @@ export const LogsFontSize: React.FC = () => {
   )
 }
 
+const TimestampToggleButton = styled(InstrumentedButton)`
+  ${mixinResetButtonStyle};
+  font-size: ${FontSize.small};
+  color: ${Color.gray60};
+  transition: color ${AnimDuration.default} ease;
+  user-select: none;
+
+  &:hover {
+    color: ${Color.blue};
+  }
+
+  &.is-enabled {
+    color: ${Color.white};
+  }
+`
+
+export const LogsTimestampToggle: React.FC = () => {
+  // a global setting, like the font size
+  const [showTimestamps, setShowTimestamps] = useStorageState<boolean>(
+    localStorage,
+    LogShowTimestampsLocalStorageKey,
+    false
+  )
+  useEffect(() => {
+    document.documentElement.classList.toggle(
+      LogShowTimestampsClassName,
+      !!showTimestamps
+    )
+  }, [showTimestamps])
+
+  return (
+    <TimestampToggleButton
+      aria-label={showTimestamps ? "Hide timestamps" : "Show timestamps"}
+      aria-pressed={!!showTimestamps}
+      className={showTimestamps ? "is-enabled" : ""}
+      onClick={() => setShowTimestamps(!showTimestamps)}
+    >
+      Time
+    </TimestampToggleButton>
+  )
+}
+
 export interface LogActionsProps {
   resourceName: string
   isSnapshot: boolean
@@ -127,6 +172,8 @@ const LogActions: React.FC<LogActionsProps> = ({
 }) => {
   return (
     <LogActionsGroup>
+      <LogsTimestampToggle />
+      <LogActionsDivider aria-hidden={true}>|</LogActionsDivider>
       <LogsFontSize />
       {isSnapshot || (
         <>
