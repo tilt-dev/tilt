@@ -11,7 +11,9 @@ type errorHandler struct {
 
 func newErrorHandler() *errorHandler {
 	return &errorHandler{
-		errCh: make(chan error),
+		// Stop can run after forward has stopped receiving errors.
+		// Keep room for the one error allowed by once so Stop and Close cannot deadlock.
+		errCh: make(chan error, 1),
 	}
 }
 
