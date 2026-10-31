@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"sync"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -62,6 +63,26 @@ func TestLogs(t *testing.T) {
 	assert.Equal(t, []reconcile.Request{
 		{NamespacedName: streamNN},
 	}, f.plsc.podSource.indexer.EnqueueKey(indexer.Key{Name: podNN, GVK: podGVK}))
+}
+
+func TestLogContainerField(t *testing.T) {
+	f := newPLMFixture(t)
+
+	f.kClient.SetLogsForPodContainer(podID, cName, "hello world!")
+
+	start := f.clock.Now()
+	pb := newPodBuilder(podID).addRunningContainer(cName, cID)
+	f.kClient.UpsertPod(pb.toPod())
+
+	pls := plsFromPod("server", pb, start)
+	f.Create(pls)
+
+	f.triggerPodEvent(podID)
+	f.AssertOutputContains("hello world!")
+
+	actions := f.store.LogActionsContaining("hello world!")
+	require.NotEmpty(t, actions, "expected at least one log action containing 'hello world!'")
+	assert.Equal(t, string(cName), actions[0].Fields()[logger.FieldNameContainer])
 }
 
 func TestLogCleanup(t *testing.T) {
@@ -516,7 +537,9 @@ Error streaming pod-id logs: failed to create fsnotify watcher: too many open fi
 type plmStore struct {
 	t testing.TB
 	*store.TestingStore
-	out *bufsync.ThreadSafeBuffer
+	out        *bufsync.ThreadSafeBuffer
+	mu         sync.Mutex
+	logActions []store.LogAction
 }
 
 func newPLMStore(t testing.TB, out *bufsync.ThreadSafeBuffer) *plmStore {
@@ -533,10 +556,26 @@ func (s *plmStore) Dispatch(action store.Action) {
 		s.t.Errorf("Expected action type LogAction. Actual: %T", action)
 	}
 
+	s.mu.Lock()
+	s.logActions = append(s.logActions, event)
+	s.mu.Unlock()
+
 	_, err := s.out.Write(event.Message())
 	if err != nil {
 		fmt.Printf("error writing event: %v\n", err)
 	}
+}
+
+func (s *plmStore) LogActionsContaining(text string) []store.LogAction {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var result []store.LogAction
+	for _, a := range s.logActions {
+		if strings.Contains(string(a.Message()), text) {
+			result = append(result, a)
+		}
+	}
+	return result
 }
 
 type plmFixture struct {

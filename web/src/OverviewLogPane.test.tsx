@@ -5,6 +5,7 @@ import {
   createFilterTermState,
   EMPTY_FILTER_TERM,
   FilterLevel,
+  FilterSet,
   FilterSource,
 } from "./logfilters"
 import LogStore, { LogUpdateAction, LogStoreProvider } from "./LogStore"
@@ -61,10 +62,11 @@ describe("OverviewLogPane", () => {
   })
 
   it("properly escapes ansi chars", () => {
-    let defaultFilter = {
+    let defaultFilter: FilterSet = {
       source: FilterSource.all,
       level: FilterLevel.all,
       term: EMPTY_FILTER_TERM,
+      containers: [],
     }
     let logStore = new LogStore()
     appendLines(logStore, "fe", "[32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5173[22m/[39m\n")
