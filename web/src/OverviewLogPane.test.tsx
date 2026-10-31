@@ -149,21 +149,95 @@ describe("OverviewLogPane", () => {
   })
 
   describe("filters by term", () => {
-    it("displays log lines that match the specified filter term", () => {
+    it("displays matching log lines with surrounding context, like level filters do", () => {
       const termWithResults = createFilterTermState("line 5")
       const { container } = customRender(
         <BuildLogAndRunLog source="" level="" term={termWithResults} />
       )
 
-      expect(container.querySelectorAll(".LogLine")).toHaveLength(2)
+      expect(container.querySelectorAll(".LogLine")).toHaveLength(
+        2 * (1 + PROLOGUE_LENGTH)
+      )
       expect(screen.getAllByText(/line 5/)).toHaveLength(2)
       expect(screen.queryByText(/line 15/)).toBeNull()
+
+      const alerts = container.querySelectorAll(".is-endOfAlert")
+      expect(alerts).toHaveLength(2)
+      expect(alerts[alerts.length - 1]).toHaveTextContent("Vigoda pod line 5")
+      expect(container.querySelectorAll(".LogLine-alertNav")).toHaveLength(2)
     })
 
     it("displays zero log lines when no logs match the specified filter term", () => {
       const termWithResults = createFilterTermState("spaghetti")
       const { container } = customRender(
         <BuildLogAndRunLog source="" level="" term={termWithResults} />
+      )
+
+      expect(container.querySelectorAll(".LogLine")).toHaveLength(0)
+    })
+
+    it("does not repeat context for consecutive matches", () => {
+      let logStore = new LogStore()
+      let defaultFilter = {
+        source: FilterSource.all,
+        level: FilterLevel.all,
+        term: EMPTY_FILTER_TERM,
+      }
+      appendLines(
+        logStore,
+        "fe",
+        "no match 1\n",
+        "no match 2\n",
+        "hit line 1\n",
+        "hit line 2\n",
+        "hit line 3\n",
+        "no match 3\n"
+      )
+
+      const termWithResults = createFilterTermState("hit")
+      const { container } = customRender(
+        <LogStoreProvider value={logStore}>
+          <OverviewLogPane
+            manifestName="fe"
+            filterSet={{ ...defaultFilter, term: termWithResults }}
+          />
+        </LogStoreProvider>
+      )
+
+      expect(container.querySelectorAll(".LogLine")).toHaveLength(5)
+      expect(screen.queryByText(/no match 3/)).toBeNull()
+    })
+
+    it("shows a short prologue when the match is near the start of a span", () => {
+      let logStore = new LogStore()
+      let defaultFilter = {
+        source: FilterSource.all,
+        level: FilterLevel.all,
+        term: EMPTY_FILTER_TERM,
+      }
+      appendLines(logStore, "fe", "no match 1\n", "hit line\n")
+
+      const termWithResults = createFilterTermState("hit")
+      const { container } = customRender(
+        <LogStoreProvider value={logStore}>
+          <OverviewLogPane
+            manifestName="fe"
+            filterSet={{ ...defaultFilter, term: termWithResults }}
+          />
+        </LogStoreProvider>
+      )
+
+      expect(container.querySelectorAll(".LogLine")).toHaveLength(2)
+    })
+
+    it("combines with a level filter", () => {
+      const termWithResults = createFilterTermState("line 5")
+      const { container } = customRender(
+        <BuildLogAndRunLog
+          source=""
+          level={FilterLevel.warn}
+          term={termWithResults}
+        />
       )
 
       expect(container.querySelectorAll(".LogLine")).toHaveLength(0)
