@@ -257,7 +257,7 @@ const StyledDialogCloseButton = styled(IconButton)`
 
 const StyledDialogContent = styled(DialogContent)`
   padding: 24px;
-  background-color: white;
+  background-color: ${Color.white};
 `
 
 const StyledDialogActions = styled(DialogActions)`
@@ -279,7 +279,7 @@ const CancelButton = styled(Button)`
 
 const ConfirmButton = styled(Button)`
   background-color: ${Color.green};
-  color: white;
+  color: ${Color.white};
 
   &:hover {
     background-color: ${Color.greenLight};
