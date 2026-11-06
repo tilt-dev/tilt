@@ -53,7 +53,12 @@ func (b *CustomBuilder) Build(ctx context.Context, refs container.RefSet,
 	// There are 3 modes for determining the output tag.
 	if outputsImageRefTo != "" {
 		// In outputs_image_ref_to mode, the user script MUST print the tag to a file,
-		// which we recover later. So no need to set expectedBuildRefs.
+		// which we recover later. We still set expectedBuildRefs, so that the script
+		// knows the image name with the registry applied.
+		expectedBuildRefs, err = refs.AddTagSuffix(fmt.Sprintf("tilt-build-%d", b.clock.Now().Unix()))
+		if err != nil {
+			return container.TaggedRefs{}, errors.Wrap(err, "custom_build")
+		}
 
 		// Remove the output file, ignoring any errors.
 		_ = os.Remove(outputsImageRefTo)

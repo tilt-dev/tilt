@@ -221,6 +221,21 @@ func TestCustomBuildOutputsToImageRef_DifferentClusterHost(t *testing.T) {
 	assert.Equal(f.t, container.MustParseNamed(myClusterTag), refs.ClusterRef)
 }
 
+func TestCustomBuildOutputsToImageRef_EnvVars(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("no sh on windows")
+	}
+
+	f := newFakeCustomBuildFixture(t)
+	cb := f.customBuild(`echo "${EXPECTED_REF%:*}:dev" > ref.txt`)
+	cb.CmdImageSpec.OutputsImageRefTo = f.JoinPath("ref.txt")
+	cb.CmdImageSpec.OutputMode = v1alpha1.CmdImageOutputRemote
+	refs, err := f.Build(refSetWithRegistryFromString("foo/bar", TwoURLRegistry), cb, nil)
+	require.NoError(t, err)
+	assert.Equal(f.t, container.MustParseNamed("localhost:1234/foo_bar:dev"), refs.LocalRef)
+	assert.Equal(f.t, container.MustParseNamed("registry:1234/foo_bar:dev"), refs.ClusterRef)
+}
+
 func TestCustomBuildImageDep(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("no sh on windows")

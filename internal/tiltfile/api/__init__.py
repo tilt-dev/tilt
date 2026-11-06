@@ -1001,7 +1001,8 @@ def custom_build(
     command_bat_val: Deprecated, use command_bat.
     outputs_image_ref_to: Specifies a file path. When set, the custom build command must write a content-based
       tagged image ref to this file. Tilt will read that file after the cmd runs to get the image ref,
-      and inject that image ref into the YAML. For more on content-based tags, see `why tilt uses immutable tags <custom_build.html#why-tilt-uses-immutable-tags>`_
+      and inject that image ref into the YAML. For more on content-based tags, see `why tilt uses immutable tags <custom_build.html#why-tilt-uses-immutable-tags>`_.
+      Tilt still sets ``$EXPECTED_REF``, with the default registry applied. The command can reuse its image name with its own tag.
     command_bat: If non-empty and on Windows, takes precedence over ``command``. Ignored on other platforms.
       If a string, executed as a Windows batch command executed with ``cmd /S /C``; if a list, will be passed to
       the operating system as program name and args.
