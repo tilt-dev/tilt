@@ -74,7 +74,6 @@ class Shortcuts extends Component<Props> {
       let index = names.indexOf(focused)
       let targetIndex = 0
       if (index != -1) {
-        let dir = e.key === "j" ? 1 : -1
         targetIndex = index + dir
       }
 
