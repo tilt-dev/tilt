@@ -19,7 +19,6 @@
     "react-outline-manager": "^1.2.2",
     "react-router": "^6.23.1",
     "react-router-dom": "^6.23.1",
-    "react-split-pane": "^0.1.92",
     "react-storage-hooks": "^4.0.1",
     "react-table": "^7.7.0",
     "react-timeago": "^4.4.0",

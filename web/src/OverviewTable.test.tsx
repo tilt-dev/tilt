@@ -18,7 +18,13 @@ import OverviewTable, {
   ResourceTableRow,
   TableGroupedByLabels,
 } from "./OverviewTable"
-import { Name, RowValues, SelectionCheckbox } from "./OverviewTableColumns"
+import {
+  columnId,
+  condensedColumnsForWidth,
+  Name,
+  RowValues,
+  SelectionCheckbox,
+} from "./OverviewTableColumns"
 import { ToggleTriggerModeTooltip } from "./OverviewTableTriggerModeToggle"
 import {
   DEFAULT_GROUP_STATE,
@@ -931,3 +937,25 @@ function renderContainer(x: ReactElement) {
   let { container } = render(x)
   return container
 }
+
+describe("condensed columns", () => {
+  const ids = (width: number) =>
+    condensedColumnsForWidth(width, {}).map((c) => columnId(c))
+
+  it("shows every condensed column when there's room", () => {
+    expect(ids(660)).toEqual([
+      "starred",
+      "lastDeployTime",
+      "trigger",
+      "name",
+      "Status",
+    ])
+  })
+
+  it("drops columns as the list narrows, keeping the name last", () => {
+    expect(ids(500)).toEqual(["starred", "lastDeployTime", "trigger", "name"])
+    expect(ids(330)).toEqual(["starred", "lastDeployTime", "name"])
+    expect(ids(250)).toEqual(["starred", "name"])
+    expect(ids(100)).toEqual(["name"])
+  })
+})

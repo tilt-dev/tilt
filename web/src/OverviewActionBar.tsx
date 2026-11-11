@@ -35,9 +35,7 @@ import { useLogStore } from "./LogStore"
 import OverviewActionBarKeyboardShortcuts from "./OverviewActionBarKeyboardShortcuts"
 import { OverviewButtonMixin } from "./OverviewButton"
 import { usePathBuilder } from "./PathBuilder"
-import { useResourceNav } from "./ResourceNav"
 import { resourceIsDisabled } from "./ResourceStatus"
-import { useSidebarContext } from "./SidebarContext"
 import SrOnly from "./SrOnly"
 import {
   AnimDuration,
@@ -59,6 +57,10 @@ type OverviewActionBarProps = {
 
   // The current log filter.
   filterSet: FilterSet
+
+  // Only show the log controls (filters, search, copy, clear). Used when the
+  // resource's links, buttons, and disable toggle are shown in a header instead.
+  logControlsOnly?: boolean
 
   // buttons for this resource
   buttons?: ButtonSet
@@ -630,10 +632,6 @@ const actionBarRowMixin = `
   color: ${Color.gray70};
 `
 
-export let ResourceNameTitleRow = styled.div`
-  ${actionBarRowMixin}
-`
-
 export let ActionBarTopRow = styled.div`
   ${actionBarRowMixin}
 `
@@ -699,7 +697,7 @@ export function OverviewWidgets(props: { buttons?: UIButton[] }) {
   )
 }
 
-function DisableButtonSection(props: { button?: UIButton }) {
+export function DisableButtonSection(props: { button?: UIButton }) {
   if (!props.button) {
     return null
   }
@@ -708,7 +706,7 @@ function DisableButtonSection(props: { button?: UIButton }) {
 }
 
 export default function OverviewActionBar(props: OverviewActionBarProps) {
-  let { resource, filterSet, alerts, buttons } = props
+  let { resource, filterSet, alerts, buttons, logControlsOnly } = props
   const logStore = useLogStore()
   const isSnapshot = usePathBuilder().isSnapshot()
   const isDisabled = resourceIsDisabled(resource)
@@ -757,23 +755,26 @@ export default function OverviewActionBar(props: OverviewActionBarProps) {
     topRowEls.push(widgets)
   }
 
-  const topRow = topRowEls.length ? (
-    <ActionBarTopRow
-      aria-label={`${resourceName} links and custom buttons`}
-      key="top"
-    >
-      {topRowEls}
-    </ActionBarTopRow>
-  ) : null
+  const topRow =
+    topRowEls.length && !logControlsOnly ? (
+      <ActionBarTopRow
+        aria-label={`${resourceName} links and custom buttons`}
+        key="top"
+      >
+        {topRowEls}
+      </ActionBarTopRow>
+    ) : null
 
   // By default, add the disable toggle button regardless of a resource's disabled status
-  const bottomRow: JSX.Element[] = [
-    <DisableButtonSection
-      key="toggleDisable"
-      button={buttons?.toggleDisable}
-    />,
-  ]
-  const disableButtonVisible = !!buttons?.toggleDisable
+  const bottomRow: JSX.Element[] = logControlsOnly
+    ? []
+    : [
+        <DisableButtonSection
+          key="toggleDisable"
+          button={buttons?.toggleDisable}
+        />,
+      ]
+  const disableButtonVisible = !!buttons?.toggleDisable && !logControlsOnly
   const firstFilterButtonClass = disableButtonVisible ? "isCentered" : ""
 
   // Only display log filter controls if a resource is enabled
@@ -816,10 +817,6 @@ export default function OverviewActionBar(props: OverviewActionBarProps) {
     )
   }
 
-  const { isSidebarOpen } = useSidebarContext()
-  let nav = useResourceNav()
-  let name = nav.invalidResource || nav.selectedResource || ""
-
   return (
     <ActionBarRoot>
       <OverviewActionBarKeyboardShortcuts
@@ -828,11 +825,10 @@ export default function OverviewActionBar(props: OverviewActionBarProps) {
         endpoints={endpoints}
         openEndpointUrl={openEndpointUrl}
       />
-      {!isSidebarOpen && (
-        <ResourceNameTitleRow>Resource: {name}</ResourceNameTitleRow>
-      )}
       {topRow}
-      <ActionBarBottomRow>{bottomRow}</ActionBarBottomRow>
+      {bottomRow.length > 0 && (
+        <ActionBarBottomRow>{bottomRow}</ActionBarBottomRow>
+      )}
     </ActionBarRoot>
   )
 }

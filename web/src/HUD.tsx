@@ -15,7 +15,6 @@ import { HudErrorContextProvider } from "./HudErrorContext"
 import HudState from "./HudState"
 import { InterfaceVersion, useInterfaceVersion } from "./InterfaceVersion"
 import LogStore, { LogStoreProvider } from "./LogStore"
-import OverviewResourcePane from "./OverviewResourcePane"
 import OverviewTablePane from "./OverviewTablePane"
 import PathBuilder, { PathBuilderProvider } from "./PathBuilder"
 import { ResourceGroupsContextProvider } from "./ResourceGroupsContext"
@@ -23,7 +22,6 @@ import { ResourceListOptionsProvider } from "./ResourceListOptionsContext"
 import { ResourceNavProvider } from "./ResourceNav"
 import { ResourceSelectionProvider } from "./ResourceSelectionContext"
 import ShareSnapshotModal from "./ShareSnapshotModal"
-import { SidebarContextProvider } from "./SidebarContext"
 import { TiltSnackbarProvider } from "./Snackbar"
 import { SnapshotActionProvider, SnapshotProviderProps } from "./snapshot"
 import SocketBar, { isTiltSocketConnected } from "./SocketBar"
@@ -231,17 +229,8 @@ export default class HUD extends Component<HudProps, HudState> {
                 <ResourceListOptionsProvider>
                   <ResourceSelectionProvider>
                     <Routes>
-                      <Route
-                        path={this.path("/r/:name/overview")}
-                        element={
-                          <SidebarContextProvider>
-                            <OverviewResourcePane
-                              view={this.state.view}
-                              isSocketConnected={isSocketConnected}
-                            />
-                          </SidebarContextProvider>
-                        }
-                      />
+                      {/* One page for everything: the resource table, with
+                          a resource's details sliding out beside it. */}
                       <Route
                         path="*"
                         element={

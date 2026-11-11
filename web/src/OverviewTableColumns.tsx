@@ -3,6 +3,7 @@ import { CellProps, Column, HeaderProps, Row } from "react-table"
 import TimeAgo from "react-timeago"
 import styled from "styled-components"
 import { ApiButton, ApiIcon, ButtonSet } from "./ApiButton"
+import { ColumnSizing } from "./ColumnResize"
 import { ReactComponent as CheckmarkSvg } from "./assets/svg/checkmark.svg"
 import { ReactComponent as CopySvg } from "./assets/svg/copy.svg"
 import { ReactComponent as LinkSvg } from "./assets/svg/link.svg"
@@ -104,6 +105,19 @@ export const Name = styled.button`
 
   &.has-error {
     color: ${Color.red};
+  }
+
+  tr.isOpen & {
+    font-weight: bold;
+  }
+
+  /* Next to the details panel, long names truncate instead of wrapping */
+  .isCondensed & {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   &.isDisabled {
@@ -382,6 +396,7 @@ export function TableNameColumn({ row }: CellProps<RowValues>) {
     <Name
       className={`${errorClass} ${disabledClass}`}
       onClick={(e) => nav.openResource(row.values.name)}
+      title={row.values.name}
     >
       {row.values.name}
     </Name>
@@ -676,3 +691,72 @@ export const COLUMNS: Column<RowValues>[] = [
   },
   modeColumn,
 ]
+
+// The condensed columns can be resized; the name column takes the rest.
+export const CONDENSED_COLUMN_SIZING: ColumnSizing = {
+  defaults: { lastDeployTime: 100, trigger: 84, Status: 210 },
+  minimums: { lastDeployTime: 84, trigger: 60, name: 120, Status: 150 },
+  flexibleColumn: "name",
+}
+
+// Columns shown when the details panel is open beside the table.
+// Status sits right after the name; everything else moves into the panel.
+const CONDENSED_COLUMN_IDS = [
+  "starred",
+  "lastDeployTime",
+  "trigger",
+  "name",
+  "Status",
+]
+
+export const CONDENSED_COLUMNS: Column<RowValues>[] = COLUMNS.filter((c) =>
+  CONDENSED_COLUMN_IDS.includes(columnId(c))
+).map((c) => {
+  const id = columnId(c)
+  const width = CONDENSED_COLUMN_SIZING.defaults[id]
+  return {
+    ...c,
+    // The starred column keeps its own fixed width
+    width: width ? `${width}px` : id === "name" ? "auto" : c.width,
+    // Short header to fit the narrow list
+    ...(id === "name" ? { Header: "Name" } : {}),
+  }
+})
+
+// As the list gets narrower, columns drop out in this order, so the name
+// is the last thing to go.
+const CONDENSED_DROP_ORDER = ["Status", "trigger", "lastDeployTime", "starred"]
+const STARRED_COLUMN_WIDTH = 40
+// The table's margin and borders, plus a little slack.
+const TABLE_EDGES = 24
+
+export function condensedColumnsForWidth(
+  availableWidth: number | undefined,
+  widths: { [id: string]: number }
+): Column<RowValues>[] {
+  if (!availableWidth) {
+    return CONDENSED_COLUMNS
+  }
+  const { defaults, minimums } = CONDENSED_COLUMN_SIZING
+  const widthOf = (id: string) => {
+    if (id === "starred") return STARRED_COLUMN_WIDTH
+    if (id === "name") return minimums.name
+    return widths[id] ?? defaults[id]
+  }
+  let shown = [...CONDENSED_COLUMN_IDS]
+  const needed = () =>
+    TABLE_EDGES + shown.reduce((sum, id) => sum + widthOf(id), 0)
+  for (const id of CONDENSED_DROP_ORDER) {
+    if (needed() <= availableWidth) {
+      break
+    }
+    shown = shown.filter((s) => s !== id)
+  }
+  return CONDENSED_COLUMNS.filter((c) => shown.includes(columnId(c)))
+}
+
+export function columnId(c: Column<RowValues>): string {
+  if (c.id) return c.id
+  if (typeof c.accessor === "string") return c.accessor
+  return c.Header as string
+}

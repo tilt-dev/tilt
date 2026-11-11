@@ -11,6 +11,9 @@ import { Color, Font, FontSize } from "./style-helpers"
 import { ResourceName, UIResource } from "./types"
 
 const DisplayOptions = styled.div`
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
   margin-left: auto;
   font-family: ${Font.monospace};
   font-size: ${FontSize.smallest};
@@ -65,9 +68,14 @@ function toGroups(
   return groups
 }
 
-export function OverviewTableDisplayOptions(props: {
-  resources?: UIResource[]
-}) {
+// Extra attributes (like `data-*`) go on the outer element.
+export function OverviewTableDisplayOptions(
+  props: {
+    resources?: UIResource[]
+    className?: string
+  } & { [attr: `data-${string}`]: string }
+) {
+  const { resources: _, className, ...attrs } = props
   const features = useFeatures()
   const { options, setOptions } = useResourceListOptions()
   let toggleDisabledResources = useCallback(() => {
@@ -75,6 +83,9 @@ export function OverviewTableDisplayOptions(props: {
       showDisabledResources: !options.showDisabledResources,
     })
   }, [options.showDisabledResources])
+  let toggleAlertsOnTop = useCallback(() => {
+    setOptions({ alertsOnTop: !options.alertsOnTop })
+  }, [options.alertsOnTop])
 
   const labelsEnabled = features.isEnabled(Flag.Labels)
   let resources = props.resources || []
@@ -92,7 +103,7 @@ export function OverviewTableDisplayOptions(props: {
     labelsEnabled && groups.length && !resourceFilterApplied
 
   return (
-    <DisplayOptions>
+    <DisplayOptions {...attrs} className={className}>
       <FormControlLabel
         control={
           <DisplayOptionCheckbox
@@ -102,6 +113,16 @@ export function OverviewTableDisplayOptions(props: {
           />
         }
         label="Show disabled resources"
+      />
+      <FormControlLabel
+        control={
+          <DisplayOptionCheckbox
+            size="small"
+            checked={options.alertsOnTop}
+            onClick={toggleAlertsOnTop}
+          />
+        }
+        label="Alerts on top"
       />
       <ExpandButton disabled={!displayResourceGroups} />
       <CollapseButton groups={groups} disabled={!displayResourceGroups} />
