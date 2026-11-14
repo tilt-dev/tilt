@@ -13,6 +13,7 @@ import React, {
   useState,
 } from "react"
 import {
+  Column,
   HeaderGroup,
   Row,
   SortingRule,
@@ -26,6 +27,11 @@ import {
 } from "react-table"
 import styled from "styled-components"
 import { buildAlerts, runtimeAlerts } from "./alerts"
+import {
+  ColumnResizeHandle,
+  ColumnWidthsProvider,
+  useColumnWidths,
+} from "./ColumnResize"
 import { ApiButtonType, buttonsForComponent } from "./ApiButton"
 import {
   DEFAULT_RESOURCE_LIST_LIMIT,
@@ -42,7 +48,10 @@ import {
 } from "./labels"
 import { LogAlertIndex, useLogAlertIndex } from "./LogStore"
 import {
+  columnId,
   COLUMNS,
+  condensedColumnsForWidth,
+  CONDENSED_COLUMN_SIZING,
   ResourceTableHeaderTip,
   rowIsDisabled,
   RowValues,
@@ -57,6 +66,7 @@ import {
   ResourceGroupSummaryMixin,
 } from "./ResourceGroups"
 import { useResourceGroups } from "./ResourceGroupsContext"
+import { useResourceNav } from "./ResourceNav"
 import {
   ResourceListOptions,
   useResourceListOptions,
@@ -67,7 +77,14 @@ import { resourceIsDisabled, resourceTargetType } from "./ResourceStatus"
 import { TableGroupStatusSummary } from "./ResourceStatusSummary"
 import { ShowMoreButton } from "./ShowMoreButton"
 import { buildStatus, runtimeStatus } from "./status"
-import { Color, Font, FontSize, SizeUnit } from "./style-helpers"
+import {
+  Color,
+  ColorAlpha,
+  ColorRGBA,
+  Font,
+  FontSize,
+  SizeUnit,
+} from "./style-helpers"
 import { isZeroTime, timeDiff } from "./time"
 import {
   ResourceName,
@@ -78,15 +95,25 @@ import {
   UIResource,
   UIResourceStatus,
 } from "./types"
+import { transitionProps } from "./viewTransition"
 import type { View } from "./webview"
 
 export type OverviewTableProps = {
   view: View
+  // When true, the details panel is open beside the table,
+  // so only the essential columns are shown.
+  condensed?: boolean
+  // Shown above the tables, aligned with them.
+  beforeTables?: React.ReactNode
+  // The width the condensed table has to fit in. Columns drop out when
+  // there isn't room for them.
+  availableWidth?: number
 }
 
 type TableWrapperProps = {
   resources?: UIResource[]
   buttons?: UIButton[]
+  columns?: Column<RowValues>[]
 }
 
 type TableGroupProps = {
@@ -98,11 +125,15 @@ type TableGroupProps = {
 type TableProps = {
   setGlobalSortBy?: (id: string) => void
   focused: string
+  // Identifies this table's rows and cells for the open/close animation.
+  // A resource can be in several groups, so this includes the group.
+  transitionKey?: string
 } & TableOptions<RowValues>
 
 type ResourceTableHeadRowProps = {
   headerGroup: HeaderGroup<RowValues>
   setGlobalSortBy?: (id: string) => void
+  transitionKey?: string
 } & TableHeaderProps
 
 // Resource name filter styles
@@ -132,6 +163,12 @@ const OverviewTableRoot = styled.section`
   @media screen and (max-width: 2200px) {
     margin-left: ${SizeUnit(1 / 2)};
     margin-right: ${SizeUnit(1 / 2)};
+  }
+
+  &.isCondensed {
+    min-width: 0;
+    margin-left: ${SizeUnit(1 / 2)};
+    margin-right: 0;
   }
 `
 
@@ -191,6 +228,25 @@ export const ResourceTableRow = styled.tr`
     background-color: ${Color.gray30};
   }
 
+  /* Rows open their details when clicked */
+  tbody > &:not(.isFixedHeight) {
+    cursor: pointer;
+  }
+
+  tbody > &:not(.isFixedHeight):not(.isOpen):hover {
+    background-color: ${ColorRGBA(Color.gray30, ColorAlpha.almostOpaque)};
+  }
+
+  /* The resource whose details are open in the panel */
+  &.isOpen {
+    background-color: ${ColorRGBA(Color.blue, ColorAlpha.almostTransparent)};
+    border-left: 4px solid ${Color.blue};
+
+    td:first-child {
+      padding-left: 22px;
+    }
+  }
+
   /* For visual consistency on rows */
   &.isFixedHeight {
     height: ${SizeUnit(1.4)};
@@ -209,6 +265,7 @@ export const ResourceTableData = styled.td`
 `
 
 export const ResourceTableHeader = styled(ResourceTableData)`
+  position: relative;
   color: ${Color.gray70};
   font-size: ${FontSize.small};
   box-sizing: border-box;
@@ -223,6 +280,7 @@ const ResourceTableHeaderLabel = styled.div`
   display: flex;
   align-items: center;
   user-select: none;
+  overflow: hidden;
 `
 
 export const ResourceTableHeaderSortTriangle = styled.div`
@@ -387,7 +445,7 @@ function applyOptionsToResources(
   return sortByDisableStatus(filteredResources)
 }
 
-function uiResourceToCell(
+export function uiResourceToCell(
   r: UIResource,
   allButtons: UIButton[] | undefined,
   alertIndex: LogAlertIndex
@@ -486,6 +544,24 @@ function enabledRowsFirst(rows: RowValues[]): RowValues[] {
   return result
 }
 
+function rowHasAlerts(row: RowValues): boolean {
+  return (
+    row.statusLine.buildAlertCount > 0 || row.statusLine.runtimeAlertCount > 0
+  )
+}
+
+// With "Alerts on top", resources with errors or warnings come first.
+// Disabled resources still go last.
+function alertsFirst(rows: RowValues[]): RowValues[] {
+  const isDisabled = (row: RowValues) =>
+    row.statusLine.runtimeStatus === ResourceStatus.Disabled
+  return [...rows].sort(
+    (a, b) =>
+      Number(isDisabled(a)) - Number(isDisabled(b)) ||
+      Number(rowHasAlerts(b)) - Number(rowHasAlerts(a))
+  )
+}
+
 export function labeledResourcesToTableCells(
   resources: UIResource[] | undefined,
   buttons: UIButton[] | undefined,
@@ -527,7 +603,9 @@ export function labeledResourcesToTableCells(
 export function ResourceTableHeadRow({
   headerGroup,
   setGlobalSortBy,
+  transitionKey = "",
 }: ResourceTableHeadRowProps) {
+  const columnWidths = useColumnWidths()
   const calculateToggleProps = (column: HeaderGroup<RowValues>) => {
     // If a column header is JSX, fall back on using its id as a descriptive title
     // and capitalize for consistency
@@ -553,8 +631,9 @@ export function ResourceTableHeadRow({
   }
 
   const calculateHeaderProps = (column: HeaderGroup<RowValues>) => {
+    const resizedWidth = columnWidths?.widths[column.id]
     const headerProps: Partial<TableHeaderProps> = {
-      style: { width: column.width },
+      style: { width: resizedWidth ? `${resizedWidth}px` : column.width },
     }
 
     if (column.isSorted) {
@@ -565,14 +644,26 @@ export function ResourceTableHeadRow({
   }
 
   return (
-    <ResourceTableRow>
-      {headerGroup.headers.map((column) => {
+    <ResourceTableRow {...transitionProps(`head/${transitionKey}`)}>
+      {headerGroup.headers.map((column, i) => {
+        const nextColumn = headerGroup.headers[i + 1]
+        const minimums = columnWidths?.sizing.minimums || {}
+        const isResizable =
+          !!nextColumn &&
+          minimums[column.id] !== undefined &&
+          minimums[nextColumn.id] !== undefined
         const { key, ...headerProps } = column.getHeaderProps([
           calculateHeaderProps(column),
           column.getSortByToggleProps(calculateToggleProps(column)),
         ])
         return (
-          <ResourceTableHeader key={key} {...headerProps}>
+          <ResourceTableHeader
+            key={key}
+            {...headerProps}
+            {...(MOVING_HEADERS.includes(column.id)
+              ? transitionProps(`head/${transitionKey}/${column.id}`)
+              : {})}
+          >
             <ResourceTableHeaderLabel>
               {column.render("Header")}
               <ResourceTableHeaderTip id={String(column.id)} />
@@ -588,6 +679,12 @@ export function ResourceTableHeadRow({
                 />
               )}
             </ResourceTableHeaderLabel>
+            {isResizable && (
+              <ColumnResizeHandle
+                columnId={column.id}
+                nextColumnId={nextColumn.id}
+              />
+            )}
           </ResourceTableHeader>
         )
       })}
@@ -624,14 +721,29 @@ function ShowMoreResourcesRow({
   )
 }
 
-function TableRow(props: { row: Row<RowValues>; focused: string }) {
-  let { row, focused } = props
+// When the details panel opens or closes, these columns move to their new
+// place. The others fade out or in where they are; Status changes places
+// too much to move smoothly, so it fades.
+const MOVING_COLUMNS = ["starred", "lastDeployTime", "trigger", "name"]
+// The name's heading changes ("Resource Name" to "Name"), so it fades too.
+const MOVING_HEADERS = ["starred", "lastDeployTime", "trigger"]
+
+function TableRow(props: {
+  row: Row<RowValues>
+  focused: string
+  transitionKey?: string
+}) {
+  let { row, focused, transitionKey = "" } = props
+  let rowTransitionKey = `row/${transitionKey}/${row.original.name}`
   const { isSelected } = useResourceSelection()
+  const nav = useResourceNav()
   let isFocused = row.original.name == focused
+  let isOpen = row.original.name === nav.selectedResource
   let rowClasses =
     (rowIsDisabled(row) ? "isDisabled " : "") +
     (isSelected(row.original.name) ? "isSelected " : "") +
-    (isFocused ? "isFocused " : "")
+    (isFocused ? "isFocused " : "") +
+    (isOpen ? "isOpen " : "")
   let ref: MutableRefObject<HTMLTableRowElement | null> = useRef(null)
 
   useEffect(() => {
@@ -644,13 +756,31 @@ function TableRow(props: { row: Row<RowValues>; focused: string }) {
     className: rowClasses,
   })
   return (
-    <ResourceTableRow tabIndex={-1} ref={ref} key={rowKey} {...rowProps}>
+    <ResourceTableRow
+      tabIndex={-1}
+      ref={ref}
+      key={rowKey}
+      {...rowProps}
+      {...transitionProps(rowTransitionKey)}
+      onClick={(e: MouseEvent) => {
+        // Clicking anywhere on the row opens its details,
+        // unless the click was on a control inside the row.
+        let target = e.target as Element
+        if (target.closest("button, a, input, label, [role=button]")) {
+          return
+        }
+        nav.openResource(row.original.name)
+      }}
+    >
       {row.cells.map((cell) => {
         const { key: cellKey, ...cellProps } = cell.getCellProps()
         return (
           <ResourceTableData
             key={cellKey}
             {...cellProps}
+            {...(MOVING_COLUMNS.includes(cell.column.id)
+              ? transitionProps(`${rowTransitionKey}/${cell.column.id}`)
+              : {})}
             className={cell.column.isSorted ? "isSorted" : ""}
           >
             {cell.render("Cell")}
@@ -689,9 +819,24 @@ export function Table(props: TableProps) {
 
   const showMoreOnClick = () => setPageSize(pageSize * RESOURCE_LIST_MULTIPLIER)
 
+  // With resizable columns, keep the flexible column from shrinking below
+  // its minimum: the table scrolls sideways instead.
+  const columnWidths = useColumnWidths()
+  let minTableWidth: number | undefined
+  if (columnWidths) {
+    const { widths, sizing } = columnWidths
+    minTableWidth = props.columns.reduce((sum, c) => {
+      const id = columnId(c)
+      if (id === sizing.flexibleColumn) {
+        return sum + (sizing.minimums[id] ?? 0)
+      }
+      return sum + (widths[id] ?? (parseInt(String(c.width)) || 0))
+    }, 0)
+  }
+
   // TODO (lizz): Consider adding `aria-sort` markup to table headings
   return (
-    <ResourceTable {...getTableProps()}>
+    <ResourceTable {...getTableProps({ style: { minWidth: minTableWidth } })}>
       <ResourceTableHead>
         {headerGroups.map((headerGroup: HeaderGroup<RowValues>) => {
           const { key, ...headerGroupProps } = headerGroup.getHeaderGroupProps()
@@ -701,6 +846,7 @@ export function Table(props: TableProps) {
               {...headerGroupProps}
               headerGroup={headerGroup}
               setGlobalSortBy={props.setGlobalSortBy}
+              transitionKey={props.transitionKey}
             />
           )
         })}
@@ -713,6 +859,7 @@ export function Table(props: TableProps) {
               key={row.original.name}
               row={row}
               focused={props.focused}
+              transitionKey={props.transitionKey}
             />
           )
         })}
@@ -742,8 +889,15 @@ function TableGroup(props: TableGroupProps) {
   const handleChange = (_e: ChangeEvent<{}>) => toggleGroupExpanded(label)
 
   return (
-    <OverviewGroup expanded={expanded} onChange={handleChange}>
-      <OverviewGroupSummary id={labelNameId}>
+    <OverviewGroup
+      expanded={expanded}
+      onChange={handleChange}
+      {...transitionProps(`groupbox/${label}`)}
+    >
+      <OverviewGroupSummary
+        id={labelNameId}
+        {...transitionProps(`group/${label}`)}
+      >
         <ResourceGroupSummaryIcon role="presentation" />
         <OverviewGroupName>{formattedLabel}</OverviewGroupName>
         <TableGroupStatusSummary
@@ -752,7 +906,7 @@ function TableGroup(props: TableGroupProps) {
         />
       </OverviewGroupSummary>
       <OverviewGroupDetails>
-        <Table {...tableProps} />
+        <Table {...tableProps} transitionKey={label} />
       </OverviewGroupDetails>
     </OverviewGroup>
   )
@@ -761,13 +915,24 @@ function TableGroup(props: TableGroupProps) {
 export function TableGroupedByLabels({
   resources,
   buttons,
+  columns = COLUMNS,
 }: TableWrapperProps) {
   const features = useFeatures()
   const logAlertIndex = useLogAlertIndex()
-  const data = useMemo(
-    () => labeledResourcesToTableCells(resources, buttons, logAlertIndex),
-    [resources, buttons]
-  )
+  const { options } = useResourceListOptions()
+  const data = useMemo(() => {
+    const data = labeledResourcesToTableCells(resources, buttons, logAlertIndex)
+    if (options.alertsOnTop) {
+      data.labels.forEach((label) => {
+        data.labelsToResources[label] = alertsFirst(
+          data.labelsToResources[label]
+        )
+      })
+      data.unlabeled = alertsFirst(data.unlabeled)
+      data.tiltfile = alertsFirst(data.tiltfile)
+    }
+    return data
+  }, [resources, buttons, options.alertsOnTop])
 
   const totalOrder = useMemo(() => {
     let totalOrder = []
@@ -803,7 +968,7 @@ export function TableGroupedByLabels({
           key={label}
           label={label}
           data={data.labelsToResources[label]}
-          columns={COLUMNS}
+          columns={columns}
           useControlledState={useControlledState}
           setGlobalSortBy={setGlobalSortBy}
           focused={focused}
@@ -812,7 +977,7 @@ export function TableGroupedByLabels({
       <TableGroup
         label={UNLABELED_LABEL}
         data={data.unlabeled}
-        columns={COLUMNS}
+        columns={columns}
         useControlledState={useControlledState}
         setGlobalSortBy={setGlobalSortBy}
         focused={focused}
@@ -820,7 +985,7 @@ export function TableGroupedByLabels({
       <TableGroup
         label={TILTFILE_LABEL}
         data={data.tiltfile}
-        columns={COLUMNS}
+        columns={columns}
         useControlledState={useControlledState}
         setGlobalSortBy={setGlobalSortBy}
         focused={focused}
@@ -834,14 +999,19 @@ export function TableGroupedByLabels({
   )
 }
 
-export function TableWithoutGroups({ resources, buttons }: TableWrapperProps) {
+export function TableWithoutGroups({
+  resources,
+  buttons,
+  columns = COLUMNS,
+}: TableWrapperProps) {
   const features = useFeatures()
   const logAlertIndex = useLogAlertIndex()
+  const { options } = useResourceListOptions()
   const data = useMemo(() => {
-    return (
+    const data =
       resources?.map((r) => uiResourceToCell(r, buttons, logAlertIndex)) || []
-    )
-  }, [resources, buttons])
+    return options.alertsOnTop ? alertsFirst(data) : data
+  }, [resources, buttons, options.alertsOnTop])
 
   let totalOrder = useMemo(() => enabledRowsFirst(data), [data])
   let [focused, setFocused] = useState("")
@@ -851,8 +1021,8 @@ export function TableWithoutGroups({ resources, buttons }: TableWrapperProps) {
   }
 
   return (
-    <TableWithoutGroupsRoot>
-      <Table columns={COLUMNS} data={data} focused={focused} />
+    <TableWithoutGroupsRoot {...transitionProps("groupbox")}>
+      <Table columns={columns} data={data} focused={focused} />
       <OverviewTableKeyboardShortcuts
         focused={focused}
         setFocused={setFocused}
@@ -884,11 +1054,17 @@ function OverviewTableContent(props: OverviewTableProps) {
   const displayResourceGroups =
     labelsEnabled && resourcesHaveLabels && !resourceFilterApplied
 
+  const columnWidths = useColumnWidths()
+  const columns = props.condensed
+    ? condensedColumnsForWidth(props.availableWidth, columnWidths?.widths ?? {})
+    : COLUMNS
+
   if (displayResourceGroups) {
     return (
       <TableGroupedByLabels
         resources={resourcesToDisplay}
         buttons={props.view.uiButtons}
+        columns={columns}
       />
     )
   } else {
@@ -908,6 +1084,7 @@ function OverviewTableContent(props: OverviewTableProps) {
           }
           resources={resourcesToDisplay}
           buttons={props.view.uiButtons}
+          columns={columns}
         />
       </>
     )
@@ -916,8 +1093,17 @@ function OverviewTableContent(props: OverviewTableProps) {
 
 export default function OverviewTable(props: OverviewTableProps) {
   return (
-    <OverviewTableRoot aria-label="Resources overview">
-      <OverviewTableContent {...props} />
+    <OverviewTableRoot
+      aria-label="Resources overview"
+      className={props.condensed ? "isCondensed" : ""}
+    >
+      {props.beforeTables}
+      <ColumnWidthsProvider
+        name="condensed-column-widths"
+        sizing={props.condensed ? CONDENSED_COLUMN_SIZING : undefined}
+      >
+        <OverviewTableContent {...props} />
+      </ColumnWidthsProvider>
     </OverviewTableRoot>
   )
 }
