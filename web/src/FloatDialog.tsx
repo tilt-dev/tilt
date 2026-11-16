@@ -36,7 +36,7 @@ export let Title = styled.h2`
 export let HR = styled.hr`
   border-top: 1px dashed ${Color.gray50};
   margin: 16px -20px 24px -20px;
-  color: white;
+  color: ${Color.white};
 `
 
 let CloseButton = styled.button`
@@ -44,7 +44,7 @@ let CloseButton = styled.button`
   align-items: center;
   border: 0;
   cursor: pointer;
-  background-color: white;
+  background-color: ${Color.white};
   transition: background-color 300ms ease;
   border-radius: 32px 32px;
   padding: 0;
@@ -69,7 +69,7 @@ let useStyles = makeStyles((theme: any) => ({
   paper: {
     display: "flex",
     flexDirection: "column",
-    background: "#fff",
+    background: "var(--color-white)",
     color: Color.gray10,
     boxShadow: "3px 3px 4px rgba(0, 0, 0, 0.5)",
     borderRadius: "8px",
