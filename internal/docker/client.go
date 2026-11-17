@@ -311,6 +311,9 @@ func (c *Cli) startBuildkitSession(ctx context.Context, g *errgroup.Group, key s
 	if err != nil {
 		return nil, errors.Wrap(err, "startBuildkitSession")
 	}
+	defer func() {
+		_ = cli.Client().Close()
+	}()
 	provider := authprovider.NewDockerAuthProvider(authprovider.DockerAuthProviderConfig{
 		AuthConfigProvider: dockerconfig.LoadAuthConfig(cli),
 	})
@@ -415,6 +418,9 @@ func (c *Cli) authInfo(ctx context.Context, ref reference.Reference) (encodedAut
 	if err != nil {
 		return "", errors.Wrap(err, "authInfo")
 	}
+	defer func() {
+		_ = cli.Client().Close()
+	}()
 	auth, err := command.RetrieveAuthTokenFromImage(cli.ConfigFile(), ref.String())
 	if err != nil {
 		return "", errors.Wrap(err, "authInfo#RetrieveAuthTokenFromImage")

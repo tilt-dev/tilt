@@ -3,16 +3,23 @@ package docker
 import (
 	"context"
 	"fmt"
+	"net"
+	"net/http"
+	"net/http/httptest"
 	"os"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	typesbuild "github.com/moby/moby/api/types/build"
 	mobyclient "github.com/moby/moby/client"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/tilt-dev/clusterid"
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/k8s"
+	"github.com/tilt-dev/tilt/internal/testutils"
 )
 
 type buildkitTestCase struct {
@@ -388,4 +395,39 @@ func TestProvideClusterProduct(t *testing.T) {
 			assert.Equal(t, c.expectedLocal, Env(local))
 		})
 	}
+}
+
+// https://github.com/tilt-dev/tilt/issues/6867
+func TestAuthInfoClosesDockerConnection(t *testing.T) {
+	var openConns atomic.Int32
+	var totalConns atomic.Int32
+	daemon := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Api-Version", "1.52")
+		w.Header().Set("Ostype", "linux")
+		_, _ = w.Write([]byte("OK"))
+	}))
+	daemon.Config.ConnState = func(_ net.Conn, state http.ConnState) {
+		switch state {
+		case http.StateNew:
+			openConns.Add(1)
+			totalConns.Add(1)
+		case http.StateClosed, http.StateHijacked:
+			openConns.Add(-1)
+		}
+	}
+	daemon.Start()
+	defer daemon.Close()
+
+	t.Setenv("DOCKER_HOST", "tcp://"+daemon.Listener.Addr().String())
+	t.Setenv("DOCKER_CONTEXT", "")
+	t.Setenv("DOCKER_CONFIG", t.TempDir())
+
+	c := &Cli{}
+	_, err := c.authInfo(testutils.LoggerCtx(), container.MustParseNamed("gcr.io/foo/bar"))
+	require.NoError(t, err)
+
+	require.Positive(t, totalConns.Load(), "expected the docker client to connect to the daemon")
+	assert.Eventually(t, func() bool {
+		return openConns.Load() == 0
+	}, 5*time.Second, 10*time.Millisecond, "docker client connection was left open")
 }
