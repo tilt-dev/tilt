@@ -27,11 +27,6 @@ import {
 } from "react-table"
 import styled from "styled-components"
 import { buildAlerts, runtimeAlerts } from "./alerts"
-import {
-  ColumnResizeHandle,
-  ColumnWidthsProvider,
-  useColumnWidths,
-} from "./ColumnResize"
 import { ApiButtonType, buttonsForComponent } from "./ApiButton"
 import {
   DEFAULT_RESOURCE_LIST_LIMIT,
@@ -48,14 +43,13 @@ import {
 } from "./labels"
 import { LogAlertIndex, useLogAlertIndex } from "./LogStore"
 import {
-  columnId,
   COLUMNS,
   condensedColumnsForWidth,
-  CONDENSED_COLUMN_SIZING,
   ResourceTableHeaderTip,
   rowIsDisabled,
   RowValues,
 } from "./OverviewTableColumns"
+import { useLastOpenedResource } from "./LastOpenedResource"
 import { OverviewTableKeyboardShortcuts } from "./OverviewTableKeyboardShortcuts"
 import {
   AccordionDetailsStyleResetMixin,
@@ -169,6 +163,10 @@ const OverviewTableRoot = styled.section`
     min-width: 0;
     margin-left: ${SizeUnit(1 / 2)};
     margin-right: 0;
+
+    td:last-child {
+      padding-right: 12px;
+    }
   }
 `
 
@@ -241,6 +239,15 @@ export const ResourceTableRow = styled.tr`
   &.isOpen {
     background-color: ${ColorRGBA(Color.blue, ColorAlpha.almostTransparent)};
     border-left: 4px solid ${Color.blue};
+
+    td:first-child {
+      padding-left: 22px;
+    }
+  }
+
+  /* The resource whose details were open last; the Detail view reopens it */
+  &.wasOpen {
+    border-left: 4px solid ${ColorRGBA(Color.blue, ColorAlpha.translucent)};
 
     td:first-child {
       padding-left: 22px;
@@ -605,7 +612,6 @@ export function ResourceTableHeadRow({
   setGlobalSortBy,
   transitionKey = "",
 }: ResourceTableHeadRowProps) {
-  const columnWidths = useColumnWidths()
   const calculateToggleProps = (column: HeaderGroup<RowValues>) => {
     // If a column header is JSX, fall back on using its id as a descriptive title
     // and capitalize for consistency
@@ -631,9 +637,8 @@ export function ResourceTableHeadRow({
   }
 
   const calculateHeaderProps = (column: HeaderGroup<RowValues>) => {
-    const resizedWidth = columnWidths?.widths[column.id]
     const headerProps: Partial<TableHeaderProps> = {
-      style: { width: resizedWidth ? `${resizedWidth}px` : column.width },
+      style: { width: column.width },
     }
 
     if (column.isSorted) {
@@ -645,13 +650,7 @@ export function ResourceTableHeadRow({
 
   return (
     <ResourceTableRow {...transitionProps(`head/${transitionKey}`)}>
-      {headerGroup.headers.map((column, i) => {
-        const nextColumn = headerGroup.headers[i + 1]
-        const minimums = columnWidths?.sizing.minimums || {}
-        const isResizable =
-          !!nextColumn &&
-          minimums[column.id] !== undefined &&
-          minimums[nextColumn.id] !== undefined
+      {headerGroup.headers.map((column) => {
         const { key, ...headerProps } = column.getHeaderProps([
           calculateHeaderProps(column),
           column.getSortByToggleProps(calculateToggleProps(column)),
@@ -679,12 +678,6 @@ export function ResourceTableHeadRow({
                 />
               )}
             </ResourceTableHeaderLabel>
-            {isResizable && (
-              <ColumnResizeHandle
-                columnId={column.id}
-                nextColumnId={nextColumn.id}
-              />
-            )}
           </ResourceTableHeader>
         )
       })}
@@ -739,11 +732,15 @@ function TableRow(props: {
   const nav = useResourceNav()
   let isFocused = row.original.name == focused
   let isOpen = row.original.name === nav.selectedResource
+  // With the details closed, mark the row the Detail view button reopens.
+  const lastOpened = useLastOpenedResource()
+  let wasOpen = !nav.selectedResource && row.original.name === lastOpened
   let rowClasses =
     (rowIsDisabled(row) ? "isDisabled " : "") +
     (isSelected(row.original.name) ? "isSelected " : "") +
     (isFocused ? "isFocused " : "") +
-    (isOpen ? "isOpen " : "")
+    (isOpen ? "isOpen " : "") +
+    (wasOpen ? "wasOpen " : "")
   let ref: MutableRefObject<HTMLTableRowElement | null> = useRef(null)
 
   useEffect(() => {
@@ -819,24 +816,9 @@ export function Table(props: TableProps) {
 
   const showMoreOnClick = () => setPageSize(pageSize * RESOURCE_LIST_MULTIPLIER)
 
-  // With resizable columns, keep the flexible column from shrinking below
-  // its minimum: the table scrolls sideways instead.
-  const columnWidths = useColumnWidths()
-  let minTableWidth: number | undefined
-  if (columnWidths) {
-    const { widths, sizing } = columnWidths
-    minTableWidth = props.columns.reduce((sum, c) => {
-      const id = columnId(c)
-      if (id === sizing.flexibleColumn) {
-        return sum + (sizing.minimums[id] ?? 0)
-      }
-      return sum + (widths[id] ?? (parseInt(String(c.width)) || 0))
-    }, 0)
-  }
-
   // TODO (lizz): Consider adding `aria-sort` markup to table headings
   return (
-    <ResourceTable {...getTableProps({ style: { minWidth: minTableWidth } })}>
+    <ResourceTable {...getTableProps()}>
       <ResourceTableHead>
         {headerGroups.map((headerGroup: HeaderGroup<RowValues>) => {
           const { key, ...headerGroupProps } = headerGroup.getHeaderGroupProps()
@@ -1054,9 +1036,8 @@ function OverviewTableContent(props: OverviewTableProps) {
   const displayResourceGroups =
     labelsEnabled && resourcesHaveLabels && !resourceFilterApplied
 
-  const columnWidths = useColumnWidths()
   const columns = props.condensed
-    ? condensedColumnsForWidth(props.availableWidth, columnWidths?.widths ?? {})
+    ? condensedColumnsForWidth(props.availableWidth)
     : COLUMNS
 
   if (displayResourceGroups) {
@@ -1098,12 +1079,7 @@ export default function OverviewTable(props: OverviewTableProps) {
       className={props.condensed ? "isCondensed" : ""}
     >
       {props.beforeTables}
-      <ColumnWidthsProvider
-        name="condensed-column-widths"
-        sizing={props.condensed ? CONDENSED_COLUMN_SIZING : undefined}
-      >
-        <OverviewTableContent {...props} />
-      </ColumnWidthsProvider>
+      <OverviewTableContent {...props} />
     </OverviewTableRoot>
   )
 }

@@ -1,8 +1,16 @@
-import React, { useCallback } from "react"
+import Menu from "@material-ui/core/Menu"
+import MenuItem from "@material-ui/core/MenuItem"
+import MoreHorizIcon from "@material-ui/icons/MoreHoriz"
+import React, { useCallback, useEffect, useRef, useState } from "react"
+import TimeAgo from "react-timeago"
 import styled from "styled-components"
-import { ButtonSet } from "./ApiButton"
+import { ButtonSet, updateButtonStatus } from "./ApiButton"
+import { ReactComponent as CheckmarkSvg } from "./assets/svg/checkmark.svg"
 import { ReactComponent as CloseSvg } from "./assets/svg/close.svg"
+import { ReactComponent as CopySvg } from "./assets/svg/copy.svg"
 import { ReactComponent as LinkSvg } from "./assets/svg/link.svg"
+import { usePersistentState } from "./BrowserStorage"
+import { useHudErrorContext } from "./HudErrorContext"
 import { InstrumentedButton } from "./instrumentedComponents"
 import { displayURL, resolveURL } from "./links"
 import { useLogAlertIndex } from "./LogStore"
@@ -13,18 +21,28 @@ import {
 } from "./OverviewActionBar"
 import { uiResourceToCell } from "./OverviewTable"
 import { OverviewTableBuildButton } from "./OverviewTableBuildButton"
+import OverviewTableStarResourceButton from "./OverviewTableStarResourceButton"
 import OverviewTableStatus from "./OverviewTableStatus"
-import OverviewTableTriggerModeToggle from "./OverviewTableTriggerModeToggle"
+import { toggleTriggerMode } from "./OverviewTableTriggerModeToggle"
+import { useStarredResources } from "./StarredResourcesContext"
 import {
   Color,
   ColorAlpha,
   ColorRGBA,
   Font,
   FontSize,
+  mixinResetButtonStyle,
   SizeUnit,
 } from "./style-helpers"
+import { timeAgoFormatter } from "./timeFormatters"
 import { startBuild } from "./trigger"
-import { ResourceName, ResourceStatus, UIButton, UIResource } from "./types"
+import {
+  ResourceName,
+  ResourceStatus,
+  TriggerMode,
+  UIButton,
+  UIResource,
+} from "./types"
 
 type OverviewResourceHeaderProps = {
   // Shown even when the resource doesn't exist (e.g., a stale link).
@@ -75,7 +93,9 @@ const Title = styled.h2`
 const StatusGroup = styled.div`
   display: flex;
   align-items: center;
-  gap: ${SizeUnit(0.5)};
+  flex-wrap: wrap;
+  min-width: 0;
+  gap: ${SizeUnit(0.1)} ${SizeUnit(0.5)};
 
   /* The table stacks these two statuses; here they sit side by side */
   & > a {
@@ -109,49 +129,139 @@ const CloseButton = styled(InstrumentedButton)`
   }
 `
 
-// Line 2: small labeled facts about the resource
-const Fields = styled.dl`
+// The star sits right before the name. Unlike the table, it's always
+// visible here, so you can see whether this resource is starred.
+const StarSlot = styled.div`
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: ${SizeUnit(0.25)} ${SizeUnit(1)};
-  margin: ${SizeUnit(0.25)} 0 0 0;
+  align-items: center;
+  flex-shrink: 0;
+
+  svg {
+    width: 15px;
+    height: 15px;
+  }
+  && svg.is-unstarred {
+    opacity: 1;
+  }
+  button:hover svg.is-unstarred {
+    fill: ${Color.offWhite};
+  }
 `
 
-const Field = styled.div`
+const UpdatedAgo = styled.span`
+  font-size: ${FontSize.small};
+  color: ${Color.gray60};
+  white-space: nowrap;
+`
+
+const MoreButton = styled(InstrumentedButton)`
+  ${mixinResetButtonStyle};
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  padding: ${SizeUnit(0.15)};
+  color: ${Color.gray60};
+  border-radius: 4px;
+
+  svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  &:hover,
+  &.isOpen {
+    color: ${Color.offWhite};
+    background-color: ${Color.gray30};
+  }
+`
+
+const MenuHint = styled.div`
+  font-size: ${FontSize.smallester};
+  color: ${Color.gray50};
+  margin-top: 2px;
+`
+
+const MenuLabel = styled.div`
   display: flex;
   flex-direction: column;
-  min-width: 0;
-  max-width: 100%;
+
+  &.isDanger {
+    color: ${Color.red};
+  }
 `
 
-const FieldLabel = styled.dt`
+const ShowMoreButton = styled(InstrumentedButton)`
+  ${mixinResetButtonStyle};
+  min-width: 0;
+  margin-left: auto;
+  padding: ${SizeUnit(0.1)} ${SizeUnit(0.2)};
+  color: ${Color.gray60};
+  font-family: ${Font.monospace};
+  font-size: ${FontSize.smallest};
+  white-space: nowrap;
+
+  &:hover {
+    color: ${Color.offWhite};
+    text-decoration: underline;
+  }
+`
+
+// Shown under "Show more": less-used facts about the resource.
+const MoreDetails = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: ${SizeUnit(0.25)} ${SizeUnit(1)};
+  margin-top: ${SizeUnit(0.2)};
+  font-size: ${FontSize.smallest};
+  color: ${Color.offWhite};
+`
+
+const DetailLabel = styled.span`
   font-size: ${FontSize.smallester};
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: ${Color.gray60};
-  margin-bottom: ${SizeUnit(0.1)};
+  margin-right: ${SizeUnit(0.25)};
 `
 
-const FieldValue = styled.dd`
-  margin: 0;
+const DetailItem = styled.div`
+  display: flex;
+  align-items: center;
+  min-width: 0;
+`
+
+// Line 2: where the resource is running. The first URL is the one most
+// people want, so it's the biggest thing after the name.
+const UrlRow = styled.div`
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: ${SizeUnit(0.1)} ${SizeUnit(0.35)};
-  min-height: 28px;
-  font-size: ${FontSize.smallest};
-  color: ${Color.offWhite};
+  gap: ${SizeUnit(0.15)} ${SizeUnit(0.5)};
+  margin-top: ${SizeUnit(0.2)};
+`
+
+const PrimaryUrl = styled.div`
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
 `
 
 const Endpoint = styled.a`
   display: flex;
   align-items: center;
-  max-width: 260px;
-  color: ${Color.offWhite};
+  min-width: 0;
+  color: ${Color.blueLight};
+  font-size: ${FontSize.smallest};
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
 
   svg {
-    fill: ${Color.gray60};
+    fill: currentColor;
     flex-shrink: 0;
     margin-right: ${SizeUnit(0.15)};
   }
@@ -161,14 +271,220 @@ const Endpoint = styled.a`
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+
+  &.isPrimary {
+    font-size: ${FontSize.default};
+  }
 `
+
+const EndpointName = styled.small`
+  margin-left: ${SizeUnit(0.25)};
+  color: ${Color.gray60};
+  font-size: ${FontSize.smallest};
+  flex-shrink: 0;
+`
+
+const CopyUrlButton = styled(InstrumentedButton)`
+  ${mixinResetButtonStyle};
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  min-width: 0;
+  padding: ${SizeUnit(0.15)};
+  margin-left: ${SizeUnit(0.1)};
+  color: ${Color.gray60};
+
+  svg {
+    fill: currentColor;
+    width: 16px;
+    height: 16px;
+  }
+
+  &:hover {
+    color: ${Color.offWhite};
+  }
+
+  &.isCopied {
+    color: ${Color.green};
+  }
+`
+
+function CopyUrl(props: { url: string }) {
+  const [copied, setCopied] = useState(false)
+  useEffect(() => {
+    if (!copied) {
+      return
+    }
+    const timeout = setTimeout(() => setCopied(false), 2000)
+    return () => clearTimeout(timeout)
+  }, [copied])
+  const onClick = async () => {
+    await navigator.clipboard.writeText(props.url)
+    setCopied(true)
+  }
+  const label = copied ? "Copied!" : "Copy URL"
+  return (
+    <CopyUrlButton
+      onClick={onClick}
+      className={copied ? "isCopied" : ""}
+      aria-label={label}
+      title={label}
+    >
+      {copied ? (
+        <CheckmarkSvg role="presentation" />
+      ) : (
+        <CopySvg role="presentation" />
+      )}
+    </CopyUrlButton>
+  )
+}
+
+function EndpointLink(props: {
+  url: string
+  name?: string
+  isPrimary?: boolean
+}) {
+  const url = resolveURL(props.url)
+  // The main URL shows the address itself; its name (if any) is a label.
+  const text = props.isPrimary ? displayURL(url) : props.name || displayURL(url)
+  // We use the url as the target, so that clicking the link re-uses the tab.
+  return (
+    <Endpoint
+      href={url}
+      target={url}
+      title={`Open ${url}`}
+      className={props.isPrimary ? "isPrimary" : ""}
+    >
+      <LinkSvg role="presentation" />
+      <span>{text}</span>
+      {props.isPrimary && props.name && (
+        <EndpointName>{props.name}</EndpointName>
+      )}
+    </Endpoint>
+  )
+}
+
+function isManualMode(mode: TriggerMode): boolean {
+  return (
+    mode === TriggerMode.TriggerModeManualWithAutoInit ||
+    mode === TriggerMode.TriggerModeManual
+  )
+}
+
+// Settings you change rarely (trigger mode, disabling), tucked away so the
+// header stays focused on the resource itself.
+function ResourceMoreMenu(props: {
+  name: string
+  triggerMode?: TriggerMode
+  disableButton?: UIButton
+}) {
+  const { name, triggerMode, disableButton } = props
+  const anchorRef = useRef<HTMLButtonElement>(null)
+  const [open, setOpen] = useState(false)
+  const [confirmingDisable, setConfirmingDisable] = useState(false)
+  const { setError } = useHudErrorContext()
+
+  const close = () => {
+    setOpen(false)
+    setConfirmingDisable(false)
+  }
+
+  const items: JSX.Element[] = []
+  if (triggerMode !== undefined) {
+    const isManual = isManualMode(triggerMode)
+    items.push(
+      <MenuItem
+        key="mode"
+        onClick={() => {
+          toggleTriggerMode(
+            name,
+            isManual
+              ? TriggerMode.TriggerModeAuto
+              : TriggerMode.TriggerModeManual
+          )
+          close()
+        }}
+      >
+        <MenuLabel>
+          {isManual ? "Switch to auto updates" : "Switch to manual updates"}
+          <MenuHint>
+            {isManual
+              ? "Now manual: file changes don’t trigger updates"
+              : "Now auto: file changes trigger updates"}
+          </MenuHint>
+        </MenuLabel>
+      </MenuItem>
+    )
+  }
+  if (disableButton) {
+    // Disabling stops the resource, so it takes a second click to confirm.
+    items.push(
+      <MenuItem
+        key="disable"
+        onClick={async () => {
+          if (!confirmingDisable) {
+            setConfirmingDisable(true)
+            return
+          }
+          close()
+          try {
+            await updateButtonStatus(disableButton, {})
+          } catch (err) {
+            setError(`Error disabling resource: ${err}`)
+          }
+        }}
+      >
+        <MenuLabel className={confirmingDisable ? "isDanger" : ""}>
+          {confirmingDisable ? "Click again to disable" : "Disable resource"}
+          <MenuHint>Stops it until you enable it again</MenuHint>
+        </MenuLabel>
+      </MenuItem>
+    )
+  }
+
+  if (items.length === 0) {
+    return null
+  }
+
+  return (
+    <>
+      <MoreButton
+        ref={anchorRef}
+        onClick={() => setOpen(true)}
+        className={open ? "isOpen" : ""}
+        aria-label="More actions"
+        title="More actions"
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
+        <MoreHorizIcon role="presentation" />
+      </MoreButton>
+      <Menu
+        anchorEl={anchorRef.current}
+        open={open}
+        onClose={close}
+        disableScrollLock={true}
+        getContentAnchorEl={null}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        transformOrigin={{ vertical: "top", horizontal: "right" }}
+      >
+        {items}
+      </Menu>
+    </>
+  )
+}
 
 export default function OverviewResourceHeader(
   props: OverviewResourceHeaderProps
 ) {
   const { name, resource, buttons, allButtons, onClose } = props
   const alertIndex = useLogAlertIndex()
+  const starCtx = useStarredResources()
   const onStartBuild = useCallback(() => startBuild(name), [name])
+  const [showMore, setShowMore] = usePersistentState(
+    "resource-header-show-more",
+    false
+  )
 
   const close = (
     <CloseButton
@@ -209,52 +525,22 @@ export default function OverviewResourceHeader(
     status.buildStatus === ResourceStatus.Unhealthy ||
     status.runtimeStatus === ResourceStatus.Unhealthy
 
-  // Only show fields that have something in them.
-  const fields: { label: string; value: React.ReactNode }[] = []
-  if (!isDisabled && cell.endpoints.length) {
-    fields.push({
-      label: "Endpoints",
-      value: cell.endpoints.map((ep) => {
-        const url = resolveURL(ep.url || "")
-        const text = ep.name || displayURL(url)
-        // We use the url as the target, so that clicking the link re-uses the tab.
-        return (
-          <Endpoint href={url} target={url} key={url} title={url}>
-            <LinkSvg role="presentation" />
-            <span>{text}</span>
-          </Endpoint>
-        )
-      }),
-    })
-  }
-  if (!isDisabled && cell.podId) {
-    fields.push({ label: "Pod ID", value: <CopyButton podId={cell.podId} /> })
-  }
-  if (cell.resourceTypeLabel) {
-    fields.push({ label: "Type", value: cell.resourceTypeLabel })
-  }
-  if (!isDisabled && !isTiltfile) {
-    fields.push({
-      label: "Mode",
-      value: (
-        <OverviewTableTriggerModeToggle
-          resourceName={name}
-          triggerMode={cell.mode}
-        />
-      ),
-    })
-  }
-  if (!isDisabled && buttons?.default.length) {
-    fields.push({
-      label: "Widgets",
-      value: <OverviewWidgets buttons={buttons.default} />,
-    })
-  }
+  const endpoints = isDisabled ? [] : cell.endpoints.filter((ep) => !!ep.url)
+  const [primary, ...others] = endpoints
+  const widgets = !isDisabled && buttons?.default.length ? buttons.default : []
+  const podId = isDisabled ? "" : cell.podId
+  const hasSecondRow = !!primary || widgets.length > 0 || !!podId
 
   return (
     <HeaderRoot aria-label={`${name} details`}>
       <TitleRow>
         <TitleAndStatus>
+          <StarSlot>
+            <OverviewTableStarResourceButton
+              resourceName={name}
+              ctx={starCtx}
+            />
+          </StarSlot>
           <Title className={hasError ? "has-error" : ""}>{name}</Title>
           <StatusGroup>
             {!isDisabled && (
@@ -270,6 +556,19 @@ export default function OverviewResourceHeader(
               status={status.runtimeStatus}
               resourceName={name}
             />
+            {!isDisabled && cell.lastDeployTime && (
+              <UpdatedAgo
+                aria-label="Last updated"
+                title={`Last updated ${new Date(
+                  cell.lastDeployTime
+                ).toLocaleString()}`}
+              >
+                <TimeAgo
+                  date={cell.lastDeployTime}
+                  formatter={timeAgoFormatter}
+                />
+              </UpdatedAgo>
+            )}
           </StatusGroup>
         </TitleAndStatus>
         <Actions>
@@ -282,21 +581,55 @@ export default function OverviewResourceHeader(
               isQueued={cell.trigger.isQueued}
               onStartBuild={onStartBuild}
               stopBuildButton={cell.buttons.stopBuild}
+              shortcut="r"
             />
           )}
-          <DisableButtonSection button={buttons?.toggleDisable} />
+          {/* When disabled, enabling is the main thing to do, so it stays out
+              in the open. Otherwise, disabling lives in the "⋯" menu. */}
+          {isDisabled && (
+            <DisableButtonSection button={buttons?.toggleDisable} />
+          )}
+          <ResourceMoreMenu
+            name={name}
+            triggerMode={isDisabled || isTiltfile ? undefined : cell.mode}
+            disableButton={isDisabled ? undefined : buttons?.toggleDisable}
+          />
           {close}
         </Actions>
       </TitleRow>
-      {fields.length > 0 && (
-        <Fields>
-          {fields.map((f) => (
-            <Field key={f.label}>
-              <FieldLabel>{f.label}</FieldLabel>
-              <FieldValue>{f.value}</FieldValue>
-            </Field>
+      {hasSecondRow && (
+        <UrlRow aria-label="URLs">
+          {primary && (
+            <PrimaryUrl>
+              <EndpointLink
+                url={primary.url!}
+                name={primary.name}
+                isPrimary={true}
+              />
+              <CopyUrl url={resolveURL(primary.url!)} />
+            </PrimaryUrl>
+          )}
+          {others.map((ep) => (
+            <EndpointLink key={ep.url} url={ep.url!} name={ep.name} />
           ))}
-        </Fields>
+          {widgets.length > 0 && <OverviewWidgets buttons={widgets} />}
+          {podId && (
+            <ShowMoreButton
+              onClick={() => setShowMore(!showMore)}
+              aria-expanded={showMore}
+            >
+              {showMore ? "Show less" : "Show more"}
+            </ShowMoreButton>
+          )}
+        </UrlRow>
+      )}
+      {podId && showMore && (
+        <MoreDetails>
+          <DetailItem>
+            <DetailLabel>Pod ID</DetailLabel>
+            <CopyButton podId={podId} />
+          </DetailItem>
+        </MoreDetails>
       )}
     </HeaderRoot>
   )

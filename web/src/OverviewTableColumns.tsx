@@ -3,7 +3,6 @@ import { CellProps, Column, HeaderProps, Row } from "react-table"
 import TimeAgo from "react-timeago"
 import styled from "styled-components"
 import { ApiButton, ApiIcon, ButtonSet } from "./ApiButton"
-import { ColumnSizing } from "./ColumnResize"
 import { ReactComponent as CheckmarkSvg } from "./assets/svg/checkmark.svg"
 import { ReactComponent as CopySvg } from "./assets/svg/copy.svg"
 import { ReactComponent as LinkSvg } from "./assets/svg/link.svg"
@@ -439,6 +438,35 @@ export function TableStatusColumn({ row }: CellProps<RowValues>) {
   )
 }
 
+// Stacked like the full status, so rows keep their height when the list
+// switches between the two.
+const TableStatusIconsRoot = styled(TableStatusColumnRoot)``
+
+// The status as two icons (update above runtime), for a narrow list.
+// Hovering an icon tells you what it means.
+export function TableStatusIconsColumn({ row }: CellProps<RowValues>) {
+  const status = row.original.statusLine
+  return (
+    <TableStatusIconsRoot>
+      {!rowIsDisabled(row) && (
+        <OverviewTableStatus
+          status={status.buildStatus}
+          lastBuildDur={status.lastBuildDur}
+          isBuild={true}
+          resourceName={row.values.name}
+          hold={status.hold}
+          iconOnly={true}
+        />
+      )}
+      <OverviewTableStatus
+        status={status.runtimeStatus}
+        resourceName={row.values.name}
+        iconOnly={true}
+      />
+    </TableStatusIconsRoot>
+  )
+}
+
 export function TablePodIDColumn({ row }: CellProps<RowValues>) {
   let [showCopySuccess, setShowCopySuccess] = useState(false)
 
@@ -692,67 +720,96 @@ export const COLUMNS: Column<RowValues>[] = [
   modeColumn,
 ]
 
-// The condensed columns can be resized; the name column takes the rest.
-export const CONDENSED_COLUMN_SIZING: ColumnSizing = {
-  defaults: { lastDeployTime: 100, trigger: 84, Status: 210 },
-  minimums: { lastDeployTime: 84, trigger: 60, name: 120, Status: 150 },
-  flexibleColumn: "name",
+// With the details panel open, the list shows a few fixed-width columns;
+// only the name stretches.
+const CONDENSED_WIDTHS: { [id: string]: number } = {
+  starred: 40,
+  lastDeployTime: 100,
+  trigger: 84,
+  Status: 176,
+  statusIcons: 60,
 }
+const MIN_NAME_WIDTH = 160
+// The table's left margin and borders, plus a little slack.
+const TABLE_EDGES = 24
 
-// Columns shown when the details panel is open beside the table.
-// Status sits right after the name; everything else moves into the panel.
-const CONDENSED_COLUMN_IDS = [
-  "starred",
-  "lastDeployTime",
-  "trigger",
-  "name",
-  "Status",
+// What the list shows at each width, narrowest first. The status always
+// stays: when space is tight it shrinks to icons. Then come the trigger
+// and star, and finally when it was last updated.
+const CONDENSED_LAYOUTS: string[][] = [
+  ["name", "statusIcons"],
+  ["name", "Status"],
+  ["starred", "trigger", "name", "Status"],
+  ["starred", "lastDeployTime", "trigger", "name", "Status"],
 ]
 
-export const CONDENSED_COLUMNS: Column<RowValues>[] = COLUMNS.filter((c) =>
-  CONDENSED_COLUMN_IDS.includes(columnId(c))
-).map((c) => {
-  const id = columnId(c)
-  const width = CONDENSED_COLUMN_SIZING.defaults[id]
+// The list widths where each layout just fits. The divider snaps to these.
+export const CONDENSED_SNAP_WIDTHS: number[] = CONDENSED_LAYOUTS.map(
+  (layout) =>
+    TABLE_EDGES +
+    layout.reduce(
+      (sum, id) =>
+        sum + (id === "name" ? MIN_NAME_WIDTH : CONDENSED_WIDTHS[id]),
+      0
+    )
+)
+export const FULL_CONDENSED_WIDTH =
+  CONDENSED_SNAP_WIDTHS[CONDENSED_SNAP_WIDTHS.length - 1]
+
+function condensedLayoutForWidth(availableWidth: number | undefined) {
+  if (availableWidth === undefined) {
+    return CONDENSED_LAYOUTS[CONDENSED_LAYOUTS.length - 1]
+  }
+  let layout = CONDENSED_LAYOUTS[0]
+  CONDENSED_LAYOUTS.forEach((l, i) => {
+    if (CONDENSED_SNAP_WIDTHS[i] <= availableWidth) {
+      layout = l
+    }
+  })
+  return layout
+}
+
+const STATUS_ICONS_COLUMN: Column<RowValues> = {
+  Header: "",
+  id: "statusIcons",
+  accessor: (row) => statusSortKey(row),
+  Cell: TableStatusIconsColumn,
+}
+
+const condensedColumn = (id: string): Column<RowValues> => {
+  const c =
+    id === "statusIcons"
+      ? STATUS_ICONS_COLUMN
+      : COLUMNS.find((c) => columnId(c) === id)!
+  const width = CONDENSED_WIDTHS[id]
   return {
     ...c,
-    // The starred column keeps its own fixed width
-    width: width ? `${width}px` : id === "name" ? "auto" : c.width,
+    width: width ? `${width}px` : "auto",
     // Short header to fit the narrow list
     ...(id === "name" ? { Header: "Name" } : {}),
   }
-})
-
-// As the list gets narrower, columns drop out in this order, so the name
-// is the last thing to go.
-const CONDENSED_DROP_ORDER = ["Status", "trigger", "lastDeployTime", "starred"]
-const STARRED_COLUMN_WIDTH = 40
-// The table's margin and borders, plus a little slack.
-const TABLE_EDGES = 24
+}
 
 export function condensedColumnsForWidth(
-  availableWidth: number | undefined,
-  widths: { [id: string]: number }
+  availableWidth: number | undefined
 ): Column<RowValues>[] {
-  if (!availableWidth) {
-    return CONDENSED_COLUMNS
-  }
-  const { defaults, minimums } = CONDENSED_COLUMN_SIZING
-  const widthOf = (id: string) => {
-    if (id === "starred") return STARRED_COLUMN_WIDTH
-    if (id === "name") return minimums.name
-    return widths[id] ?? defaults[id]
-  }
-  let shown = [...CONDENSED_COLUMN_IDS]
-  const needed = () =>
-    TABLE_EDGES + shown.reduce((sum, id) => sum + widthOf(id), 0)
-  for (const id of CONDENSED_DROP_ORDER) {
-    if (needed() <= availableWidth) {
-      break
-    }
-    shown = shown.filter((s) => s !== id)
-  }
-  return CONDENSED_COLUMNS.filter((c) => shown.includes(columnId(c)))
+  return condensedLayoutForWidth(availableWidth).map(condensedColumn)
+}
+
+const HIDEABLE_COLUMN_LABELS: { [id: string]: string } = {
+  starred: "Star",
+  trigger: "Trigger",
+  lastDeployTime: "Updated",
+}
+
+// The columns that don't fit at this width, for the "show them" button.
+export function hiddenCondensedColumns(
+  availableWidth: number | undefined
+): string[] {
+  const layout = condensedLayoutForWidth(availableWidth)
+  return Object.keys(HIDEABLE_COLUMN_LABELS)
+    .filter((id) => !layout.includes(id))
+    .map((id) => HIDEABLE_COLUMN_LABELS[id])
 }
 
 export function columnId(c: Column<RowValues>): string {

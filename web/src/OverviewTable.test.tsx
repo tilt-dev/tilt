@@ -21,6 +21,9 @@ import OverviewTable, {
 import {
   columnId,
   condensedColumnsForWidth,
+  CONDENSED_SNAP_WIDTHS,
+  FULL_CONDENSED_WIDTH,
+  hiddenCondensedColumns,
   Name,
   RowValues,
   SelectionCheckbox,
@@ -940,22 +943,30 @@ function renderContainer(x: ReactElement) {
 
 describe("condensed columns", () => {
   const ids = (width: number) =>
-    condensedColumnsForWidth(width, {}).map((c) => columnId(c))
+    condensedColumnsForWidth(width).map((c) => columnId(c))
 
   it("shows every condensed column when there's room", () => {
-    expect(ids(660)).toEqual([
+    expect(ids(FULL_CONDENSED_WIDTH)).toEqual([
       "starred",
       "lastDeployTime",
       "trigger",
       "name",
       "Status",
     ])
+    expect(hiddenCondensedColumns(FULL_CONDENSED_WIDTH)).toEqual([])
   })
 
-  it("drops columns as the list narrows, keeping the name last", () => {
-    expect(ids(500)).toEqual(["starred", "lastDeployTime", "trigger", "name"])
-    expect(ids(330)).toEqual(["starred", "lastDeployTime", "name"])
-    expect(ids(250)).toEqual(["starred", "name"])
-    expect(ids(100)).toEqual(["name"])
+  it("hides Updated, then Trigger and star, but always keeps the status", () => {
+    const [iconsOnly, nameAndStatus, withTrigger] = CONDENSED_SNAP_WIDTHS
+    expect(ids(withTrigger)).toEqual(["starred", "trigger", "name", "Status"])
+    expect(hiddenCondensedColumns(withTrigger)).toEqual(["Updated"])
+    expect(ids(nameAndStatus)).toEqual(["name", "Status"])
+    expect(hiddenCondensedColumns(nameAndStatus)).toEqual([
+      "Star",
+      "Trigger",
+      "Updated",
+    ])
+    expect(ids(iconsOnly)).toEqual(["name", "statusIcons"])
+    expect(ids(100)).toEqual(["name", "statusIcons"])
   })
 })

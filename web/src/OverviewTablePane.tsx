@@ -12,14 +12,20 @@ import styled, { createGlobalStyle } from "styled-components"
 import { ApiButtonType, buttonsForComponent } from "./ApiButton"
 import { ReactComponent as DetailViewSvg } from "./assets/svg/detail-view-icon.svg"
 import { ReactComponent as StarSvg } from "./assets/svg/star.svg"
-import { usePersistentState } from "./BrowserStorage"
+import { usePersistentState, useSessionState } from "./BrowserStorage"
 import HeaderBar, { HeaderBarPage } from "./HeaderBar"
 import { InstrumentedButton } from "./instrumentedComponents"
+import { LastOpenedResourceProvider } from "./LastOpenedResource"
 import OverviewResourceDetails, {
   useResourceAlerts,
 } from "./OverviewResourceDetails"
 import OverviewResourceHeader from "./OverviewResourceHeader"
 import OverviewTable from "./OverviewTable"
+import {
+  CONDENSED_SNAP_WIDTHS,
+  FULL_CONDENSED_WIDTH,
+  hiddenCondensedColumns,
+} from "./OverviewTableColumns"
 import { OverviewTableBulkActions } from "./OverviewTableBulkActions"
 import { OverviewTableDisplayOptions } from "./OverviewTableDisplayOptions"
 import { usePathBuilder } from "./PathBuilder"
@@ -41,7 +47,9 @@ import {
   Width,
   ZIndex,
 } from "./style-helpers"
-import { ResourceName } from "./types"
+import { useLogAlertIndex } from "./LogStore"
+import { buildStatus, runtimeStatus } from "./status"
+import { ResourceName, ResourceStatus } from "./types"
 import {
   prefersReducedMotion,
   runViewTransition,
@@ -58,12 +66,30 @@ type OverviewTablePaneProps = {
   isSocketConnected: boolean
 }
 
-// Width of the resource list when the details panel is open.
-// The divider between them can be dragged; the panel keeps a minimum width.
-const CONDENSED_TABLE_WIDTH = 660
-const MIN_TABLE_WIDTH = 200
+// Width of the resource list when the details panel is open: by default,
+// wide enough for all its columns. The divider between them can be dragged;
+// below that width it snaps to where whole columns fit, so the list never
+// shows half a column. The panel keeps a minimum width.
+// A little extra over the full width gives longer names room.
+const CONDENSED_TABLE_WIDTH = FULL_CONDENSED_WIDTH + 56
+// Windows at least this wide start with every column in the list.
+const ROOMY_WINDOW_WIDTH = 1680
+
+// How wide the list starts. On a laptop, just wide enough for the star,
+// trigger, name and status, so the logs get most of the room ("Updated"
+// is one click away, on the "+1" button). Wider windows have room for all.
+export function defaultTableWidth(windowWidth = window.innerWidth): number {
+  return windowWidth >= ROOMY_WINDOW_WIDTH
+    ? CONDENSED_TABLE_WIDTH
+    : CONDENSED_SNAP_WIDTHS[2]
+}
+const MIN_TABLE_WIDTH = CONDENSED_SNAP_WIDTHS[0]
 const MIN_PANEL_WIDTH = 480
 const DIVIDER_KEYBOARD_STEP = 16
+const SNAP_DURATION_MS = 150
+// While dragging, the divider only moves to another step once the pointer
+// is this much closer to it, so it doesn't flicker between two steps.
+const SNAP_HYSTERESIS = 24
 // Dragging the divider this far left collapses the list.
 const COLLAPSE_LIST_WIDTH = 140
 // Width of the collapsed list, which only shows the expand button.
@@ -72,6 +98,36 @@ const COLLAPSED_LIST_WIDTH = 36
 function clampTableWidth(width: number): number {
   const max = Math.max(MIN_TABLE_WIDTH, window.innerWidth - MIN_PANEL_WIDTH)
   return Math.round(Math.min(Math.max(width, MIN_TABLE_WIDTH), max))
+}
+
+// Below the full width, round to the nearest width where whole columns fit.
+function snapTableWidth(width: number): number {
+  if (width >= FULL_CONDENSED_WIDTH) {
+    return width
+  }
+  return CONDENSED_SNAP_WIDTHS.reduce((best, w) =>
+    Math.abs(w - width) < Math.abs(best - width) ? w : best
+  )
+}
+
+// Where the divider goes while dragging: the step nearest the pointer, but
+// it stays on its current step until the pointer is clearly past halfway.
+export function snapWhileDragging(
+  pointerWidth: number,
+  current: number
+): number {
+  const target = snapTableWidth(pointerWidth)
+  if (
+    target === current ||
+    pointerWidth >= FULL_CONDENSED_WIDTH ||
+    current >= FULL_CONDENSED_WIDTH
+  ) {
+    return target
+  }
+  const isClearlyCloser =
+    Math.abs(pointerWidth - target) + SNAP_HYSTERESIS <
+    Math.abs(pointerWidth - current)
+  return isClearlyCloser ? target : current
 }
 
 type PanelPhase = "closed" | "open"
@@ -209,14 +265,24 @@ const ListFilterRow = styled.div`
   }
 `
 
+// Always two lines, at any list width, so the list below never shifts up
+// or down as the divider moves:
+//   [ ] Show disabled resources
+//   [ ] Alerts on top          ⇱ ⇲
 const ListDisplayOptions = styled(OverviewTableDisplayOptions)`
   margin-left: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  white-space: nowrap;
 
-  /* While the width animates, keep the options on one line so the list
-     below doesn't jump up and down. */
-  &.isAnimating {
-    flex-wrap: nowrap;
-    white-space: nowrap;
+  & > :first-child {
+    grid-column: 1 / -1;
+  }
+
+  & > label {
+    min-width: 0;
+    overflow: hidden;
   }
 `
 
@@ -238,11 +304,97 @@ const ListToggleButton = styled(InstrumentedButton)`
   }
 `
 
+// Shown when the list is too narrow for some columns; widens it to fit them.
+const ShowColumnsButton = styled(InstrumentedButton)`
+  ${mixinResetButtonStyle};
+  flex-shrink: 0;
+  min-width: 0;
+  padding: ${SizeUnit(0.05)} ${SizeUnit(0.2)};
+  border: 1px solid ${Color.gray40};
+  border-radius: 4px;
+  color: ${Color.gray60};
+  font-family: ${Font.monospace};
+  font-size: ${FontSize.smallest};
+
+  &:hover {
+    color: ${Color.offWhite};
+    border-color: ${Color.gray60};
+  }
+`
+
 const CollapsedList = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   padding: ${SizeUnit(0.25)} ${SizeUnit(0.15)};
   border-right: 1px solid ${Color.gray40};
   height: 100%;
+  box-sizing: border-box;
 `
+
+// While the list is collapsed: one red dot per resource with an error,
+// so you can tell something else broke without opening the list.
+const ErrorRail = styled.ul`
+  list-style: none;
+  margin: ${SizeUnit(0.35)} 0 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: ${SizeUnit(0.2)};
+  min-height: 0;
+  overflow-y: auto;
+`
+
+const ErrorDot = styled(Link)`
+  display: block;
+  width: 10px;
+  height: 10px;
+  margin: 3px;
+  border-radius: 50%;
+  background-color: ${Color.red};
+  opacity: 0.85;
+
+  &:hover,
+  &:focus-visible {
+    opacity: 1;
+    box-shadow: 0 0 0 3px ${ColorRGBA(Color.red, ColorAlpha.translucent)};
+  }
+
+  &.isOpen {
+    box-shadow: 0 0 0 2px ${Color.gray10}, 0 0 0 3px ${Color.red};
+  }
+`
+
+function CollapsedErrorRail(props: { view: View; openName: string }) {
+  const pb = usePathBuilder()
+  const alertIndex = useLogAlertIndex()
+  const broken = (props.view.uiResources || [])
+    .filter(
+      (r) =>
+        buildStatus(r, alertIndex) === ResourceStatus.Unhealthy ||
+        runtimeStatus(r, alertIndex) === ResourceStatus.Unhealthy
+    )
+    .map((r) => r.metadata?.name || "")
+    .filter((name) => !!name)
+  if (broken.length === 0) {
+    return null
+  }
+  return (
+    <ErrorRail aria-label="Resources with errors">
+      {broken.map((name) => (
+        <li key={name}>
+          <ErrorDot
+            to={pb.encpath`/r/${name}/overview`}
+            className={name === props.openName ? "isOpen" : ""}
+            aria-label={`${name}: error`}
+            title={`${name}: error`}
+          />
+        </li>
+      ))}
+    </ErrorRail>
+  )
+}
 
 const TableScroll = styled.div`
   flex: 1 1 auto;
@@ -416,6 +568,24 @@ export default function OverviewTablePane(props: OverviewTablePaneProps) {
 
   const resources = props.view.uiResources || []
   const resource = resources.find((r) => r.metadata?.name === name)
+
+  // Remember what was open, so the Detail view button can bring it back.
+  // If it's gone since (or nothing was opened yet), that's all resources.
+  const [lastOpened, setLastOpened] = useSessionState(
+    "last-opened-resource",
+    ""
+  )
+  const openedName = isOpen && !nav.invalidResource ? urlName : ""
+  useEffect(() => {
+    if (openedName && openedName !== lastOpened) {
+      setLastOpened(openedName)
+    }
+  }, [openedName])
+  const lastOpenedExists =
+    lastOpened === ResourceName.all ||
+    (lastOpened === ResourceName.starred && starredResources.length > 0) ||
+    resources.some((r) => r.metadata?.name === lastOpened)
+  const detailResource = lastOpenedExists ? lastOpened : ResourceName.all
   let alertResources = resource ? [resource] : []
   if (name === ResourceName.all) {
     alertResources = resources
@@ -431,10 +601,13 @@ export default function OverviewTablePane(props: OverviewTablePaneProps) {
     name
   )
 
-  const [tableWidth, setTableWidth] = usePersistentState(
-    "condensed-table-width",
-    CONDENSED_TABLE_WIDTH
+  // Only a width you chose (by dragging) is remembered; until then, the
+  // list starts at a width that suits the window.
+  const [savedTableWidth, setTableWidth] = usePersistentState<number | null>(
+    "condensed-list-width",
+    null
   )
+  const tableWidth = savedTableWidth ?? defaultTableWidth()
 
   // Collapsing the list gives the logs (almost) the whole width.
   // Like the old sidebar, this isn't saved between visits.
@@ -477,15 +650,35 @@ export default function OverviewTablePane(props: OverviewTablePaneProps) {
     return () => observer.disconnect()
   }, [])
 
+  // Below the full width, the divider moves in steps, one per layout, so
+  // the list changes once per step instead of flickering as it's dragged.
+  // Past the full width, it follows the pointer.
+  const [isDragging, setIsDragging] = useState(false)
+  const [isSnapping, setIsSnapping] = useState(false)
+  useEffect(() => {
+    if (!isSnapping) {
+      return
+    }
+    const timeout = setTimeout(() => setIsSnapping(false), SNAP_DURATION_MS)
+    return () => clearTimeout(timeout)
+  }, [isSnapping])
+  const glideToWidth = (width: number) => {
+    setIsSnapping(!prefersReducedMotion())
+    setTableWidth(width)
+  }
+
   const onDividerPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     e.preventDefault()
     const divider = e.currentTarget
     const startX = e.clientX
-    const startWidth = clampTableWidth(tableWidth)
+    const startWidth = clampTableWidth(snapTableWidth(tableWidth))
+    let lastWidth = startWidth
     divider.setPointerCapture(e.pointerId)
     divider.classList.add("isDragging")
+    setIsDragging(true)
     const onUp = () => {
       divider.classList.remove("isDragging")
+      setIsDragging(false)
       divider.removeEventListener("pointermove", onMove)
       divider.removeEventListener("pointerup", onUp)
       divider.removeEventListener("pointercancel", onUp)
@@ -493,25 +686,43 @@ export default function OverviewTablePane(props: OverviewTablePaneProps) {
     const onMove = (e: PointerEvent) => {
       const width = startWidth + e.clientX - startX
       if (width < COLLAPSE_LIST_WIDTH) {
+        lastWidth = startWidth
         onUp()
-        setTableWidth(startWidth)
         setListCollapsed(true)
         return
       }
-      setTableWidth(clampTableWidth(width))
+      const next = clampTableWidth(snapWhileDragging(width, lastWidth))
+      if (next !== lastWidth) {
+        lastWidth = next
+        setTableWidth(next)
+      }
     }
     divider.addEventListener("pointermove", onMove)
     divider.addEventListener("pointerup", onUp)
     divider.addEventListener("pointercancel", onUp)
   }
 
+  // Arrow keys step between the widths where whole columns fit, then
+  // (past the full width) in small steps.
   const onDividerKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
-      const step =
-        e.key === "ArrowLeft" ? -DIVIDER_KEYBOARD_STEP : DIVIDER_KEYBOARD_STEP
-      setTableWidth(clampTableWidth(tableWidth + step))
-      e.preventDefault()
+    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") {
+      return
     }
+    e.preventDefault()
+    const current = snapTableWidth(tableWidth)
+    let next: number
+    if (e.key === "ArrowRight") {
+      next =
+        current >= FULL_CONDENSED_WIDTH
+          ? current + DIVIDER_KEYBOARD_STEP
+          : CONDENSED_SNAP_WIDTHS.find((w) => w > current)!
+    } else if (current > FULL_CONDENSED_WIDTH) {
+      next = Math.max(current - DIVIDER_KEYBOARD_STEP, FULL_CONDENSED_WIDTH)
+    } else {
+      next =
+        [...CONDENSED_SNAP_WIDTHS].reverse().find((w) => w < current) ?? current
+    }
+    glideToWidth(clampTableWidth(next))
   }
 
   const closeDetails = useCallback(
@@ -539,125 +750,166 @@ export default function OverviewTablePane(props: OverviewTablePaneProps) {
     return () => document.body.removeEventListener("keydown", onKeydown)
   }, [isOpen, closeDetails])
 
-  const expandedListWidth = clampTableWidth(tableWidth)
+  const expandedListWidth = clampTableWidth(snapTableWidth(tableWidth))
   let listStyle: React.CSSProperties = {}
   if (isCondensed) {
     const width =
       listState === "collapsing" || isListCollapsed
         ? COLLAPSED_LIST_WIDTH
         : expandedListWidth
-    listStyle = {
-      flex: `0 0 ${width}px`,
-      transition: isListAnimating
-        ? `flex-basis ${TRANSITION_DURATION_MS}ms ${TRANSITION_EASING}`
-        : undefined,
+    let transition: string | undefined
+    if (isListAnimating) {
+      transition = `flex-basis ${TRANSITION_DURATION_MS}ms ${TRANSITION_EASING}`
+    } else if (
+      isSnapping ||
+      (isDragging && expandedListWidth <= FULL_CONDENSED_WIDTH)
+    ) {
+      transition = `flex-basis ${SNAP_DURATION_MS}ms ${TRANSITION_EASING}`
     }
+    listStyle = { flex: `0 0 ${width}px`, transition }
   }
 
+  // Columns that don't fit, and a button to widen the list for them
+  // (if the window has room).
+  const hiddenColumns =
+    isDragging || isSnapping || isListAnimating
+      ? []
+      : hiddenCondensedColumns(expandedListWidth)
+  const canShowAllColumns =
+    clampTableWidth(FULL_CONDENSED_WIDTH) >= FULL_CONDENSED_WIDTH
+
   return (
-    <OverviewTablePaneStyle ref={rootRef}>
-      <TransitionStyle />
-      <OverviewTableStickyNav>
-        <HeaderBar
-          view={props.view}
-          currentPage={isOpen ? HeaderBarPage.Detail : HeaderBarPage.Grid}
-          isSocketConnected={props.isSocketConnected}
-        />
-        <StarredResourceBar
-          {...starredResourcePropsFromView(props.view, isOpen ? name : "")}
-        />
-        {!isCondensed && (
-          <OverviewTableMenu aria-label="Resource menu">
-            <OverviewTableResourceNameFilter {...transitionProps("filter")} />
-            <OverviewTableBulkActions uiButtons={props.view.uiButtons} />
-            <OverviewTableDisplayOptions
-              resources={props.view.uiResources}
-              {...transitionProps("display-options")}
+    <LastOpenedResourceProvider name={detailResource}>
+      <OverviewTablePaneStyle ref={rootRef}>
+        <TransitionStyle />
+        <OverviewTableStickyNav>
+          <HeaderBar
+            view={props.view}
+            currentPage={isOpen ? HeaderBarPage.Detail : HeaderBarPage.Grid}
+            isSocketConnected={props.isSocketConnected}
+            detailResource={detailResource}
+          />
+          {/* With the details open, the list's "Starred Resources" row and
+              stars do this job, so the bar would just take up room. */}
+          {!isOpen && (
+            <StarredResourceBar
+              {...starredResourcePropsFromView(props.view, "")}
             />
-          </OverviewTableMenu>
-        )}
-      </OverviewTableStickyNav>
-      <MasterDetail>
-        <ListColumn style={listStyle} ref={listRef}>
-          {isCondensed && isListCollapsed && (
-            <CollapsedList>
-              <ListToggleButton
-                aria-label="Expand resource list"
-                title="Expand resource list"
-                onClick={() => setListCollapsed(false)}
-              >
-                <ChevronRightIcon role="presentation" />
-              </ListToggleButton>
-            </CollapsedList>
           )}
-          {isCondensed && !isListCollapsed && (
-            <ListControls aria-label="Resource menu">
-              <ListFilterRow>
-                <ResourceNameFilter {...transitionProps("filter")} />
-                <ListToggleButton
-                  aria-label="Collapse resource list"
-                  title="Collapse resource list"
-                  onClick={() => setListCollapsed(true)}
-                >
-                  <ChevronLeftIcon role="presentation" />
-                </ListToggleButton>
-              </ListFilterRow>
-              <ListDisplayOptions
+          {!isCondensed && (
+            <OverviewTableMenu aria-label="Resource menu">
+              <OverviewTableResourceNameFilter {...transitionProps("filter")} />
+              <OverviewTableBulkActions uiButtons={props.view.uiButtons} />
+              <OverviewTableDisplayOptions
                 resources={props.view.uiResources}
-                className={isListAnimating ? "isAnimating" : ""}
                 {...transitionProps("display-options")}
               />
-            </ListControls>
+            </OverviewTableMenu>
           )}
-          <TableScroll
-            className={isCondensed && isListCollapsed ? "isHidden" : ""}
-            {...transitionScopeProps}
-          >
-            <OverviewTable
-              view={props.view}
-              condensed={isCondensed}
-              availableWidth={listWidth ?? expandedListWidth}
-              beforeTables={
-                <BuiltinResourceRows openName={isOpen ? name : ""} />
-              }
+        </OverviewTableStickyNav>
+        <MasterDetail>
+          <ListColumn style={listStyle} ref={listRef}>
+            {isCondensed && isListCollapsed && (
+              <CollapsedList>
+                <ListToggleButton
+                  aria-label="Expand resource list"
+                  title="Expand resource list"
+                  onClick={() => setListCollapsed(false)}
+                >
+                  <ChevronRightIcon role="presentation" />
+                </ListToggleButton>
+                <CollapsedErrorRail
+                  view={props.view}
+                  openName={isOpen ? name : ""}
+                />
+              </CollapsedList>
+            )}
+            {isCondensed && !isListCollapsed && (
+              <ListControls aria-label="Resource menu">
+                <ListFilterRow>
+                  <ResourceNameFilter {...transitionProps("filter")} />
+                  {hiddenColumns.length > 0 && canShowAllColumns && (
+                    <ShowColumnsButton
+                      aria-label={`Show hidden columns: ${hiddenColumns.join(
+                        ", "
+                      )}`}
+                      title={`Show ${hiddenColumns.join(", ")}`}
+                      onClick={() => glideToWidth(FULL_CONDENSED_WIDTH)}
+                    >
+                      +{hiddenColumns.length}
+                    </ShowColumnsButton>
+                  )}
+                  <ListToggleButton
+                    aria-label="Collapse resource list"
+                    title="Collapse resource list"
+                    onClick={() => setListCollapsed(true)}
+                  >
+                    <ChevronLeftIcon role="presentation" />
+                  </ListToggleButton>
+                </ListFilterRow>
+                <ListDisplayOptions
+                  resources={props.view.uiResources}
+                  {...transitionProps("display-options")}
+                />
+              </ListControls>
+            )}
+            <TableScroll
+              className={isCondensed && isListCollapsed ? "isHidden" : ""}
+              {...transitionScopeProps}
+            >
+              <OverviewTable
+                view={props.view}
+                condensed={isCondensed}
+                // The layout follows the width the list is headed to, so
+                // columns change once, right away. Only while collapsing or
+                // expanding do they follow the width on screen.
+                availableWidth={
+                  isListAnimating
+                    ? listWidth ?? expandedListWidth
+                    : expandedListWidth
+                }
+                beforeTables={
+                  <BuiltinResourceRows openName={isOpen ? name : ""} />
+                }
+              />
+            </TableScroll>
+          </ListColumn>
+          {isCondensed && !isListCollapsed && (
+            <Divider
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="Resize resource list"
+              aria-valuenow={tableWidth}
+              tabIndex={0}
+              title="Drag to resize · double-click to reset"
+              onPointerDown={onDividerPointerDown}
+              onKeyDown={onDividerKeyDown}
+              onDoubleClick={() => glideToWidth(defaultTableWidth())}
             />
-          </TableScroll>
-        </ListColumn>
-        {isCondensed && !isListCollapsed && (
-          <Divider
-            role="separator"
-            aria-orientation="vertical"
-            aria-label="Resize resource list"
-            aria-valuenow={tableWidth}
-            tabIndex={0}
-            title="Drag to resize · double-click to reset"
-            onPointerDown={onDividerPointerDown}
-            onKeyDown={onDividerKeyDown}
-            onDoubleClick={() => setTableWidth(CONDENSED_TABLE_WIDTH)}
-          />
-        )}
-        {isCondensed && (
-          <DetailPanel
-            aria-label={`Details for ${name}`}
-            {...transitionProps("drawer")}
-          >
-            <OverviewResourceHeader
-              name={name}
-              resource={resource}
-              buttons={buttons}
-              allButtons={props.view.uiButtons}
-              onClose={closeDetails}
-            />
-            <OverviewResourceDetails
-              resource={resource}
-              name={name}
-              alerts={alerts}
-              buttons={buttons}
-              logControlsOnly={true}
-            />
-          </DetailPanel>
-        )}
-      </MasterDetail>
-    </OverviewTablePaneStyle>
+          )}
+          {isCondensed && (
+            <DetailPanel
+              aria-label={`Details for ${name}`}
+              {...transitionProps("drawer")}
+            >
+              <OverviewResourceHeader
+                name={name}
+                resource={resource}
+                buttons={buttons}
+                allButtons={props.view.uiButtons}
+                onClose={closeDetails}
+              />
+              <OverviewResourceDetails
+                resource={resource}
+                name={name}
+                alerts={alerts}
+                buttons={buttons}
+                logControlsOnly={true}
+              />
+            </DetailPanel>
+          )}
+        </MasterDetail>
+      </OverviewTablePaneStyle>
+    </LastOpenedResourceProvider>
   )
 }
