@@ -589,8 +589,8 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
 
     let isEndOfAlert =
       shouldDisplayPrologues &&
-      this.logDisplay.matchesLevelFilter(line) &&
-      (!entry.next || entry.next?.line.level !== line.level)
+      this.logDisplay.matchesPrologueFilter(line) &&
+      (!entry.next || !this.logDisplay.matchesPrologueFilter(entry.next.line))
     if (isEndOfAlert) {
       extraClasses.push("is-endOfAlert")
     }
@@ -598,9 +598,9 @@ export class OverviewLogComponent extends Component<OverviewLogComponentProps> {
     let isStartOfAlert =
       shouldDisplayPrologues &&
       !line.buildEvent &&
-      !this.logDisplay.matchesLevelFilter(line) &&
+      !this.logDisplay.matchesPrologueFilter(line) &&
       (!entry.prev ||
-        this.logDisplay.matchesLevelFilter(entry.prev.line) ||
+        this.logDisplay.matchesPrologueFilter(entry.prev.line) ||
         entry.prev.line.buildEvent)
     if (isStartOfAlert) {
       extraClasses.push("is-startOfAlert")
