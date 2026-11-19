@@ -14,7 +14,7 @@ import { useSessionState } from "./BrowserStorage"
 export const RESOURCE_LIST_OPTIONS_KEY = "sidebar_options"
 
 export type ResourceListOptions = {
-  alertsOnTop: boolean // Note: this is only used/implemented in OverviewSidebar
+  alertsOnTop: boolean
   resourceNameFilter: string
   showDisabledResources: boolean
 }

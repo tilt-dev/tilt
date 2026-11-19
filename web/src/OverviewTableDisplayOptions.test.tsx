@@ -55,3 +55,19 @@ describe("collapse-all button", () => {
     userEvent.click(screen.getByTitle("Collapse All"))
   })
 })
+
+describe("alerts on top checkbox", () => {
+  afterEach(() => sessionStorage.clear())
+
+  it("turns alerts-on-top sorting on and off", () => {
+    let view = nResourceWithLabelsView(3)
+    render(DisplayOptions({ view }))
+    const checkbox = screen.getByRole("checkbox", { name: "Alerts on top" })
+
+    expect(checkbox).not.toBeChecked()
+    userEvent.click(checkbox)
+    expect(checkbox).toBeChecked()
+    userEvent.click(checkbox)
+    expect(checkbox).not.toBeChecked()
+  })
+})
