@@ -789,13 +789,9 @@ export default function OverviewTablePane(props: OverviewTablePaneProps) {
             isSocketConnected={props.isSocketConnected}
             detailResource={detailResource}
           />
-          {/* With the details open, the list's "Starred Resources" row and
-              stars do this job, so the bar would just take up room. */}
-          {!isOpen && (
-            <StarredResourceBar
-              {...starredResourcePropsFromView(props.view, "")}
-            />
-          )}
+          <StarredResourceBar
+            {...starredResourcePropsFromView(props.view, isOpen ? name : "")}
+          />
           {!isCondensed && (
             <OverviewTableMenu aria-label="Resource menu">
               <OverviewTableResourceNameFilter {...transitionProps("filter")} />

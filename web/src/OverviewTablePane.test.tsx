@@ -314,15 +314,13 @@ describe("list width on a laptop", () => {
 })
 
 describe("starred resources bar", () => {
-  it("shows above the table, but not with the details open", () => {
-    customRender({ view: nResourceView(3), starred: ["_1"] })
-    expect(screen.getByLabelText("Starred resources")).toBeInTheDocument()
+  it("stays pinned on top with the details open", () => {
     customRender({
       view: nResourceView(3),
       starred: ["_1"],
       path: "/r/_2/overview",
     })
-    expect(screen.getAllByLabelText("Starred resources")).toHaveLength(1)
+    expect(screen.getByLabelText("Starred resources")).toBeInTheDocument()
   })
 })
 
