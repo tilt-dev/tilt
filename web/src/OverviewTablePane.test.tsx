@@ -301,17 +301,82 @@ describe("list width on a laptop", () => {
   it("starts narrow on a 14-inch screen, with Updated one click away", () => {
     window.innerWidth = 1512
     customRender({ view: nResourceView(3), path: "/r/_1/overview" })
-    const showUpdated = screen.getByLabelText("Show hidden columns: Updated")
+    const showUpdated = screen.getByLabelText("Show more columns: Updated")
     userEvent.click(showUpdated)
-    expect(screen.queryByLabelText(/Show hidden columns/)).toBeNull()
+    expect(screen.queryByLabelText(/Show more columns/)).toBeNull()
+  })
+
+  it("steps open one level at a time: collapsed, default columns, every column", async () => {
+    window.innerWidth = 1512
+    customRender({ view: nResourceView(3), path: "/r/_1/overview" })
+    // Narrow it to just names, then collapse it.
+    const divider = screen.getByRole("separator", {
+      name: "Resize resource list",
+    })
+    for (let i = 0; i < 3; i++) {
+      fireEvent.keyDown(divider, { key: "ArrowLeft" })
+    }
+    userEvent.click(screen.getByLabelText("Collapse resource list"))
+    userEvent.click(await screen.findByLabelText("Expand resource list"))
+
+    // Opens to the default: star, trigger, name, status.
+    const showUpdated = await screen.findByLabelText(
+      "Show more columns: Updated"
+    )
+    expect(screen.getAllByTitle("Sort by Status").length).toBeGreaterThan(0)
+    expect(screen.queryAllByTitle("Sort by Updated")).toHaveLength(0)
+
+    // Then every column; after that, › opens the full table.
+    userEvent.click(showUpdated)
+    await waitFor(() =>
+      expect(screen.getAllByTitle("Sort by Updated").length).toBeGreaterThan(0)
+    )
+    expect(screen.queryByLabelText(/Show more columns/)).toBeNull()
+    // A quick second click (a double-click) is ignored, so the details
+    // don't close by accident; a deliberate click a moment later works.
+    const fullTable = screen.getByLabelText("Open full table (closes details)")
+    userEvent.click(fullTable)
+    expect(screen.getByLabelText("Close details (Esc)")).toBeInTheDocument()
+    const now = Date.now()
+    const clock = jest.spyOn(Date, "now").mockReturnValue(now + 1000)
+    userEvent.click(fullTable)
+    clock.mockRestore()
+    expect(screen.queryByLabelText("Close details (Esc)")).toBeNull()
+  })
+
+  it("opens again when the collapsed strip's edge is dragged right", async () => {
+    window.innerWidth = 1512
+    customRender({ view: nResourceView(3), path: "/r/_1/overview" })
+    userEvent.click(screen.getByLabelText("Collapse resource list"))
+    const edge = await screen.findByTitle("Drag to open the resource list")
+
+    // A small pull isn't enough...
+    fireEvent(
+      edge,
+      new MouseEvent("pointerdown", { clientX: 36, bubbles: true })
+    )
+    fireEvent(window, pointerMoveTo(100))
+    expect(screen.getByLabelText("Expand resource list")).toBeInTheDocument()
+    // ...pulling it out opens the list at the nearest whole-column width.
+    fireEvent(window, pointerMoveTo(500))
+    fireEvent(window, new MouseEvent("pointerup"))
+    await screen.findByLabelText("Collapse resource list")
+    expect(screen.getAllByTitle("Sort by Status").length).toBeGreaterThan(0)
   })
 
   it("starts with every column on a big screen", () => {
     window.innerWidth = 1800
     customRender({ view: nResourceView(3), path: "/r/_1/overview" })
-    expect(screen.queryByLabelText(/Show hidden columns/)).toBeNull()
+    expect(screen.queryByLabelText(/Show more columns/)).toBeNull()
+    expect(
+      screen.getByLabelText("Open full table (closes details)")
+    ).toBeInTheDocument()
   })
 })
+
+function pointerMoveTo(clientX: number): Event {
+  return new MouseEvent("pointermove", { clientX })
+}
 
 describe("starred resources bar", () => {
   it("stays pinned on top with the details open", () => {
@@ -358,7 +423,7 @@ describe("narrow resource list", () => {
     const divider = screen.getByRole("separator", {
       name: "Resize resource list",
     })
-    expect(screen.queryByLabelText(/Show hidden columns/)).toBeNull()
+    expect(screen.queryByLabelText(/Show more columns/)).toBeNull()
 
     // Past the full width, arrows move in small steps; below it, they jump
     // to the next whole-column width, which hides "Updated".
@@ -366,7 +431,7 @@ describe("narrow resource list", () => {
       fireEvent.keyDown(divider, { key: "ArrowLeft" })
     }
     const showButton = await screen.findByLabelText(
-      "Show hidden columns: Updated"
+      "Show more columns: Updated"
     )
     expect(screen.queryAllByTitle("Sort by Updated")).toHaveLength(0)
     expect(screen.getAllByTitle("Sort by Status").length).toBeGreaterThan(0)
@@ -375,7 +440,7 @@ describe("narrow resource list", () => {
     await waitFor(() =>
       expect(screen.getAllByTitle("Sort by Updated").length).toBeGreaterThan(0)
     )
-    expect(screen.queryByLabelText(/Show hidden columns/)).toBeNull()
+    expect(screen.queryByLabelText(/Show more columns/)).toBeNull()
   })
 })
 
@@ -396,6 +461,18 @@ describe("returning to the details", () => {
     expect(detailButton()).toHaveAttribute("href", "/r/_2/overview")
 
     userEvent.click(detailButton())
+    await waitFor(() => expect(detailsPanel("_2")).toBeInTheDocument())
+  })
+
+  it("goes back with ‹ at the right end of the full table menu", async () => {
+    customRender({ view: nResourceView(3) })
+    userEvent.click(screen.getByLabelText("Back to details: All Resources"))
+    expect(currentPath()).toBe("/r/(all)/overview")
+
+    userEvent.click(screen.getByTitle("_2"))
+    userEvent.click(screen.getByRole("link", { name: "Table view" }))
+    await waitFor(() => expect(detailsPanel("_2")).toBeNull())
+    userEvent.click(screen.getByLabelText("Back to details: _2"))
     await waitFor(() => expect(detailsPanel("_2")).toBeInTheDocument())
   })
 

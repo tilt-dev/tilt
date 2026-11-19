@@ -77,7 +77,7 @@ const ROOMY_WINDOW_WIDTH = 1680
 
 // How wide the list starts. On a laptop, just wide enough for the star,
 // trigger, name and status, so the logs get most of the room ("Updated"
-// is one click away, on the "+1" button). Wider windows have room for all.
+// is one click away, on the › next to ‹). Wider windows have room for all.
 export function defaultTableWidth(windowWidth = window.innerWidth): number {
   return windowWidth >= ROOMY_WINDOW_WIDTH
     ? CONDENSED_TABLE_WIDTH
@@ -92,6 +92,8 @@ const SNAP_DURATION_MS = 150
 const SNAP_HYSTERESIS = 24
 // Dragging the divider this far left collapses the list.
 const COLLAPSE_LIST_WIDTH = 140
+// After › widens the list, the full-table › ignores clicks for this long.
+const FULL_TABLE_CLICK_GUARD_MS = 600
 // Width of the collapsed list, which only shows the expand button.
 const COLLAPSED_LIST_WIDTH = 36
 
@@ -304,25 +306,12 @@ const ListToggleButton = styled(InstrumentedButton)`
   }
 `
 
-// Shown when the list is too narrow for some columns; widens it to fit them.
-const ShowColumnsButton = styled(InstrumentedButton)`
-  ${mixinResetButtonStyle};
-  flex-shrink: 0;
-  min-width: 0;
-  padding: ${SizeUnit(0.05)} ${SizeUnit(0.2)};
-  border: 1px solid ${Color.gray40};
-  border-radius: 4px;
-  color: ${Color.gray60};
-  font-family: ${Font.monospace};
-  font-size: ${FontSize.smallest};
-
-  &:hover {
-    color: ${Color.offWhite};
-    border-color: ${Color.gray60};
-  }
+const BackToDetailsButton = styled(ListToggleButton)`
+  margin-left: ${SizeUnit(0.25)};
 `
 
 const CollapsedList = styled.div`
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -344,6 +333,34 @@ const ErrorRail = styled.ul`
   gap: ${SizeUnit(0.2)};
   min-height: 0;
   overflow-y: auto;
+`
+
+// The collapsed strip's right edge: drag it right to open the list.
+const CollapsedEdge = styled.div`
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: -5px;
+  width: 9px;
+  cursor: col-resize;
+  touch-action: none;
+  z-index: 1;
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 4px;
+    width: 1px;
+  }
+
+  &:hover::after,
+  &.isDragging::after {
+    left: 3px;
+    width: 3px;
+    background-color: ${Color.blue};
+  }
 `
 
 const ErrorDot = styled(Link)`
@@ -667,27 +684,42 @@ export default function OverviewTablePane(props: OverviewTablePaneProps) {
     setTableWidth(width)
   }
 
-  const onDividerPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+  // Dragging the divider. Pulling it far enough left collapses the list;
+  // pulling it back right (in the same drag, or later from the collapsed
+  // strip's edge) opens it again, snapping to whole columns as usual.
+  const startListDrag = (
+    e: React.PointerEvent<HTMLDivElement>,
+    fromCollapsed: boolean
+  ) => {
     e.preventDefault()
-    const divider = e.currentTarget
     const startX = e.clientX
-    const startWidth = clampTableWidth(snapTableWidth(tableWidth))
+    const startWidth = fromCollapsed
+      ? COLLAPSED_LIST_WIDTH
+      : clampTableWidth(snapTableWidth(tableWidth))
     let lastWidth = startWidth
-    divider.setPointerCapture(e.pointerId)
-    divider.classList.add("isDragging")
+    let collapsed = fromCollapsed
     setIsDragging(true)
     const onUp = () => {
-      divider.classList.remove("isDragging")
       setIsDragging(false)
-      divider.removeEventListener("pointermove", onMove)
-      divider.removeEventListener("pointerup", onUp)
-      divider.removeEventListener("pointercancel", onUp)
+      window.removeEventListener("pointermove", onMove)
+      window.removeEventListener("pointerup", onUp)
+      window.removeEventListener("pointercancel", onUp)
     }
     const onMove = (e: PointerEvent) => {
       const width = startWidth + e.clientX - startX
+      if (collapsed) {
+        // Reopen once the pointer is clearly past the collapse point.
+        if (width < COLLAPSE_LIST_WIDTH + SNAP_HYSTERESIS) {
+          return
+        }
+        collapsed = false
+        lastWidth = clampTableWidth(snapTableWidth(width))
+        setTableWidth(lastWidth)
+        setListState("expanded")
+        return
+      }
       if (width < COLLAPSE_LIST_WIDTH) {
-        lastWidth = startWidth
-        onUp()
+        collapsed = true
         setListCollapsed(true)
         return
       }
@@ -697,9 +729,9 @@ export default function OverviewTablePane(props: OverviewTablePaneProps) {
         setTableWidth(next)
       }
     }
-    divider.addEventListener("pointermove", onMove)
-    divider.addEventListener("pointerup", onUp)
-    divider.addEventListener("pointercancel", onUp)
+    window.addEventListener("pointermove", onMove)
+    window.addEventListener("pointerup", onUp)
+    window.addEventListener("pointercancel", onUp)
   }
 
   // Arrow keys step between the widths where whole columns fit, then
@@ -724,6 +756,15 @@ export default function OverviewTablePane(props: OverviewTablePaneProps) {
     }
     glideToWidth(clampTableWidth(next))
   }
+
+  // In the full table, ‹ at the far right of the menu goes back to the details
+  // (the resource you had open, else all resources), like the Detail icon.
+  const detailLabel =
+    detailResource === ResourceName.all
+      ? "All Resources"
+      : detailResource === ResourceName.starred
+      ? "Starred Resources"
+      : detailResource
 
   const closeDetails = useCallback(
     () => navigate(pb.encpath`/overview`),
@@ -769,14 +810,33 @@ export default function OverviewTablePane(props: OverviewTablePaneProps) {
     listStyle = { flex: `0 0 ${width}px`, transition }
   }
 
-  // Columns that don't fit, and a button to widen the list for them
-  // (if the window has room).
-  const hiddenColumns =
-    isDragging || isSnapping || isListAnimating
-      ? []
-      : hiddenCondensedColumns(expandedListWidth)
+  // The › next to ‹ widens the list one step at a time: first to the
+  // default columns (★ / Trigger / Name / Status), then to every column.
+  // Once every column shows (or the window has no room), it opens the full
+  // table, like the table icon on top.
   const canShowAllColumns =
     clampTableWidth(FULL_CONDENSED_WIDTH) >= FULL_CONDENSED_WIDTH
+  const hiddenColumns = hiddenCondensedColumns(expandedListWidth)
+  const nextListWidth =
+    expandedListWidth < CONDENSED_SNAP_WIDTHS[2]
+      ? CONDENSED_SNAP_WIDTHS[2]
+      : FULL_CONDENSED_WIDTH
+  const nextHidden = hiddenCondensedColumns(nextListWidth)
+  const columnsToShow = hiddenColumns.filter((c) => !nextHidden.includes(c))
+  const canWidenList = hiddenColumns.length > 0 && canShowAllColumns
+  // A quick double-click on › shouldn't widen the list *and* then close
+  // the details, so the full-table step ignores clicks just after a widen.
+  const lastWidenAt = useRef(0)
+  const widenList = () => {
+    lastWidenAt.current = Date.now()
+    glideToWidth(nextListWidth)
+  }
+  const openFullTable = () => {
+    if (Date.now() - lastWidenAt.current < FULL_TABLE_CLICK_GUARD_MS) {
+      return
+    }
+    closeDetails()
+  }
 
   return (
     <LastOpenedResourceProvider name={detailResource}>
@@ -800,6 +860,15 @@ export default function OverviewTablePane(props: OverviewTablePaneProps) {
                 resources={props.view.uiResources}
                 {...transitionProps("display-options")}
               />
+              <BackToDetailsButton
+                aria-label={`Back to details: ${detailLabel}`}
+                title={`Back to details: ${detailLabel}`}
+                onClick={() =>
+                  navigate(pb.encpath`/r/${detailResource}/overview`)
+                }
+              >
+                <ChevronLeftIcon role="presentation" />
+              </BackToDetailsButton>
             </OverviewTableMenu>
           )}
         </OverviewTableStickyNav>
@@ -810,7 +879,11 @@ export default function OverviewTablePane(props: OverviewTablePaneProps) {
                 <ListToggleButton
                   aria-label="Expand resource list"
                   title="Expand resource list"
-                  onClick={() => setListCollapsed(false)}
+                  onClick={() => {
+                    // Opens to the default columns; › again shows the rest.
+                    setTableWidth(defaultTableWidth())
+                    setListCollapsed(false)
+                  }}
                 >
                   <ChevronRightIcon role="presentation" />
                 </ListToggleButton>
@@ -818,23 +891,18 @@ export default function OverviewTablePane(props: OverviewTablePaneProps) {
                   view={props.view}
                   openName={isOpen ? name : ""}
                 />
+                <CollapsedEdge
+                  aria-hidden="true"
+                  title="Drag to open the resource list"
+                  className={isDragging ? "isDragging" : ""}
+                  onPointerDown={(e) => startListDrag(e, true)}
+                />
               </CollapsedList>
             )}
             {isCondensed && !isListCollapsed && (
               <ListControls aria-label="Resource menu">
                 <ListFilterRow>
                   <ResourceNameFilter {...transitionProps("filter")} />
-                  {hiddenColumns.length > 0 && canShowAllColumns && (
-                    <ShowColumnsButton
-                      aria-label={`Show hidden columns: ${hiddenColumns.join(
-                        ", "
-                      )}`}
-                      title={`Show ${hiddenColumns.join(", ")}`}
-                      onClick={() => glideToWidth(FULL_CONDENSED_WIDTH)}
-                    >
-                      +{hiddenColumns.length}
-                    </ShowColumnsButton>
-                  )}
                   <ListToggleButton
                     aria-label="Collapse resource list"
                     title="Collapse resource list"
@@ -842,6 +910,25 @@ export default function OverviewTablePane(props: OverviewTablePaneProps) {
                   >
                     <ChevronLeftIcon role="presentation" />
                   </ListToggleButton>
+                  {canWidenList ? (
+                    <ListToggleButton
+                      aria-label={`Show more columns: ${columnsToShow.join(
+                        ", "
+                      )}`}
+                      title={`Show ${columnsToShow.join(", ")}`}
+                      onClick={widenList}
+                    >
+                      <ChevronRightIcon role="presentation" />
+                    </ListToggleButton>
+                  ) : (
+                    <ListToggleButton
+                      aria-label="Open full table (closes details)"
+                      title="Open full table (closes details)"
+                      onClick={openFullTable}
+                    >
+                      <ChevronRightIcon role="presentation" />
+                    </ListToggleButton>
+                  )}
                 </ListFilterRow>
                 <ListDisplayOptions
                   resources={props.view.uiResources}
@@ -878,7 +965,8 @@ export default function OverviewTablePane(props: OverviewTablePaneProps) {
               aria-valuenow={tableWidth}
               tabIndex={0}
               title="Drag to resize · double-click to reset"
-              onPointerDown={onDividerPointerDown}
+              className={isDragging ? "isDragging" : ""}
+              onPointerDown={(e) => startListDrag(e, false)}
               onKeyDown={onDividerKeyDown}
               onDoubleClick={() => glideToWidth(defaultTableWidth())}
             />
