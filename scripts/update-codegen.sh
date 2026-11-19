@@ -11,8 +11,9 @@ if [[ $CI == true ]]; then
   # TODO - get this working in CI
   # scripts/update-protobuf-helper.sh
 
-  export CODEGEN_UID=$(id -u)
-  export CODEGEN_GID=$(id -g)
+  CODEGEN_UID=$(id -u)
+  CODEGEN_GID=$(id -g)
+  export CODEGEN_UID CODEGEN_GID
   scripts/update-codegen-helper.sh
   exit 0
 fi
