@@ -418,6 +418,24 @@ class LogStore implements LogAlertIndex {
     return result
   }
 
+  // Returns the distinct container names seen in log lines for the given manifest.
+  // Only includes names from lines that carry a container field (pod logs).
+  // Returns an empty array for resources with no multi-container log data.
+  containersForManifest(mn: string): string[] {
+    const manifestSpans = this.spansForManifest(mn)
+    const seen = new Set<string>()
+    for (const line of this.lines) {
+      if (!manifestSpans[line.spanId]) {
+        continue
+      }
+      const name = line.fields?.container
+      if (name) {
+        seen.add(name)
+      }
+    }
+    return Array.from(seen)
+  }
+
   getOrderedBuildSpanIds(spanId: string): string[] {
     let startSpan = this.spans[spanId]
     if (!startSpan) {
@@ -630,6 +648,7 @@ class LogStore implements LogAlertIndex {
           level: storedLine.level,
           manifestName: span.manifestName,
           buildEvent: storedLine.fields?.buildEvent,
+          containerName: storedLine.fields?.container,
           spanId: spanId,
           storedLineIndex: i,
         }

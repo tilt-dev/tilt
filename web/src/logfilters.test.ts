@@ -2,7 +2,10 @@ import { Location } from "history"
 import {
   EMPTY_FILTER_TERM,
   filterSetFromLocation,
+  filterSetsEqual,
   parseTermInput,
+  FilterLevel,
+  FilterSource,
   TermState,
 } from "./logfilters"
 
@@ -53,6 +56,61 @@ describe("Log filters", () => {
         expect(parsedTerm.input).toEqual("/dock(er?/")
         expect(parsedTerm.hasOwnProperty("regexp")).toBe(false)
         expect(parsedTerm.hasOwnProperty("error")).toBe(true)
+      })
+    })
+
+    describe("for container filter", () => {
+      it("defaults to empty (all containers)", () => {
+        const loc = { search: "" } as Location
+        expect(filterSetFromLocation(loc).containers).toEqual([])
+      })
+
+      it("parses a single container", () => {
+        const loc = { search: "containers=istio-proxy" } as Location
+        expect(filterSetFromLocation(loc).containers).toEqual(["istio-proxy"])
+      })
+
+      it("parses multiple containers", () => {
+        const loc = {
+          search: "containers=istio-proxy%2Cdaprd",
+        } as Location
+        expect(filterSetFromLocation(loc).containers).toEqual([
+          "istio-proxy",
+          "daprd",
+        ])
+      })
+    })
+
+    describe("filterSetsEqual containers", () => {
+      const base = {
+        level: FilterLevel.all,
+        source: FilterSource.all,
+        term: EMPTY_FILTER_TERM,
+        containers: [] as string[],
+      }
+      it("equal when both empty", () => {
+        expect(filterSetsEqual(base, { ...base })).toBe(true)
+      })
+      it("equal when same containers", () => {
+        expect(
+          filterSetsEqual(
+            { ...base, containers: ["a", "b"] },
+            { ...base, containers: ["a", "b"] }
+          )
+        ).toBe(true)
+      })
+      it("not equal when containers differ", () => {
+        expect(
+          filterSetsEqual(
+            { ...base, containers: ["a"] },
+            { ...base, containers: ["b"] }
+          )
+        ).toBe(false)
+      })
+      it("not equal when one has containers and the other doesn't", () => {
+        expect(filterSetsEqual({ ...base, containers: ["a"] }, base)).toBe(
+          false
+        )
       })
     })
 
