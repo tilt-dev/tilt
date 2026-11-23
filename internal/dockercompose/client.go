@@ -416,7 +416,7 @@ func (c *cmdDCClient) dcCommand(ctx context.Context, args []string) *exec.Cmd {
 	cmd.Env = c.mergedEnv()
 	if runtime.GOOS == "windows" {
 		// `docker compose` is docker.exe running the docker-compose.exe plugin,
-		// and cancelling the context kills only docker.exe: each Tiltfile
+		// and canceling the context kills only docker.exe: each Tiltfile
 		// reload left the `events` watcher's plugin running (#6870).
 		cmd.Cancel = func() error {
 			procutil.KillProcessGroup(cmd)

@@ -15,7 +15,7 @@ import (
 )
 
 // On Windows `docker compose` is docker.exe running the docker-compose.exe
-// plugin. Cancelling a compose command has to stop the plugin too, or every
+// plugin. Canceling a compose command has to stop the plugin too, or every
 // Tiltfile reload leaks the `events --json` watcher's plugin process (#6870).
 // cmd.exe running ping stands in for docker.exe running the plugin.
 func TestDCCommandCancelStopsChildProcesses(t *testing.T) {
@@ -42,7 +42,7 @@ func TestDCCommandCancelStopsChildProcesses(t *testing.T) {
 
 	event, err := windows.WaitForSingleObject(h, 10_000)
 	require.NoError(t, err)
-	require.Equal(t, uint32(windows.WAIT_OBJECT_0), event, "the child of a cancelled compose command is still running")
+	require.Equal(t, uint32(windows.WAIT_OBJECT_0), event, "the child of a canceled compose command is still running")
 }
 
 // childProcessOf is the pid of parent's child named exe, 0 when there is none.
