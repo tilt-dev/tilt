@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"runtime"
 	"strings"
 	"sync"
 
@@ -22,6 +23,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/procutil"
 
 	compose "github.com/compose-spec/compose-go/v2/cli"
 )
@@ -412,6 +414,15 @@ func (c *cmdDCClient) dcCommand(ctx context.Context, args []string) *exec.Cmd {
 	}
 	cmd := exec.CommandContext(ctx, composeCmd, args...)
 	cmd.Env = c.mergedEnv()
+	if runtime.GOOS == "windows" {
+		// `docker compose` is docker.exe running the docker-compose.exe plugin,
+		// and cancelling the context kills only docker.exe: each Tiltfile
+		// reload left the `events` watcher's plugin running (#6870).
+		cmd.Cancel = func() error {
+			procutil.KillProcessGroup(cmd)
+			return cmd.Process.Kill()
+		}
+	}
 	return cmd
 }
 
