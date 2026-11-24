@@ -9,9 +9,9 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
-	"runtime"
 	"strings"
 	"sync"
+	"syscall"
 
 	"github.com/compose-spec/compose-go/v2/loader"
 	"golang.org/x/mod/semver"
@@ -414,14 +414,15 @@ func (c *cmdDCClient) dcCommand(ctx context.Context, args []string) *exec.Cmd {
 	}
 	cmd := exec.CommandContext(ctx, composeCmd, args...)
 	cmd.Env = c.mergedEnv()
-	if runtime.GOOS == "windows" {
-		// `docker compose` is docker.exe running the docker-compose.exe plugin,
-		// and canceling the context kills only docker.exe: each Tiltfile
-		// reload left the `events` watcher's plugin running (#6870).
-		cmd.Cancel = func() error {
-			procutil.KillProcessGroup(cmd)
-			return cmd.Process.Kill()
-		}
+	// `docker compose` is the docker CLI running the compose plugin as a child
+	// process, and canceling the context would kill only the CLI: each
+	// Tiltfile reload left the `events` watcher's plugin running (#6870).
+	// Start it in its own process group and stop the whole group.
+	cmd.SysProcAttr = &syscall.SysProcAttr{}
+	procutil.SetOptNewProcessGroup(cmd.SysProcAttr)
+	cmd.Cancel = func() error {
+		procutil.KillProcessGroup(cmd)
+		return cmd.Process.Kill()
 	}
 	return cmd
 }
