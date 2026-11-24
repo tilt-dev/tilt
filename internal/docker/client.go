@@ -15,7 +15,6 @@ import (
 	"github.com/blang/semver"
 	"github.com/containerd/platforms"
 	"github.com/distribution/reference"
-	"github.com/docker/buildx/util/dockerutil/dockerconfig"
 	"github.com/docker/cli/cli/command"
 	"github.com/docker/cli/cli/config"
 	"github.com/docker/go-connections/tlsconfig"
@@ -307,12 +306,10 @@ func (c *Cli) startBuildkitSession(ctx context.Context, g *errgroup.Group, key s
 		session.Allow(filesync.NewFSSyncProvider(dirSource))
 	}
 
-	cli, err := newDockerCli(ctx)
-	if err != nil {
-		return nil, errors.Wrap(err, "startBuildkitSession")
-	}
+	dockerConfig := config.LoadDefaultConfigFile(
+		logger.Get(ctx).Writer(logger.InfoLvl))
 	provider := authprovider.NewDockerAuthProvider(authprovider.DockerAuthProviderConfig{
-		AuthConfigProvider: dockerconfig.LoadAuthConfig(cli),
+		AuthConfigProvider: authprovider.LoadAuthConfig(dockerConfig),
 	})
 	session.Allow(provider)
 
@@ -411,11 +408,8 @@ func (c *Cli) DaemonInfo(ctx context.Context) (system.Info, error) {
 type encodedAuth string
 
 func (c *Cli) authInfo(ctx context.Context, ref reference.Reference) (encodedAuth, error) {
-	cli, err := newDockerCli(ctx)
-	if err != nil {
-		return "", errors.Wrap(err, "authInfo")
-	}
-	auth, err := command.RetrieveAuthTokenFromImage(cli.ConfigFile(), ref.String())
+	configFile := config.LoadDefaultConfigFile(logger.Get(ctx).Writer(logger.InfoLvl))
+	auth, err := command.RetrieveAuthTokenFromImage(configFile, ref.String())
 	if err != nil {
 		return "", errors.Wrap(err, "authInfo#RetrieveAuthTokenFromImage")
 	}

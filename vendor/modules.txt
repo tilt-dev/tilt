@@ -110,8 +110,6 @@ github.com/containerd/containerd/v2/plugins/services/content/contentserver
 github.com/containerd/containerd/v2/version
 # github.com/containerd/continuity v0.4.5
 ## explicit; go 1.21
-github.com/containerd/continuity/devices
-github.com/containerd/continuity/fs
 github.com/containerd/continuity/sysx
 # github.com/containerd/errdefs v1.0.0
 ## explicit; go 1.20
@@ -155,10 +153,6 @@ github.com/denisbrodbeck/machineid
 # github.com/distribution/reference v0.6.0
 ## explicit; go 1.20
 github.com/distribution/reference
-# github.com/docker/buildx v0.32.1
-## explicit; go 1.25.5
-github.com/docker/buildx/util/confutil
-github.com/docker/buildx/util/dockerutil/dockerconfig
 # github.com/docker/cli v29.3.0+incompatible
 ## explicit
 github.com/docker/cli/cli/command
@@ -275,8 +269,6 @@ github.com/go-openapi/swag/conv
 # github.com/go-openapi/swag/fileutils v0.29.2
 ## explicit; go 1.26.0
 github.com/go-openapi/swag/fileutils
-# github.com/go-openapi/swag/jsonname v0.26.0
-## explicit; go 1.25.0
 # github.com/go-openapi/swag/jsonutils v0.29.2
 ## explicit; go 1.26.0
 github.com/go-openapi/swag/jsonutils
@@ -471,14 +463,12 @@ github.com/mitchellh/go-wordwrap
 ## explicit; go 1.25.5
 github.com/moby/buildkit/api/services/control
 github.com/moby/buildkit/api/types
-github.com/moby/buildkit/cache/remotecache/gha/ghatypes
 github.com/moby/buildkit/client
 github.com/moby/buildkit/client/buildid
 github.com/moby/buildkit/client/connhelper
 github.com/moby/buildkit/client/llb
 github.com/moby/buildkit/client/llb/sourceresolver
 github.com/moby/buildkit/client/ociindex
-github.com/moby/buildkit/cmd/buildkitd/config
 github.com/moby/buildkit/errdefs
 github.com/moby/buildkit/exporter/containerimage/exptypes
 github.com/moby/buildkit/exporter/exptypes
@@ -510,7 +500,6 @@ github.com/moby/buildkit/util/apicaps/pb
 github.com/moby/buildkit/util/appdefaults
 github.com/moby/buildkit/util/bklog
 github.com/moby/buildkit/util/contentutil
-github.com/moby/buildkit/util/disk
 github.com/moby/buildkit/util/errutil
 github.com/moby/buildkit/util/flightcontrol
 github.com/moby/buildkit/util/gitutil
@@ -521,7 +510,6 @@ github.com/moby/buildkit/util/leaseutil
 github.com/moby/buildkit/util/progress
 github.com/moby/buildkit/util/progress/progressui
 github.com/moby/buildkit/util/progress/progresswriter
-github.com/moby/buildkit/util/resolver/config
 github.com/moby/buildkit/util/resolver/limited
 github.com/moby/buildkit/util/resolver/retryhandler
 github.com/moby/buildkit/util/sshutil
@@ -611,13 +599,6 @@ github.com/opencontainers/go-digest
 ## explicit; go 1.18
 github.com/opencontainers/image-spec/specs-go
 github.com/opencontainers/image-spec/specs-go/v1
-# github.com/pelletier/go-toml/v2 v2.2.4
-## explicit; go 1.21.0
-github.com/pelletier/go-toml/v2
-github.com/pelletier/go-toml/v2/internal/characters
-github.com/pelletier/go-toml/v2/internal/danger
-github.com/pelletier/go-toml/v2/internal/tracker
-github.com/pelletier/go-toml/v2/unstable
 # github.com/peterbourgon/diskv v2.0.1+incompatible
 ## explicit
 github.com/peterbourgon/diskv
@@ -679,7 +660,6 @@ github.com/schollz/closestmatch
 ## explicit; go 1.24.0
 github.com/secure-systems-lab/go-securesystemslib/cjson
 github.com/secure-systems-lab/go-securesystemslib/dsse
-github.com/secure-systems-lab/go-securesystemslib/encrypted
 github.com/secure-systems-lab/go-securesystemslib/signerverifier
 # github.com/segmentio/encoding v0.2.7
 ## explicit; go 1.14
@@ -688,12 +668,6 @@ github.com/segmentio/encoding/json
 # github.com/shibumi/go-pathspec v1.3.0
 ## explicit; go 1.17
 github.com/shibumi/go-pathspec
-# github.com/sigstore/sigstore v1.10.4
-## explicit; go 1.25.0
-github.com/sigstore/sigstore/pkg/cryptoutils
-# github.com/sigstore/sigstore-go v1.1.4
-## explicit; go 1.25.0
-github.com/sigstore/sigstore-go/pkg/fulcio/certificate
 # github.com/sirupsen/logrus v1.9.4
 ## explicit; go 1.17
 github.com/sirupsen/logrus
@@ -768,13 +742,9 @@ github.com/tilt-dev/tilt-apiserver/pkg/storage/filepath
 ## explicit; go 1.13
 github.com/tilt-dev/wmclient/pkg/analytics
 github.com/tilt-dev/wmclient/pkg/dirs
-# github.com/tonistiigi/dchapes-mode v0.0.0-20250318174251-73d941a28323
-## explicit; go 1.21
-github.com/tonistiigi/dchapes-mode
 # github.com/tonistiigi/fsutil v0.0.0-20251211185533-a2aa163d723f
 ## explicit; go 1.21
 github.com/tonistiigi/fsutil
-github.com/tonistiigi/fsutil/copy
 github.com/tonistiigi/fsutil/types
 # github.com/tonistiigi/go-csvvalue v0.0.0-20240814133006-030d3b2625d0
 ## explicit; go 1.16
@@ -983,11 +953,7 @@ golang.org/x/crypto/cryptobyte/asn1
 golang.org/x/crypto/curve25519
 golang.org/x/crypto/internal/alias
 golang.org/x/crypto/internal/poly1305
-golang.org/x/crypto/nacl/secretbox
 golang.org/x/crypto/nacl/sign
-golang.org/x/crypto/pbkdf2
-golang.org/x/crypto/salsa20/salsa
-golang.org/x/crypto/scrypt
 golang.org/x/crypto/ssh
 golang.org/x/crypto/ssh/agent
 golang.org/x/crypto/ssh/internal/bcrypt_pbkdf
