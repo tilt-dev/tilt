@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"syscall"
 
 	"github.com/compose-spec/compose-go/v2/loader"
 	"golang.org/x/mod/semver"
@@ -22,6 +23,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
 	"github.com/tilt-dev/tilt/pkg/logger"
+	"github.com/tilt-dev/tilt/pkg/procutil"
 
 	compose "github.com/compose-spec/compose-go/v2/cli"
 )
@@ -412,6 +414,16 @@ func (c *cmdDCClient) dcCommand(ctx context.Context, args []string) *exec.Cmd {
 	}
 	cmd := exec.CommandContext(ctx, composeCmd, args...)
 	cmd.Env = c.mergedEnv()
+	// `docker compose` is the docker CLI running the compose plugin as a child
+	// process, and canceling the context would kill only the CLI: each
+	// Tiltfile reload left the `events` watcher's plugin running (#6870).
+	// Start it in its own process group and stop the whole group.
+	cmd.SysProcAttr = &syscall.SysProcAttr{}
+	procutil.SetOptNewProcessGroup(cmd.SysProcAttr)
+	cmd.Cancel = func() error {
+		procutil.KillProcessGroup(cmd)
+		return cmd.Process.Kill()
+	}
 	return cmd
 }
 
