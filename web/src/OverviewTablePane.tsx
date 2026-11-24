@@ -44,7 +44,6 @@ import {
   FontSize,
   mixinResetButtonStyle,
   SizeUnit,
-  Width,
   ZIndex,
   ColorRGB,
 } from "./style-helpers"
@@ -213,9 +212,11 @@ const OverviewTableMenu = styled.section`
   align-items: center;
   margin-left: auto;
   margin-right: auto;
-  /* Max and min width are based on fixed table layout and column widths */
+  /* Max width is based on the fixed table layout and column widths. On a
+     narrower window the filter shrinks, so the options on the right stay
+     in view (the table below scrolls sideways on its own). */
   max-width: 2000px;
-  min-width: 1400px;
+  min-width: 0;
 
   @media screen and (max-width: 2200px) {
     margin-left: ${SizeUnit(1 / 2)};
@@ -226,7 +227,8 @@ const OverviewTableMenu = styled.section`
 const OverviewTableResourceNameFilter = styled(ResourceNameFilter)`
   margin-left: ${SizeUnit(1 / 2)};
   margin-right: ${SizeUnit(1 / 2)};
-  min-width: ${Width.sidebarDefault}px;
+  flex: 1 1 auto;
+  min-width: 160px;
 `
 
 // Holds the resource list and, when a resource is open, the details panel.
@@ -418,6 +420,19 @@ const TableScroll = styled.div`
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
+
+  /* In the side list, a group's status counts (✕ 1 ⚙ 1 ✓ 1/3 ⊘ 1) can be
+     wider than a narrow list: let them wrap under the group name instead
+     of making the list scroll sideways. */
+  &.isCondensed {
+    overflow-x: hidden;
+
+    .MuiAccordionSummary-content,
+    .MuiAccordionSummary-content > aside > ul {
+      flex-wrap: wrap;
+      row-gap: ${SizeUnit(0.1)};
+    }
+  }
 
   &.isHidden {
     display: none;
@@ -944,7 +959,10 @@ export default function OverviewTablePane(props: OverviewTablePaneProps) {
               </ListControls>
             )}
             <TableScroll
-              className={isCondensed && isListCollapsed ? "isHidden" : ""}
+              className={[
+                isCondensed ? "isCondensed" : "",
+                isCondensed && isListCollapsed ? "isHidden" : "",
+              ].join(" ")}
               {...transitionScopeProps}
             >
               <OverviewTable
