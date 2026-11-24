@@ -68,7 +68,7 @@ func StateToTerminalView(s store.EngineState, mu *sync.RWMutex) view.View {
 		// Sort the strings to make the outputs deterministic.
 		sort.Strings(pendingBuildEdits)
 
-		endpoints := store.ManifestTargetEndpoints(mt)
+		endpoints := store.ManifestTargetEndpoints(mt, s.PortForwards)
 
 		// NOTE(nick): Right now, the UX is designed to show the output exactly one
 		// pod. A better UI might summarize the pods in other ways (e.g., show the

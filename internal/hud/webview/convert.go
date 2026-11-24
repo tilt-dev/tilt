@@ -244,7 +244,7 @@ func disableResourceStatus(disableSources []v1alpha1.DisableSource, s store.Engi
 func toUIResource(mt *store.ManifestTarget, s store.EngineState, disableSources []v1alpha1.DisableSource, hold store.Hold) (*v1alpha1.UIResource, error) {
 	mn := mt.Manifest.Name
 	ms := mt.State
-	endpoints := store.ManifestTargetEndpoints(mt)
+	endpoints := store.ManifestTargetEndpoints(mt, s.PortForwards)
 
 	bh := ToBuildsTerminated(ms.BuildHistory, s.LogStore)
 	lastDeploy := metav1.NewMicroTime(ms.LastSuccessfulDeployTime)

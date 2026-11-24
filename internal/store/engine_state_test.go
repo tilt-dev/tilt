@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/k8s"
@@ -24,6 +25,9 @@ type endpointsCase struct {
 	// k8s resource fields
 	portFwds []model.PortForward
 	lbURLs   []string
+
+	// PortForward objects in the engine state, keyed by name
+	portForwardObjs map[string]*v1alpha1.PortForward
 
 	dcPublishedPorts []int
 	dcPortBindings   []v1alpha1.DockerPortBinding
@@ -114,6 +118,28 @@ func TestBuildStatusGC(t *testing.T) {
 
 func TestManifestTargetEndpoints(t *testing.T) {
 	cases := []endpointsCase{
+		{
+			name:     "dynamic port forward not started",
+			expected: nil,
+			portFwds: []model.PortForward{
+				{LocalPort: 0, ContainerPort: 8000},
+			},
+		},
+		{
+			name: "dynamic port forward",
+			expected: []model.Link{
+				model.MustNewLink("http://localhost:46753/", "web"),
+				model.MustNewLink("http://localhost:9000/", ""),
+			},
+			portFwds: []model.PortForward{
+				{LocalPort: 0, ContainerPort: 8000, Name: "web"},
+				{LocalPort: 9000, ContainerPort: 8000},
+			},
+			portForwardObjs: map[string]*v1alpha1.PortForward{
+				"foo-pod": portForwardObj("foo", 9000, 8000, 46753, 8000),
+				"bar-pod": portForwardObj("bar", 41111, 8000),
+			},
+		},
 		{
 			name: "port forward",
 			expected: []model.Link{
@@ -341,10 +367,27 @@ func TestManifestTargetEndpoints(t *testing.T) {
 				dcState.Ports = c.dcPortBindings
 				mt.State.RuntimeState = dcState
 			}
-			actual := ManifestTargetEndpoints(mt)
+			actual := ManifestTargetEndpoints(mt, c.portForwardObjs)
 			assertLinks(t, c.expected, actual)
 		})
 	}
+}
+
+// portForwardObj returns a PortForward for the manifest whose status reports
+// the given (local port, container port) pairs.
+func portForwardObj(manifest string, ports ...int32) *v1alpha1.PortForward {
+	obj := &v1alpha1.PortForward{
+		ObjectMeta: metav1.ObjectMeta{
+			Annotations: map[string]string{v1alpha1.AnnotationManifest: manifest},
+		},
+	}
+	for i := 0; i+1 < len(ports); i += 2 {
+		obj.Status.ForwardStatuses = append(obj.Status.ForwardStatuses, v1alpha1.ForwardStatus{
+			LocalPort:     ports[i],
+			ContainerPort: ports[i+1],
+		})
+	}
+	return obj
 }
 
 func newManifestTargetWithLoadBalancerURLs(m model.Manifest, urls []string) *ManifestTarget {

@@ -31,6 +31,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/portforwards"
 )
 
 var clusterGVK = v1alpha1.SchemeGroupVersion.WithKind("Cluster")
@@ -96,8 +97,13 @@ func (r *Reconciler) reconcile(ctx context.Context, name types.NamespacedName) e
 	if apierrors.IsNotFound(err) || pf.ObjectMeta.DeletionTimestamp != nil {
 		// PortForward deleted in API server -- stop and remove it
 		r.stop(name)
+		r.store.Dispatch(portforwards.NewPortForwardDeleteAction(name.Name))
 		return nil
 	}
+
+	// The engine state keeps a copy so the UI can link to the local port
+	// picked for a dynamic ("0:<port>") forward.
+	r.store.Dispatch(portforwards.NewPortForwardUpsertAction(pf))
 
 	var clusterObj v1alpha1.Cluster
 	if err := r.ctrlClient.Get(ctx, clusterNN(pf), &clusterObj); err != nil {

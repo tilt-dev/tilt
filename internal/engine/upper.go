@@ -30,6 +30,7 @@ import (
 	"github.com/tilt-dev/tilt/internal/store/kubernetesapplys"
 	"github.com/tilt-dev/tilt/internal/store/kubernetesdiscoverys"
 	"github.com/tilt-dev/tilt/internal/store/liveupdates"
+	"github.com/tilt-dev/tilt/internal/store/portforwards"
 	"github.com/tilt-dev/tilt/internal/store/sessions"
 	"github.com/tilt-dev/tilt/internal/store/tiltfiles"
 	"github.com/tilt-dev/tilt/internal/store/uibuttons"
@@ -188,6 +189,10 @@ func upperReducerFn(ctx context.Context, state *store.EngineState, action store.
 		cmdimages.HandleCmdImageUpsertAction(state, action)
 	case cmdimages.CmdImageDeleteAction:
 		cmdimages.HandleCmdImageDeleteAction(state, action)
+	case portforwards.PortForwardUpsertAction:
+		portforwards.HandlePortForwardUpsertAction(state, action)
+	case portforwards.PortForwardDeleteAction:
+		portforwards.HandlePortForwardDeleteAction(state, action)
 	case kubernetesapplys.KubernetesApplyUpsertAction:
 		kubernetesapplys.HandleKubernetesApplyUpsertAction(state, action)
 	case kubernetesapplys.KubernetesApplyDeleteAction:

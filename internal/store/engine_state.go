@@ -122,6 +122,7 @@ type EngineState struct {
 	ImageMaps             map[string]*v1alpha1.ImageMap             `json:"-"`
 	DockerImages          map[string]*v1alpha1.DockerImage          `json:"-"`
 	CmdImages             map[string]*v1alpha1.CmdImage             `json:"-"`
+	PortForwards          map[string]*v1alpha1.PortForward          `json:"-"`
 }
 
 func (e *EngineState) MainTiltfilePath() string {
@@ -598,6 +599,7 @@ func NewState() *EngineState {
 	ret.ImageMaps = make(map[string]*v1alpha1.ImageMap)
 	ret.DockerImages = make(map[string]*v1alpha1.DockerImage)
 	ret.CmdImages = make(map[string]*v1alpha1.CmdImage)
+	ret.PortForwards = make(map[string]*v1alpha1.PortForward)
 
 	return ret
 }
@@ -903,7 +905,43 @@ func (ms *ManifestState) RuntimeStatus(m model.Manifest) v1alpha1.RuntimeStatus 
 
 var _ model.TargetStatus = &ManifestState{}
 
-func ManifestTargetEndpoints(mt *ManifestTarget) (endpoints []model.Link) {
+// dynamicLocalPort returns the local port that a running PortForward of the
+// manifest picked for a forward with no local port, or 0 if none has started.
+func dynamicLocalPort(mn model.ManifestName, fwd v1alpha1.Forward, specForwards []v1alpha1.Forward, portForwards map[string]*v1alpha1.PortForward) int32 {
+	names := make([]string, 0, len(portForwards))
+	for name, obj := range portForwards {
+		if obj.Annotations[v1alpha1.AnnotationManifest] == mn.String() {
+			names = append(names, name)
+		}
+	}
+	// Sort so the choice is deterministic if old and new pods overlap.
+	sort.Strings(names)
+
+	isFixed := func(status v1alpha1.ForwardStatus) bool {
+		for _, f := range specForwards {
+			if f.LocalPort != 0 && f.LocalPort == status.LocalPort && f.ContainerPort == status.ContainerPort {
+				return true
+			}
+		}
+		return false
+	}
+
+	for _, name := range names {
+		for _, status := range portForwards[name].Status.ForwardStatuses {
+			if status.ContainerPort == fwd.ContainerPort && status.LocalPort != 0 && !isFixed(status) {
+				return status.LocalPort
+			}
+		}
+	}
+	return 0
+}
+
+// ManifestTargetEndpoints returns the links to show for a resource.
+//
+// portForwards holds the PortForward objects in the engine state. A forward
+// with no local port ("0:<port>") gets one when it starts, and its link uses
+// the port reported in the PortForward status.
+func ManifestTargetEndpoints(mt *ManifestTarget, portForwards map[string]*v1alpha1.PortForward) (endpoints []model.Link) {
 	if mt.Manifest.IsK8s() {
 		k8sTarg := mt.Manifest.K8sTarget()
 		endpoints = append(endpoints, k8sTarg.Links...)
@@ -914,6 +952,13 @@ func ManifestTargetEndpoints(mt *ManifestTarget) (endpoints []model.Link) {
 		portForwardSpec := k8sTarg.PortForwardTemplateSpec
 		if portForwardSpec != nil && len(portForwardSpec.Forwards) > 0 {
 			for _, pf := range portForwardSpec.Forwards {
+				if pf.LocalPort == 0 {
+					pf.LocalPort = dynamicLocalPort(mt.Manifest.Name, pf, portForwardSpec.Forwards, portForwards)
+					if pf.LocalPort == 0 {
+						// Not forwarding yet, so there is no port to link to.
+						continue
+					}
+				}
 				endpoints = append(endpoints, model.PortForwardToLink(pf))
 			}
 			return endpoints

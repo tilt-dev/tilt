@@ -29,6 +29,7 @@ import (
 
 	"github.com/tilt-dev/tilt/internal/k8s"
 	"github.com/tilt-dev/tilt/internal/store"
+	"github.com/tilt-dev/tilt/internal/store/portforwards"
 )
 
 const (
@@ -82,6 +83,26 @@ func TestDeletePortForward(t *testing.T) {
 
 	require.Equal(t, 0, len(f.r.activeForwards))
 	f.assertContextCancelled(t, origForwardCtx)
+}
+
+func TestPortForwardMirroredInEngineState(t *testing.T) {
+	f := newPFRFixture(t)
+
+	pf := f.makeSimplePF(pfFooName, 8000, 8080)
+	f.Create(pf)
+	f.requirePortForwardStarted(pfFooName, 8000, 8080)
+
+	upserted := false
+	for _, a := range f.Store.Actions() {
+		if a, ok := a.(portforwards.PortForwardUpsertAction); ok && a.PortForward.Name == pfFooName {
+			upserted = true
+		}
+	}
+	require.True(t, upserted, "PortForward was not upserted into the engine state")
+
+	f.Delete(pf)
+	f.requirePortForwardDeleted(pfFooName)
+	require.Contains(t, f.Store.Actions(), portforwards.NewPortForwardDeleteAction(pfFooName))
 }
 
 func TestModifyPortForward(t *testing.T) {
