@@ -3,6 +3,7 @@ package dockerimage
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/jonboulle/clockwork"
 	"github.com/stretchr/testify/require"
@@ -11,11 +12,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/tilt-dev/tilt/internal/build"
+	"github.com/tilt-dev/tilt/internal/container"
 	"github.com/tilt-dev/tilt/internal/controllers/core/cmd"
 	"github.com/tilt-dev/tilt/internal/controllers/fake"
 	"github.com/tilt-dev/tilt/internal/docker"
 	"github.com/tilt-dev/tilt/internal/localexec"
 	"github.com/tilt-dev/tilt/pkg/apis/core/v1alpha1"
+	"github.com/tilt-dev/tilt/pkg/model"
 )
 
 func TestIndexCluster(t *testing.T) {
@@ -38,6 +41,50 @@ func TestIndexCluster(t *testing.T) {
 
 	reqs = f.r.indexer.Enqueue(ctx, &v1alpha1.Cluster{ObjectMeta: metav1.ObjectMeta{Name: "other"}})
 	require.Empty(t, reqs, "Index result for unknown cluster")
+}
+
+// Each resource that uses an image gets its own DockerImage, and all of them
+// write to the one ImageMap for that image.
+func TestImageMapKeepsNewestBuild(t *testing.T) {
+	f := newFixture(t)
+
+	iTarget := model.MustNewImageTarget(container.MustParseSelector("my-image"))
+	imageMapNN := types.NamespacedName{Name: iTarget.ImageMapName()}
+	require.NoError(t, f.Client.Create(f.Context(), &v1alpha1.ImageMap{
+		ObjectMeta: metav1.ObjectMeta{Name: imageMapNN.Name},
+	}))
+
+	a := types.NamespacedName{Name: "a:my-image"}
+	b := types.NamespacedName{Name: "b:my-image"}
+	f.Create(&v1alpha1.DockerImage{ObjectMeta: metav1.ObjectMeta{Name: a.Name}})
+	f.Create(&v1alpha1.DockerImage{ObjectMeta: metav1.ObjectMeta{Name: b.Name}})
+
+	imageMapImage := func() string {
+		var im v1alpha1.ImageMap
+		f.MustGet(imageMapNN, &im)
+		return im.Status.Image
+	}
+
+	firstBuild := metav1.NewMicroTime(time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC))
+	secondBuild := metav1.NewMicroTime(firstBuild.Add(time.Minute))
+
+	f.r.setImageMapStatus(b, iTarget, v1alpha1.ImageMapStatus{
+		Image:          "my-image:first",
+		BuildStartTime: &firstBuild,
+	})
+	f.MustReconcile(b)
+	require.Equal(t, "my-image:first", imageMapImage())
+
+	f.r.setImageMapStatus(a, iTarget, v1alpha1.ImageMapStatus{
+		Image:          "my-image:second",
+		BuildStartTime: &secondBuild,
+	})
+	f.MustReconcile(a)
+	require.Equal(t, "my-image:second", imageMapImage())
+
+	// b has not built again, so its last build is still the first one.
+	f.MustReconcile(b)
+	require.Equal(t, "my-image:second", imageMapImage())
 }
 
 type fixture struct {

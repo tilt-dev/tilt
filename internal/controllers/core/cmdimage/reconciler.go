@@ -196,6 +196,12 @@ func (r *Reconciler) maybeUpdateImageMapStatus(ctx context.Context, nn types.Nam
 		return nil
 	}
 
+	// Every CmdImage that shares this ImageMap writes its own last build
+	// here. Keep the build that started last.
+	if newStatus.BuildStartTime.Before(obj.Status.BuildStartTime) {
+		return nil
+	}
+
 	update := obj.DeepCopy()
 	update.Status = *(newStatus.DeepCopy())
 
