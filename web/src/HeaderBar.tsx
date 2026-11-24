@@ -23,6 +23,10 @@ const HeaderBarRoot = styled.nav`
   padding-left: ${SizeUnit(1)};
   background-color: ${Color.gray10};
 
+  [data-theme="light"] & {
+    border-bottom: 1px solid ${Color.gray40};
+  }
+
   ${ResourceStatusSummaryRoot} {
     justify-self: center;
     flex-grow: 1;

@@ -1,10 +1,6 @@
 import React from "react"
 import styled from "styled-components"
-import { ReactComponent as GithubSvg } from "./assets/svg/github.svg"
-import { ReactComponent as SlackSvg } from "./assets/svg/slack.svg"
-import FloatDialog, { HR } from "./FloatDialog"
-import { HelpSearchBar } from "./HelpSearchBar"
-import { AnimDuration, Color } from "./style-helpers"
+import FloatDialog from "./FloatDialog"
 
 type props = {
   open: boolean
@@ -37,17 +33,6 @@ let ShortcutLabel = styled.div`
   text-align: left;
 `
 
-let HelpLink = styled.a`
-  display: flex;
-  align-items: center;
-  text-decoration: none;
-  transform: color ${AnimDuration.default} ease;
-
-  &:hover {
-    color: ${Color.gray50};
-  }
-`
-
 function Shortcut(props: React.PropsWithChildren<{ label: string }>) {
   return (
     <ShortcutRow>
@@ -77,44 +62,9 @@ function cmdOrCtrlShortcut(key: string) {
   )
 }
 
-export default function HelpDialog(props: props) {
+export default function KeyboardShortcutsDialog(props: props) {
   return (
-    <FloatDialog id="shortcuts" title="Help" {...props}>
-      <ShortcutRow>
-        <HelpSearchBar />
-      </ShortcutRow>
-      <HR />
-      <ShortcutRow style={{ marginBottom: "24px" }}>
-        <HelpLink
-          href="http://slack.k8s.io/"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <SlackSvg style={{ marginRight: "8px" }} />
-          Connect in #tilt on Kubernetes Slack
-        </HelpLink>
-      </ShortcutRow>
-      <ShortcutRow style={{ marginBottom: "8px" }}>
-        <HelpLink
-          href="https://github.com/tilt-dev/tilt/issues/new/choose"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <GithubSvg style={{ marginRight: "8px" }} />
-          File an Issue
-        </HelpLink>
-        <HR />
-      </ShortcutRow>
-      <HR />
-      <ShortcutRow
-        style={{
-          textDecoration: "underline",
-          fontSize: "18px",
-          marginBottom: "8px",
-        }}
-      >
-        Keyboard shortcuts
-      </ShortcutRow>
+    <FloatDialog id="shortcuts" title="Keyboard Shortcuts" {...props}>
       <Shortcut label="Navigate Resource">
         <ShortcutBox>j</ShortcutBox> or <ShortcutBox>k</ShortcutBox>
       </Shortcut>
@@ -135,7 +85,7 @@ export default function HelpDialog(props: props) {
       <Shortcut label="Focus Resource Filter">
         <ShortcutBox>/</ShortcutBox>
       </Shortcut>
-      <Shortcut label="Help">
+      <Shortcut label="Keyboard Shortcuts">
         <ShortcutBox>?</ShortcutBox>
       </Shortcut>
     </FloatDialog>

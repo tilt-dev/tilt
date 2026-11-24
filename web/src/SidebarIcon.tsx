@@ -79,14 +79,14 @@ export default class SidebarIcon extends PureComponent<SidebarIconProps> {
     if (this.props.status === ResourceStatus.Warning) {
       icon = (
         <WarningSvg
-          fill={Color.white}
+          fill={Color.onAccent}
           width="10px"
           height="10px"
           role="presentation"
         />
       )
     } else if (this.props.status === ResourceStatus.Unhealthy) {
-      icon = <ErrorSvg fill={Color.white} role="presentation" />
+      icon = <ErrorSvg fill={Color.onAccent} role="presentation" />
     } else if (this.props.status === ResourceStatus.None) {
       icon = <CheckmarkSmallSvg role="presentation" />
     }

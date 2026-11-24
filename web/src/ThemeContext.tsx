@@ -24,26 +24,29 @@ export function useTheme(): ThemeContextType {
 
 const STORAGE_KEY = "tilt-theme"
 
+// The user's stored preference. "system" follows the OS color scheme.
+// Defaults to "dark" when nothing is stored.
+type ThemeSetting = Theme | "system"
+
+const systemLightQuery = "(prefers-color-scheme: light)"
+
 function getSystemTheme(): Theme {
-  return window.matchMedia?.("(prefers-color-scheme: light)").matches
-    ? "light"
-    : "dark"
+  return window.matchMedia?.(systemLightQuery).matches ? "light" : "dark"
 }
 
-function getInitialTheme(): Theme {
+function getStoredSetting(): ThemeSetting {
   const stored = localStorage.getItem(STORAGE_KEY)
-  if (stored === "light" || stored === "dark") {
+  if (stored === "light" || stored === "dark" || stored === "system") {
     return stored
   }
-  return getSystemTheme()
-}
-
-function hasUserOverride(): boolean {
-  return localStorage.getItem(STORAGE_KEY) !== null
+  return "dark"
 }
 
 export function ThemeProvider(props: PropsWithChildren<{}>) {
-  const [theme, setTheme] = useState<Theme>(getInitialTheme)
+  const [setting, setSetting] = useState<ThemeSetting>(getStoredSetting)
+  const [systemTheme, setSystemTheme] = useState<Theme>(getSystemTheme)
+  const theme = setting === "system" ? systemTheme : setting
+
   useEffect(() => {
     if (theme === "light") {
       document.body.setAttribute("data-theme", "light")
@@ -52,33 +55,26 @@ export function ThemeProvider(props: PropsWithChildren<{}>) {
     }
   }, [theme])
 
-  // Follow system theme changes when user hasn't explicitly chosen
   useEffect(() => {
-    const mq = window.matchMedia?.("(prefers-color-scheme: light)")
+    const mq = window.matchMedia?.(systemLightQuery)
     if (!mq) return
 
     function onChange() {
-      if (!hasUserOverride()) {
-        setTheme(getSystemTheme())
-      }
+      setSystemTheme(getSystemTheme())
     }
 
     mq.addEventListener("change", onChange)
     return () => mq.removeEventListener("change", onChange)
   }, [])
 
+  // Flip the visible theme. If the result matches the system theme,
+  // store "system" so the UI follows future system changes.
   const toggleTheme = useCallback(() => {
-    setTheme((prev) => {
-      const next = prev === "dark" ? "light" : "dark"
-      // If toggling back to the system theme, clear the override
-      if (next === getSystemTheme()) {
-        localStorage.removeItem(STORAGE_KEY)
-      } else {
-        localStorage.setItem(STORAGE_KEY, next)
-      }
-      return next
-    })
-  }, [])
+    const next: Theme = theme === "dark" ? "light" : "dark"
+    const nextSetting: ThemeSetting = next === systemTheme ? "system" : next
+    localStorage.setItem(STORAGE_KEY, nextSetting)
+    setSetting(nextSetting)
+  }, [theme, systemTheme])
 
   return (
     <themeContext.Provider value={{ theme, toggleTheme }}>

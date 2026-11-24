@@ -3,26 +3,30 @@
 // This file was originally written by @drudru (https://github.com/drudru/ansi_up), MIT, 2011
 // Forked from https://github.com/IonicaBizau/anser/blob/ac20b53394a933ac9a2364159f49dd6903f08682/lib/index.js for Tilt Dev.
 
+// Text in the 16 system colors uses CSS variables (see constants.scss) so it
+// follows the theme. Backgrounds use the fixed colors in both themes, so the
+// log's default text color stays readable on top of them.
+
 const ANSI_COLORS = [
     [
-        { color: "0, 0, 0",        "class": "ansi-black"   }
-      , { color: "#f6685c",      "class": "ansi-red"     }
-      , { color: "#20ba31",      "class": "ansi-green"   }
-      , { color: "#fcb41e",    "class": "ansi-yellow"  }
-      , { color: "#03c7d3",      "class": "ansi-blue"    }
-      , { color: "#6378ba",    "class": "ansi-magenta" }
-      , { color: "#5edbe3",    "class": "ansi-cyan"    }
-      , { color: "255,255,255",    "class": "ansi-white"   }
+        { color: "var(--color-ansi-black)", fixed: "#000000", "class": "ansi-black" }
+      , { color: "var(--color-ansi-red)", fixed: "#f6685c", "class": "ansi-red" }
+      , { color: "var(--color-ansi-green)", fixed: "#20ba31", "class": "ansi-green" }
+      , { color: "var(--color-ansi-yellow)", fixed: "#fcb41e", "class": "ansi-yellow" }
+      , { color: "var(--color-ansi-blue)", fixed: "#03c7d3", "class": "ansi-blue" }
+      , { color: "var(--color-ansi-magenta)", fixed: "#6378ba", "class": "ansi-magenta" }
+      , { color: "var(--color-ansi-cyan)", fixed: "#5edbe3", "class": "ansi-cyan" }
+      , { color: "var(--color-ansi-white)", fixed: "#ffffff", "class": "ansi-white" }
     ]
   , [
-        { color: "#586e75",     "class": "ansi-bright-black"   }
-      , { color: "#f7aaa4",    "class": "ansi-bright-red"     }
-      , { color: "#70d37b",      "class": "ansi-bright-green"   }
-      , { color: "#fdcf6f",   "class": "ansi-bright-yellow"  }
-      , { color: "#5edbe3",    "class": "ansi-bright-blue"    }
-      , { color: "#6378ba",   "class": "ansi-bright-magenta" }
-      , { color: "85, 255, 255",   "class": "ansi-bright-cyan"    }
-      , { color: "255, 255, 255",  "class": "ansi-bright-white"   }
+        { color: "var(--color-ansi-bright-black)", fixed: "#586e75", "class": "ansi-bright-black" }
+      , { color: "var(--color-ansi-bright-red)", fixed: "#f7aaa4", "class": "ansi-bright-red" }
+      , { color: "var(--color-ansi-bright-green)", fixed: "#70d37b", "class": "ansi-bright-green" }
+      , { color: "var(--color-ansi-bright-yellow)", fixed: "#fdcf6f", "class": "ansi-bright-yellow" }
+      , { color: "var(--color-ansi-bright-blue)", fixed: "#5edbe3", "class": "ansi-bright-blue" }
+      , { color: "var(--color-ansi-bright-magenta)", fixed: "#6378ba", "class": "ansi-bright-magenta" }
+      , { color: "var(--color-ansi-bright-cyan)", fixed: "#55ffff", "class": "ansi-bright-cyan" }
+      , { color: "var(--color-ansi-bright-white)", fixed: "#ffffff", "class": "ansi-bright-white" }
     ]
 ];
 
@@ -316,6 +320,7 @@ class Anser {
         options = typeof options == "undefined" ? {} : options;
         let use_classes = options.use_classes = typeof options.use_classes != "undefined" && options.use_classes;
         let key = options.key = use_classes ? "class" : "color";
+        let bgKey = use_classes ? "class" : "fixed";
 
         let result = {
             content: text
@@ -421,10 +426,10 @@ class Anser {
                 self.fg = ANSI_COLORS[1][(num % 10)][key];
             // Background color
             } else if ((num >= 40) && (num < 48)) {
-                self.bg = ANSI_COLORS[0][(num % 10)][key];
+                self.bg = ANSI_COLORS[0][(num % 10)][bgKey];
             // Background bright color
             } else if ((num >= 100) && (num < 108)) {
-                self.bg = ANSI_COLORS[1][(num % 10)][key];
+                self.bg = ANSI_COLORS[1][(num % 10)][bgKey];
             } else if (num === 38 || num === 48) { // extend color (38=fg, 48=bg)
                 let is_foreground = (num === 38);
                 if (nums.length >= 1) {
@@ -439,7 +444,9 @@ class Anser {
                                 if (is_foreground) {
                                     self.fg = this.PALETTE_COLORS[palette_index];
                                 } else {
-                                    self.bg = this.PALETTE_COLORS[palette_index];
+                                    self.bg = palette_index < 16
+                                        ? ANSI_COLORS[palette_index > 7 ? 1 : 0][palette_index % 8].fixed
+                                        : this.PALETTE_COLORS[palette_index];
                                 }
                             } else {
                                 let klass = (palette_index >= 16)
@@ -524,10 +531,10 @@ class Anser {
                 if (decoration === "reverse") {
                     // when reversing, missing colors are defaulted to black (bg) and white (fg)
                     if (!jsonChunk.fg) {
-                      jsonChunk.fg = ANSI_COLORS[0][7][use_classes ? "class" : "color"];
+                      jsonChunk.fg = ANSI_COLORS[0][7][use_classes ? "class" : "fixed"];
                     }
                     if (!jsonChunk.bg) {
-                      jsonChunk.bg = ANSI_COLORS[0][0][use_classes ? "class" : "color"];
+                      jsonChunk.bg = ANSI_COLORS[0][0][use_classes ? "class" : "fixed"];
                     }
                     let tmpFg = jsonChunk.fg;
                     jsonChunk.fg = jsonChunk.bg;
@@ -572,7 +579,7 @@ class Anser {
                     data["ansi-truecolor-fg"] = jsonChunk.fg_truecolor;
                     jsonChunk.fg_truecolor = null;
                 }
-            } else if (jsonChunk.fg[0] == '#') {
+            } else if (jsonChunk.fg[0] == '#' || jsonChunk.fg.startsWith("var(")) {
                 colors.push("color:" + jsonChunk.fg + ";");
             } else {
                 colors.push("color:rgb(" + jsonChunk.fg + ")");
@@ -586,7 +593,7 @@ class Anser {
                     data["ansi-truecolor-bg"] = jsonChunk.bg_truecolor;
                     jsonChunk.bg_truecolor = null;
                 }
-            } else if (jsonChunk.bg[0] == '#') {
+            } else if (jsonChunk.bg[0] == '#' || jsonChunk.bg.startsWith("var(")) {
                 colors.push("background-color:" + jsonChunk.bg + ";");
             } else {
               colors.push("background-color:rgb(" + jsonChunk.bg + ")");
