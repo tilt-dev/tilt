@@ -18,7 +18,16 @@ import OverviewTable, {
   ResourceTableRow,
   TableGroupedByLabels,
 } from "./OverviewTable"
-import { Name, RowValues, SelectionCheckbox } from "./OverviewTableColumns"
+import {
+  columnId,
+  condensedColumnsForWidth,
+  CONDENSED_SNAP_WIDTHS,
+  FULL_CONDENSED_WIDTH,
+  hiddenCondensedColumns,
+  Name,
+  RowValues,
+  SelectionCheckbox,
+} from "./OverviewTableColumns"
 import { ToggleTriggerModeTooltip } from "./OverviewTableTriggerModeToggle"
 import {
   DEFAULT_GROUP_STATE,
@@ -931,3 +940,33 @@ function renderContainer(x: ReactElement) {
   let { container } = render(x)
   return container
 }
+
+describe("condensed columns", () => {
+  const ids = (width: number) =>
+    condensedColumnsForWidth(width).map((c) => columnId(c))
+
+  it("shows every condensed column when there's room", () => {
+    expect(ids(FULL_CONDENSED_WIDTH)).toEqual([
+      "starred",
+      "lastDeployTime",
+      "trigger",
+      "name",
+      "Status",
+    ])
+    expect(hiddenCondensedColumns(FULL_CONDENSED_WIDTH)).toEqual([])
+  })
+
+  it("hides Updated, then Trigger and star, but always keeps the status", () => {
+    const [iconsOnly, nameAndStatus, withTrigger] = CONDENSED_SNAP_WIDTHS
+    expect(ids(withTrigger)).toEqual(["starred", "trigger", "name", "Status"])
+    expect(hiddenCondensedColumns(withTrigger)).toEqual(["Updated"])
+    expect(ids(nameAndStatus)).toEqual(["name", "Status"])
+    expect(hiddenCondensedColumns(nameAndStatus)).toEqual([
+      "Star",
+      "Trigger",
+      "Updated",
+    ])
+    expect(ids(iconsOnly)).toEqual(["name", "statusIcons"])
+    expect(ids(100)).toEqual(["name", "statusIcons"])
+  })
+})

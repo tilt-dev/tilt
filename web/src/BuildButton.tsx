@@ -18,6 +18,8 @@ export type StartBuildButtonProps = {
   isQueued: boolean
   onStartBuild: () => void
   className?: string
+  // Keyboard shortcut to mention in the tooltip, e.g. "r".
+  shortcut?: string
 }
 
 type StopBuildButtonProps = {
@@ -125,7 +127,10 @@ function StartBuildButton(props: StartBuildButtonProps) {
   if (props.isBuilding) {
     classes.push("is-building")
   }
-  const tooltip = buildButtonTooltip(clickable, isEmphasized, props.isQueued)
+  let tooltip = buildButtonTooltip(clickable, isEmphasized, props.isQueued)
+  if (clickable && props.shortcut) {
+    tooltip = `${tooltip} (${props.shortcut})`
+  }
   // Set the tooltip key to the tooltip message so that each message is a different "component" and enterNextDelay
   // applies when the message changes.
   // Otherwise, we often display a flicker of "resource is already queued!" after clicking "start build" before
@@ -140,6 +145,7 @@ function StartBuildButton(props: StartBuildButtonProps) {
           className={classes.join(" ")}
           disabled={!clickable}
           aria-label={tooltip}
+          aria-keyshortcuts={clickable ? props.shortcut : undefined}
         >
           {isEmphasized ? (
             <StartBuildButtonManualSvg

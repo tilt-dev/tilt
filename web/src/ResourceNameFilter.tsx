@@ -71,7 +71,11 @@ export const ClearResourceNameFilterButton = styled(InstrumentedButton)`
 
 export const RESOURCE_NAME_FILTER_INPUT_ID = "ResourceNameFilter"
 
-export function ResourceNameFilter(props: { className?: string }) {
+// Extra attributes (like `data-*`) go on the filter's outer element.
+export function ResourceNameFilter(
+  props: { className?: string } & { [attr: `data-${string}`]: string }
+) {
+  const { className, ...attrs } = props
   const {
     options: { resourceNameFilter },
     setOptions,
@@ -109,7 +113,8 @@ export function ResourceNameFilter(props: { className?: string }) {
   return (
     <ResourceNameFilterTextField
       id={RESOURCE_NAME_FILTER_INPUT_ID}
-      className={props.className}
+      {...attrs}
+      className={className}
       value={resourceNameFilter ?? ""}
       onChange={(e) => setResourceNameFilter(e.target.value)}
       placeholder="Filter resources by name"

@@ -113,12 +113,15 @@ type HeaderBarProps = {
   view: View
   currentPage: HeaderBarPage
   isSocketConnected: boolean
+  // What the Detail view button opens (by default, all resources' logs).
+  detailResource?: string
 }
 
 export default function HeaderBar({
   view,
   currentPage,
   isSocketConnected,
+  detailResource = "(all)",
 }: HeaderBarProps) {
   let isSnapshot = usePathBuilder().isSnapshot()
   let snapshot = useSnapshotAction()
@@ -162,7 +165,7 @@ export default function HeaderBar({
           </ViewLink>
           <HeaderDivider role="presentation" />
           <ViewLink
-            to={pb.encpath`/r/(all)/overview`}
+            to={pb.encpath`/r/${detailResource}/overview`}
             aria-label="Detail view"
             aria-current={currentPage == HeaderBarPage.Detail}
           >

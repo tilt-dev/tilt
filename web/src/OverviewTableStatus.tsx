@@ -68,6 +68,11 @@ const StyledOverviewTableStatus = styled(Link)`
   &.is-disabled {
     color: ${Color.gray60};
   }
+
+  &.is-icon-only {
+    width: auto;
+    overflow: visible;
+  }
 `
 const StatusIcon = styled.span`
   display: flex;
@@ -79,6 +84,12 @@ const StatusIcon = styled.span`
   svg {
     width: 100%;
   }
+
+  .is-icon-only > & {
+    margin-right: 0;
+    width: ${SizeUnit(0.5)};
+    height: ${SizeUnit(0.5)};
+  }
 `
 
 type OverviewTableStatusProps = {
@@ -87,10 +98,12 @@ type OverviewTableStatusProps = {
   lastBuildDur?: moment.Duration | null
   isBuild?: boolean
   hold?: Hold | null
+  // Just the icon; the words show on hover.
+  iconOnly?: boolean
 }
 
 export default function OverviewTableStatus(props: OverviewTableStatusProps) {
-  let { status, lastBuildDur, isBuild, resourceName, hold } = props
+  let { status, lastBuildDur, isBuild, resourceName, hold, iconOnly } = props
   let icon = null
   let msg = ""
   let tooltip = ""
@@ -163,6 +176,20 @@ export default function OverviewTableStatus(props: OverviewTableStatusProps) {
   let url = pb.encpath`/r/${resourceName}/overview`
 
   if (!msg) return null
+
+  if (iconOnly) {
+    return (
+      <Tooltip title={tooltip ? `${msg}: ${tooltip}` : msg}>
+        <StyledOverviewTableStatus
+          to={url}
+          className={`${classes} is-icon-only`}
+          aria-label={msg}
+        >
+          <StatusIcon>{icon}</StatusIcon>
+        </StyledOverviewTableStatus>
+      </Tooltip>
+    )
+  }
 
   let content = (
     <StyledOverviewTableStatus to={url} className={classes}>
