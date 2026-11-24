@@ -32,13 +32,6 @@ cleanup() {
 trap cleanup EXIT
 
 # ---------- check kubeconfig -----------------------------------------------
-KUBE_CONTEXT=$(kubectl config current-context)
-if [[ "$KUBE_CONTEXT" != *"docker-desktop"* ]]; then
-    echo "Error: kubeconfig context is ${KUBE_CONTEXT}" >&2
-    echo "       This script only supports local clusters running in Docker Desktop." >&2
-    exit 1
-fi
-
 K8S_SERVER=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}')
 if [ -z "$K8S_SERVER" ]; then
     echo "Error: could not determine k8s server from kubeconfig." >&2
@@ -56,6 +49,13 @@ fi
 
 echo "==> Detected k8s API at ${K8S_HOST}:${K8S_PORT}"
 
+# ---------- check host networking -------------------------------------------
+if ! docker run --rm --network host busybox:1.36 nc -z -w 3 127.0.0.1 "$K8S_PORT" >/dev/null 2>&1; then
+    echo "Error: a container with --network host can't reach the k8s API at 127.0.0.1:${K8S_PORT}." >&2
+    echo "       On Docker Desktop, enable Settings > Resources > Network > \"Enable host networking\"." >&2
+    exit 1
+fi
+
 # ---------- build -----------------------------------------------------------
 docker rm -f "$CONTAINER_NAME" 2>/dev/null || true
 
@@ -72,7 +72,6 @@ RUN corepack enable && yarn install --immutable && yarn build
 
 # --- Stage 2: build tilt binary with Go ---
 FROM golang:1.27
-RUN apt-get update && apt-get install -y socat && rm -rf /var/lib/apt/lists/*
 RUN git clone ${CLONE_URL} /tilt
 WORKDIR /tilt
 RUN git checkout ${PR_BRANCH}
@@ -90,16 +89,14 @@ DOCKERFILE
 echo "==> Starting tilt (web UI at http://localhost:${PORT})..."
 
 # Open the browser after tilt has a moment to start
-(sleep 5 && open "http://localhost:${PORT}") &
+if command -v xdg-open >/dev/null; then OPEN=xdg-open; else OPEN=open; fi
+(sleep 5 && "$OPEN" "http://localhost:${PORT}") &
 
-# Inside the container:
-#  - socat forwards 127.0.0.1:<k8s-port> → host.docker.internal:<k8s-port>
-#    so the kubeconfig's localhost reference reaches the host's k8s API.
-#  - tilt runs against the example project in the foreground.
+# Start tilt on the host network.
 docker run -it --rm \
     --name "$CONTAINER_NAME" \
-    -p "${PORT}:${PORT}" \
+    --network host \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v "${HOME}/.kube:/root/.kube:ro" \
     "$IMAGE_NAME" \
-    bash -c "socat TCP-LISTEN:${K8S_PORT},fork,reuseaddr,bind=127.0.0.1 TCP:host.docker.internal:${K8S_PORT} & exec tilt up --host 0.0.0.0 --web-mode=prod"
+    tilt up --web-mode=prod

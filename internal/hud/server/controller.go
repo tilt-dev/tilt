@@ -203,37 +203,37 @@ func (s *HeadsUpServerController) addToAPIServerConfig() error {
 		return nil
 	}
 
-	var newConfig *clientcmdapi.Config
-	err := filelock.WithRLock(s.configAccess, func() error {
-		var e error
-		newConfig, e = s.configAccess.GetStartingConfig()
-		return e
-	})
-	if err != nil {
-		return err
-	}
-	newConfig = newConfig.DeepCopy()
-
-	clientConfig := s.apiServerConfig.GenericConfig.LoopbackClientConfig
 	if err := model.ValidateAPIServerName(s.apiServerName); err != nil {
 		return err
 	}
 
-	name := string(s.apiServerName)
-	newConfig.Contexts[name] = &clientcmdapi.Context{
-		Cluster:  name,
-		AuthInfo: name,
-	}
-	newConfig.AuthInfos[name] = &clientcmdapi.AuthInfo{
-		Token: clientConfig.BearerToken,
-	}
+	// Hold the exclusive lock across the entire read-modify-write so a
+	// concurrent Tilt process can't interleave its own update and lose
+	// this server's entry (or vice versa).
+	return filelock.WithLock(s.configAccess, func() error {
+		newConfig, err := s.configAccess.GetStartingConfig()
+		if err != nil {
+			return err
+		}
+		newConfig = newConfig.DeepCopy()
 
-	newConfig.Clusters[name] = &clientcmdapi.Cluster{
-		Server:                   clientConfig.Host,
-		CertificateAuthorityData: clientConfig.TLSClientConfig.CAData,
-	}
+		clientConfig := s.apiServerConfig.GenericConfig.LoopbackClientConfig
+		name := string(s.apiServerName)
+		newConfig.Contexts[name] = &clientcmdapi.Context{
+			Cluster:  name,
+			AuthInfo: name,
+		}
+		newConfig.AuthInfos[name] = &clientcmdapi.AuthInfo{
+			Token: clientConfig.BearerToken,
+		}
 
-	return s.modifyConfig(*newConfig)
+		newConfig.Clusters[name] = &clientcmdapi.Cluster{
+			Server:                   clientConfig.Host,
+			CertificateAuthorityData: clientConfig.TLSClientConfig.CAData,
+		}
+
+		return clientcmd.ModifyConfig(s.configAccess, *newConfig, true)
+	})
 }
 
 // Remove this API server's configs into the user settings directory.
@@ -244,31 +244,26 @@ func (s *HeadsUpServerController) removeFromAPIServerConfig() error {
 		return nil
 	}
 
-	var newConfig *clientcmdapi.Config
-	err := filelock.WithRLock(s.configAccess, func() error {
-		var e error
-		newConfig, e = s.configAccess.GetStartingConfig()
-		return e
-	})
-	if err != nil {
-		return err
-	}
-	newConfig = newConfig.DeepCopy()
 	if err := model.ValidateAPIServerName(s.apiServerName); err != nil {
 		return err
 	}
 
-	name := string(s.apiServerName)
-	delete(newConfig.Contexts, name)
-	delete(newConfig.AuthInfos, name)
-	delete(newConfig.Clusters, name)
-
-	return s.modifyConfig(*newConfig)
-}
-
-func (s *HeadsUpServerController) modifyConfig(config clientcmdapi.Config) error {
+	// Hold the exclusive lock across the entire read-modify-write so a
+	// concurrent Tilt process can't interleave its own update and lose
+	// this server's entry (or vice versa).
 	return filelock.WithLock(s.configAccess, func() error {
-		return clientcmd.ModifyConfig(s.configAccess, config, true)
+		newConfig, err := s.configAccess.GetStartingConfig()
+		if err != nil {
+			return err
+		}
+		newConfig = newConfig.DeepCopy()
+
+		name := string(s.apiServerName)
+		delete(newConfig.Contexts, name)
+		delete(newConfig.AuthInfos, name)
+		delete(newConfig.Clusters, name)
+
+		return clientcmd.ModifyConfig(s.configAccess, *newConfig, true)
 	})
 }
 

@@ -63,8 +63,12 @@ describe("HeaderBar", () => {
       expect(openModal).toBeCalledTimes(1)
     })
 
-    it("focuses the resource name filter on '/' keypress", () => {
-      const filter = screen.getByPlaceholderText("Filter resources by name")
+    it("focuses and selects the resource name filter on '/' keypress", () => {
+      const filter = screen.getByPlaceholderText(
+        "Filter resources by name"
+      ) as HTMLInputElement
+      userEvent.type(filter, "existing")
+      filter.blur()
       expect(filter).not.toHaveFocus()
 
       act(() => {
@@ -72,6 +76,8 @@ describe("HeaderBar", () => {
       })
 
       expect(filter).toHaveFocus()
+      expect(filter.selectionStart).toBe(0)
+      expect(filter.selectionEnd).toBe(filter.value.length)
     })
   })
 })

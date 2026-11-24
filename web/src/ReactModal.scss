@@ -5,7 +5,7 @@
   align-items: center;
   justify-content: center;
   margin-top: -$statusbar-height; // Visually center
-  background-color: rgba($color-gray-10, $translucent) !important;
+  background-color: rgba(var(--color-gray-10-rgb), $translucent) !important;
   z-index: $z-modal;
 }
 
@@ -14,5 +14,5 @@
   width: $modal-width;
   background-color: $color-white;
   color: $color-gray-20;
-  box-shadow: -10px 10px 0px 0px rgba($color-gray-10, $translucent-ish);
+  box-shadow: -10px 10px 0px 0px rgba(var(--color-gray-10-rgb), $translucent-ish);
 }
