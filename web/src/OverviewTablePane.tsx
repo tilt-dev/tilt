@@ -514,6 +514,12 @@ const DetailPanel = styled.section`
   flex-direction: column;
   background-color: ${Color.gray10};
   box-shadow: -8px 0 24px rgba(0, 0, 0, 0.35);
+
+  /* On a light background a dark shadow reads as a gray band; a thin
+     line and a faint shadow are enough to set the panel apart. */
+  body[data-theme="light"] & {
+    box-shadow: -1px 0 0 ${Color.gray40}, -4px 0 12px rgba(0, 0, 0, 0.06);
+  }
 `
 
 function BuiltinResourceRows(props: { openName: string }) {
