@@ -33,6 +33,7 @@ import {
   FontSize,
   mixinResetButtonStyle,
   SizeUnit,
+  ColorRGB,
 } from "./style-helpers"
 import { timeAgoFormatter } from "./timeFormatters"
 import { startBuild } from "./trigger"
@@ -55,7 +56,7 @@ type OverviewResourceHeaderProps = {
 
 const HeaderRoot = styled.header`
   padding: ${SizeUnit(0.35)} ${SizeUnit(0.5)};
-  background-color: ${ColorRGBA(Color.blue, ColorAlpha.almostTransparent)};
+  background-color: ${ColorRGBA(ColorRGB.blue, ColorAlpha.almostTransparent)};
   border-bottom: 1px solid ${Color.gray40};
   font-family: ${Font.monospace};
   color: ${Color.gray70};

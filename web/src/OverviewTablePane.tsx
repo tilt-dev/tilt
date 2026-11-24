@@ -46,6 +46,7 @@ import {
   SizeUnit,
   Width,
   ZIndex,
+  ColorRGB,
 } from "./style-helpers"
 import { useLogAlertIndex } from "./LogStore"
 import { buildStatus, runtimeStatus } from "./status"
@@ -375,7 +376,7 @@ const ErrorDot = styled(Link)`
   &:hover,
   &:focus-visible {
     opacity: 1;
-    box-shadow: 0 0 0 3px ${ColorRGBA(Color.red, ColorAlpha.translucent)};
+    box-shadow: 0 0 0 3px ${ColorRGBA(ColorRGB.red, ColorAlpha.translucent)};
   }
 
   &.isOpen {
@@ -487,7 +488,7 @@ const BuiltinRow = styled(Link)`
   }
 
   &.isOpen {
-    background-color: ${ColorRGBA(Color.blue, ColorAlpha.almostTransparent)};
+    background-color: ${ColorRGBA(ColorRGB.blue, ColorAlpha.almostTransparent)};
     border-left: 4px solid ${Color.blue};
     font-weight: bold;
   }

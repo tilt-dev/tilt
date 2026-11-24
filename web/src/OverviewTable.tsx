@@ -78,6 +78,7 @@ import {
   Font,
   FontSize,
   SizeUnit,
+  ColorRGB,
 } from "./style-helpers"
 import { isZeroTime, timeDiff } from "./time"
 import {
@@ -232,12 +233,12 @@ export const ResourceTableRow = styled.tr`
   }
 
   tbody > &:not(.isFixedHeight):not(.isOpen):hover {
-    background-color: ${ColorRGBA(Color.gray30, ColorAlpha.almostOpaque)};
+    background-color: ${ColorRGBA(ColorRGB.gray30, ColorAlpha.almostOpaque)};
   }
 
   /* The resource whose details are open in the panel */
   &.isOpen {
-    background-color: ${ColorRGBA(Color.blue, ColorAlpha.almostTransparent)};
+    background-color: ${ColorRGBA(ColorRGB.blue, ColorAlpha.almostTransparent)};
     border-left: 4px solid ${Color.blue};
 
     td:first-child {
@@ -247,7 +248,7 @@ export const ResourceTableRow = styled.tr`
 
   /* The resource whose details were open last; the Detail view reopens it */
   &.wasOpen {
-    border-left: 4px solid ${ColorRGBA(Color.blue, ColorAlpha.translucent)};
+    border-left: 4px solid ${ColorRGBA(ColorRGB.blue, ColorAlpha.translucent)};
 
     td:first-child {
       padding-left: 22px;
