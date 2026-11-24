@@ -130,7 +130,7 @@ func toDialer(paths []string, raw bool) (func(context.Context) (net.Conn, error)
 			continue
 		}
 
-		fi, err := os.Stat(p)
+		fi, err := os.Stat(p) //nolint:gosec // SSH agent paths are explicit user inputs and may intentionally be symlinks.
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
@@ -142,7 +142,7 @@ func toDialer(paths []string, raw bool) (func(context.Context) (net.Conn, error)
 			return nil, errors.Errorf("raw mode only supported with socket paths")
 		}
 
-		f, err := os.Open(p)
+		f, err := os.Open(p) //nolint:gosec // SSH key paths are explicit user inputs and may intentionally be symlinks.
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to open %s", p)
 		}

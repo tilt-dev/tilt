@@ -194,8 +194,7 @@ func RetrieveAuthTokenFromImage(cfg *configfile.ConfigFile, image string) (strin
 	if err != nil {
 		return "", err
 	}
-	configKey := getAuthConfigKey(reference.Domain(registryRef))
-	authConfig, err := cfg.GetAuthConfig(configKey)
+	authConfig, err := cfg.GetAuthConfig(reference.Domain(registryRef))
 	if err != nil {
 		return "", err
 	}
@@ -210,19 +209,4 @@ func RetrieveAuthTokenFromImage(cfg *configfile.ConfigFile, image string) (strin
 		IdentityToken: authConfig.IdentityToken,
 		RegistryToken: authConfig.RegistryToken,
 	})
-}
-
-// getAuthConfigKey special-cases using the full index address of the official
-// index as the AuthConfig key, and uses the (host)name[:port] for private indexes.
-//
-// It is similar to [registry.GetAuthConfigKey], but does not require on
-// [registrytypes.IndexInfo] as intermediate.
-//
-// [registry.GetAuthConfigKey]: https://pkg.go.dev/github.com/docker/docker@v28.3.3+incompatible/registry#GetAuthConfigKey
-// [registrytypes.IndexInfo]: https://pkg.go.dev/github.com/docker/docker@v28.3.3+incompatible/api/types/registry#IndexInfo
-func getAuthConfigKey(domainName string) string {
-	if domainName == "docker.io" || domainName == "index.docker.io" {
-		return authConfigKey
-	}
-	return domainName
 }
