@@ -6,6 +6,7 @@ package otlpmetricgrpc // import "go.opentelemetry.io/otel/exporters/otlp/otlpme
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	colmetricpb "go.opentelemetry.io/proto/otlp/collector/metrics/v1"
@@ -15,17 +16,18 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc/internal"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc/internal/oconf"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc/internal/retry"
 )
 
 type client struct {
-	metadata      metadata.MD
-	exportTimeout time.Duration
-	requestFunc   retry.RequestFunc
+	metadata       metadata.MD
+	exportTimeout  time.Duration
+	maxRequestSize int
+	requestFunc    retry.RequestFunc
 
 	// ourConn keeps track of where conn was created: true if created here in
 	// NewClient, or false if passed with an option. This is important on
@@ -39,9 +41,10 @@ type client struct {
 // newClient creates a new gRPC metric client.
 func newClient(_ context.Context, cfg oconf.Config) (*client, error) {
 	c := &client{
-		exportTimeout: cfg.Metrics.Timeout,
-		requestFunc:   cfg.RetryConfig.RequestFunc(retryable),
-		conn:          cfg.GRPCConn,
+		exportTimeout:  cfg.Metrics.Timeout,
+		maxRequestSize: cfg.Metrics.MaxRequestSize,
+		requestFunc:    cfg.RetryConfig.RequestFunc(retryable),
+		conn:           cfg.GRPCConn,
 	}
 
 	if len(cfg.Metrics.Headers) > 0 {
@@ -101,7 +104,7 @@ func (c *client) Shutdown(ctx context.Context) error {
 //
 // Retryable errors from the server will be handled according to any
 // RetryConfig the client was created with.
-func (c *client) UploadMetrics(ctx context.Context, protoMetrics *metricpb.ResourceMetrics) error {
+func (c *client) UploadMetrics(ctx context.Context, protoMetrics *metricpb.ResourceMetrics) (uploadErr error) {
 	// The otlpmetric.Exporter synchronizes access to client methods, and
 	// ensures this is not called after the Exporter is shutdown. Only thing
 	// to do here is send data.
@@ -116,16 +119,21 @@ func (c *client) UploadMetrics(ctx context.Context, protoMetrics *metricpb.Resou
 	ctx, cancel := c.exportContext(ctx)
 	defer cancel()
 
-	return c.requestFunc(ctx, func(iCtx context.Context) error {
-		resp, err := c.msc.Export(iCtx, &colmetricpb.ExportMetricsServiceRequest{
-			ResourceMetrics: []*metricpb.ResourceMetrics{protoMetrics},
-		})
+	pbRequest := &colmetricpb.ExportMetricsServiceRequest{
+		ResourceMetrics: []*metricpb.ResourceMetrics{protoMetrics},
+	}
+	if maxSize := c.maxRequestSize; maxSize > 0 && proto.Size(pbRequest) > maxSize {
+		return fmt.Errorf("request message too large: exceeded %d bytes", maxSize)
+	}
+
+	return errors.Join(uploadErr, c.requestFunc(ctx, func(iCtx context.Context) error {
+		resp, err := c.msc.Export(iCtx, pbRequest)
 		if resp != nil && resp.PartialSuccess != nil {
 			msg := resp.PartialSuccess.GetErrorMessage()
 			n := resp.PartialSuccess.GetRejectedDataPoints()
 			if n != 0 || msg != "" {
-				err := internal.MetricPartialSuccessError(n, msg)
-				otel.Handle(err)
+				e := internal.MetricPartialSuccessError(n, msg)
+				uploadErr = errors.Join(uploadErr, e)
 			}
 		}
 		// nil is converted to OK.
@@ -134,7 +142,7 @@ func (c *client) UploadMetrics(ctx context.Context, protoMetrics *metricpb.Resou
 			return nil
 		}
 		return err
-	})
+	}))
 }
 
 // exportContext returns a copy of parent with an appropriate deadline and
@@ -152,7 +160,7 @@ func (c *client) exportContext(parent context.Context) (context.Context, context
 	if c.exportTimeout > 0 {
 		ctx, cancel = context.WithTimeoutCause(parent, c.exportTimeout, errors.New("exporter export timeout"))
 	} else {
-		ctx, cancel = context.WithCancel(parent)
+		ctx, cancel = context.WithCancel(parent) //nolint:gosec  // cancel is handled by the caller.
 	}
 
 	if c.metadata.Len() > 0 {
