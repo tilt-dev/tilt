@@ -2,7 +2,6 @@ import { debounce, InputAdornment, InputProps } from "@material-ui/core"
 import Menu from "@material-ui/core/Menu"
 import MenuItem from "@material-ui/core/MenuItem"
 import { PopoverOrigin } from "@material-ui/core/Popover"
-import { makeStyles } from "@material-ui/core/styles"
 import ExpandMoreIcon from "@material-ui/icons/ExpandMore"
 import { History } from "history"
 import React, { ChangeEvent, useEffect, useState } from "react"
@@ -32,6 +31,7 @@ import {
   TermState,
 } from "./logfilters"
 import { useLogStore } from "./LogStore"
+import { useMenuItemStyles } from "./menuStyles"
 import OverviewActionBarKeyboardShortcuts from "./OverviewActionBarKeyboardShortcuts"
 import { OverviewButtonMixin } from "./OverviewButton"
 import { usePathBuilder } from "./PathBuilder"
@@ -80,19 +80,12 @@ type FilterSourceMenuProps = {
   alerts?: Alert[]
 }
 
-let useMenuStyles = makeStyles((theme: any) => ({
-  root: {
-    fontFamily: Font.sansSerif,
-    fontSize: FontSize.smallest,
-  },
-}))
-
 // Menu to filter logs by source (e.g., build-only, runtime-only).
 function FilterSourceMenu(props: FilterSourceMenuProps) {
   let { id, anchorEl, level, open, onClose } = props
   let alerts = props.alerts || []
 
-  let classes = useMenuStyles()
+  let classes = useMenuItemStyles()
   const navigate = useNavigate()
   let l = useLocation()
   let onClick = (e: any) => {

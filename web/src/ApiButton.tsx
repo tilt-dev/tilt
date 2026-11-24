@@ -279,7 +279,7 @@ const CancelButton = styled(Button)`
 
 const ConfirmButton = styled(Button)`
   background-color: ${Color.green};
-  color: ${Color.white};
+  color: ${Color.onAccent};
 
   &:hover {
     background-color: ${Color.greenLight};

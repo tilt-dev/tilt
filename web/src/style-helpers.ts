@@ -29,6 +29,9 @@ export enum Color {
   grayDarker = "var(--color-gray-darker)",
 
   text = "var(--color-gray-30)",
+
+  // Text and icons on a brand-color fill. Stays white in both themes.
+  onAccent = "#ffffff",
 }
 
 // CSS variable names for RGB variants, for use with ColorRGBA

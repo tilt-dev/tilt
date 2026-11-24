@@ -50,49 +50,88 @@ $font-size-icon: 24px;
   --color-green-rgb: 32, 186, 49;
   --color-red-rgb: 246, 104, 92;
   --color-yellow-rgb: 252, 180, 30;
+
+  // Terminal (ANSI) colors in the log pane
+  --color-ansi-black: #000000;
+  --color-ansi-red: #f6685c;
+  --color-ansi-green: #20ba31;
+  --color-ansi-yellow: #fcb41e;
+  --color-ansi-blue: #03c7d3;
+  --color-ansi-magenta: #6378ba;
+  --color-ansi-cyan: #5edbe3;
+  --color-ansi-white: #ffffff;
+  --color-ansi-bright-black: #586e75;
+  --color-ansi-bright-red: #f7aaa4;
+  --color-ansi-bright-green: #70d37b;
+  --color-ansi-bright-yellow: #fdcf6f;
+  --color-ansi-bright-blue: #5edbe3;
+  --color-ansi-bright-magenta: #6378ba;
+  --color-ansi-bright-cyan: #55ffff;
+  --color-ansi-bright-white: #ffffff;
 }
 
+// Light palette, based on docs.tilt.dev (tilt-dev/tilt.build, src/_sass/tilt.scss).
+// "Darkened" colors keep the source color's hue and are darkened until they
+// reach the given contrast ratio against gray-30.
 [data-theme="light"] {
   // Monochrome — inverted for light
-  --color-white: #002b36;
-  --color-off-white: #073642;
-  --color-black: #ffffff;
-  --color-gray-70: #2D4D55;
-  --color-gray-60: #586e75;
-  --color-gray-50: #93a1a1;
-  --color-gray-40: #CCDADE;
-  --color-gray-30: #dde4e4;
-  --color-gray-20: #f8fafa;
-  --color-gray-10: #ffffff;
-  --color-gray-darker: #eef1f1;
-  --color-gray-lightest: #586e75;
+  --color-white: #002b36; // Solarized base03, a step darker than docs text
+  --color-off-white: #073642; // docs text
+  --color-black: #ffffff; // docs white
+  --color-gray-70: #2D4D55; // between docs text and docs gray
+  --color-gray-60: #566C73; // docs gray #586E75, darkened to 4.5:1
+  --color-gray-50: #64797F; // docs gray #586E75, lightened for borders and icons
+  --color-gray-40: #C4D2D6; // docs gray-lighter #CCDADE, darkened to separate surfaces
+  --color-gray-30: #E4EAEB; // docs gray-lightest #EEF1F1, darkened to separate surfaces
+  --color-gray-20: #F1F4F5; // docs off-white #FAFBFC, darkened to separate surfaces
+  --color-gray-10: #ffffff; // docs white
+  --color-gray-darker: #F8FAFA; // between gray-10 and gray-20
+  --color-gray-lightest: #566C73; // docs gray #586E75, darkened to 4.5:1
 
-  // Brand Colors — adjusted for light backgrounds
-  --color-green: #1a9928;
-  --color-green-light: #4db858;
-  --color-blue: #0298a3;
-  --color-blue-light: #03c7d3;
-  --color-blue-dark: #006b70;
-  --color-purple: #4f63a3;
-  --color-red: #e5564a;
-  --color-red-light: #f7aaa4;
-  --color-pink: #d94d8c;
-  --color-yellow: #e09c10;
-  --color-yellow-light: #fcb41e;
+  // Brand Colors
+  --color-green: #029B1F; // docs green #20BA31, darkened to 3:1
+  --color-green-light: #007A15; // docs green #20BA31, darkened to 4.5:1 for hover
+  --color-blue: #01949D; // docs blue #03C7D3, darkened to 3:1
+  --color-blue-light: #03747C; // docs blue #03C7D3, darkened to 4.5:1 for hover
+  --color-blue-dark: #02555B; // docs blue #03C7D3, darkened to 7:1
+  --color-purple: #6378ba; // dark-theme purple, already above 3:1
+  --color-red: #E3574D; // docs red #F6685C, darkened to 3:1
+  --color-red-light: #f7aaa4; // same as dark theme
+  --color-pink: #E14D94; // docs pink #EF5AA0, darkened to 3:1
+  --color-yellow: #B17C03; // docs yellow #FCB41E, darkened to 3:1
+  --color-yellow-light: #8C6100; // docs yellow #FCB41E, darkened to 4.5:1 for hover
 
   // RGB variants for light theme
   --color-white-rgb: 0, 43, 54;
   --color-black-rgb: 255, 255, 255;
-  --color-gray-60-rgb: 88, 110, 117;
-  --color-gray-50-rgb: 147, 161, 161;
-  --color-gray-30-rgb: 221, 228, 228;
-  --color-gray-20-rgb: 248, 250, 250;
+  --color-gray-60-rgb: 86, 108, 115;
+  --color-gray-50-rgb: 100, 121, 127;
+  --color-gray-30-rgb: 228, 234, 235;
+  --color-gray-20-rgb: 241, 244, 245;
   --color-gray-10-rgb: 255, 255, 255;
-  --color-gray-lightest-rgb: 88, 110, 117;
-  --color-blue-rgb: 2, 152, 163;
-  --color-green-rgb: 26, 153, 40;
-  --color-red-rgb: 229, 86, 74;
-  --color-yellow-rgb: 224, 156, 16;
+  --color-gray-lightest-rgb: 86, 108, 115;
+  --color-blue-rgb: 1, 148, 157;
+  --color-green-rgb: 2, 155, 31;
+  --color-red-rgb: 227, 87, 77;
+  --color-yellow-rgb: 177, 124, 3;
+
+  // Terminal (ANSI) colors in the log pane
+  --color-ansi-black: #000000; // same as dark theme
+  --color-ansi-red: #C1362F; // dark-theme #f6685c, darkened to 4.5:1
+  --color-ansi-green: #007A15; // dark-theme #20ba31, darkened to 4.5:1
+  --color-ansi-yellow: #8C6100; // dark-theme #fcb41e, darkened to 4.5:1
+  --color-ansi-blue: #03747C; // dark-theme #03c7d3, darkened to 4.5:1
+  --color-ansi-magenta: #5266A7; // dark-theme #6378ba, darkened to 4.5:1
+  --color-ansi-cyan: #03757B; // dark-theme #5edbe3, darkened to 4.5:1
+  --color-ansi-white: #002b36; // main text color (--color-white)
+  --color-ansi-bright-black: #566C73; // dark-theme #586e75, darkened to 4.5:1
+  --color-ansi-bright-red: #9A5652; // dark-theme #f7aaa4, darkened to 4.5:1
+  --color-ansi-bright-green: #027A27; // dark-theme #70d37b, darkened to 4.5:1
+  --color-ansi-bright-yellow: #876300; // dark-theme #fdcf6f, darkened to 4.5:1
+  --color-ansi-bright-blue: #03757B; // dark-theme #5edbe3, darkened to 4.5:1
+  --color-ansi-bright-magenta: #5266A7; // dark-theme #6378ba, darkened to 4.5:1
+  --color-ansi-bright-cyan: #037576; // dark-theme #55ffff, darkened to 4.5:1
+  --color-ansi-bright-white: #002b36; // main text color (--color-white)
 }
 
 // SCSS convenience variables referencing CSS vars
@@ -114,6 +153,8 @@ $color-purple: var(--color-purple);
 $color-red: var(--color-red);
 $color-pink: var(--color-pink);
 $color-yellow: var(--color-yellow);
+// Text and icons on a brand-color fill. Stays white in both themes.
+$color-on-accent: #ffffff;
 
 $translucent: 0.3;
 $translucent-ish: 0.7;

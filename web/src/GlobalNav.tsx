@@ -2,13 +2,13 @@ import React, { Component, useMemo, useRef, useState } from "react"
 import styled from "styled-components"
 import { ReactComponent as ClusterErrorIcon } from "./assets/svg/close.svg"
 import { ReactComponent as ClusterIcon } from "./assets/svg/cluster-icon.svg"
-import { ReactComponent as HelpIcon } from "./assets/svg/help.svg"
-import { ReactComponent as SnapshotIcon } from "./assets/svg/snapshot.svg"
+import { ReactComponent as SettingsIcon } from "./assets/svg/settings.svg"
 import { ReactComponent as UpdateAvailableIcon } from "./assets/svg/update-available.svg"
 import { ClusterStatusDialog, getDefaultCluster } from "./ClusterStatusDialog"
 import { useFeatures } from "./feature"
-import HelpDialog from "./HelpDialog"
+import KeyboardShortcutsDialog from "./KeyboardShortcutsDialog"
 import { RESOURCE_NAME_FILTER_INPUT_ID } from "./ResourceNameFilter"
+import SettingsDialog from "./SettingsDialog"
 import { isTargetEditable } from "./shortcut"
 import { SnapshotAction } from "./snapshot"
 import {
@@ -18,7 +18,6 @@ import {
   mixinResetButtonStyle,
   SizeUnit,
 } from "./style-helpers"
-import { useTheme } from "./ThemeContext"
 import { Cluster } from "./types"
 import UpdateDialog from "./UpdateDialog"
 import type { TiltBuild } from "./core"
@@ -112,7 +111,7 @@ const ClusterStatusIcon = styled(ClusterIcon)`
 `
 
 type GlobalNavShortcutsProps = {
-  toggleHelpDialog: () => void
+  toggleKeyboardShortcuts: () => void
   snapshot: SnapshotAction
 }
 
@@ -141,7 +140,7 @@ class GlobalNavShortcuts extends Component<GlobalNavShortcutsProps> {
       return
     }
     if (e.key === "?") {
-      this.props.toggleHelpDialog()
+      this.props.toggleKeyboardShortcuts()
       e.preventDefault()
     } else if (e.key === "s" && this.props.snapshot.enabled) {
       this.props.snapshot.openModal()
@@ -183,29 +182,23 @@ export type GlobalNavProps = {
   clusterConnections?: Cluster[]
 }
 
-// The snapshot menu item is handled separately in HUD
+// The snapshot dialog is handled separately in HUD
 // since it requires access to HUD state.
 enum NavDialog {
   Account = "account",
   Cluster = "cluster",
-  Help = "help",
+  KeyboardShortcuts = "keyboardShortcuts",
+  Settings = "settings",
   Update = "update",
 }
 
-const ThemeToggleIcon = styled.span`
-  font-size: 18px;
-  line-height: 24px;
-`
-
 export function GlobalNav(props: GlobalNavProps) {
-  const helpButton = useRef<HTMLButtonElement | null>(null)
+  const settingsButton = useRef<HTMLButtonElement | null>(null)
   const accountButton = useRef<HTMLButtonElement | null>(null)
   const updateButton = useRef<HTMLButtonElement | null>(null)
   const clusterButton = useRef<HTMLButtonElement | null>(null)
-  const snapshotButton = useRef<HTMLButtonElement | null>(null)
 
   const [openDialog, setOpenDialog] = useState<NavDialog | null>(null)
-  const { theme, toggleTheme } = useTheme()
 
   const features = useFeatures()
 
@@ -220,20 +213,6 @@ export function GlobalNav(props: GlobalNavProps) {
     const nextDialogState = dialogIsOpen ? null : name
     setOpenDialog(nextDialogState)
   }
-
-  let snapshotMenuItem = props.snapshot.enabled ? (
-    <MenuButtonLabeled label="Snapshot">
-      <MenuButton
-        ref={snapshotButton}
-        onClick={() => props.snapshot.openModal(snapshotButton.current)}
-        role="menuitem"
-        aria-label="Snapshot"
-        aria-haspopup="true"
-      >
-        <SnapshotIcon width="24" height="24" />
-      </MenuButton>
-    </MenuButtonLabeled>
-  ) : null
 
   // Only display the cluster status menu item if default cluster information is available
   const defaultClusterInfo = useMemo(
@@ -291,31 +270,17 @@ export function GlobalNav(props: GlobalNavProps) {
         </MenuButton>
       </MenuButtonLabeled>
 
-      {snapshotMenuItem}
-
-      <MenuButtonLabeled label="Theme">
+      <MenuButtonLabeled label="Settings">
         <MenuButton
-          onClick={toggleTheme}
-          aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
-          role="menuitem"
-        >
-          <ThemeToggleIcon>
-            {theme === "dark" ? "\u263D" : "\u2600"}
-          </ThemeToggleIcon>
-        </MenuButton>
-      </MenuButtonLabeled>
-
-      <MenuButtonLabeled label="Help">
-        <MenuButton
-          ref={helpButton}
-          onClick={() => toggleDialog(NavDialog.Help)}
-          data-open={openDialog === NavDialog.Help}
-          aria-expanded={openDialog === NavDialog.Help}
-          aria-label="Help"
+          ref={settingsButton}
+          onClick={() => toggleDialog(NavDialog.Settings)}
+          data-open={openDialog === NavDialog.Settings}
+          aria-expanded={openDialog === NavDialog.Settings}
+          aria-label="Settings"
           aria-haspopup="true"
           role="menuitem"
         >
-          <HelpIcon width="24" height="24" />
+          <SettingsIcon width="24" height="24" />
         </MenuButton>
       </MenuButtonLabeled>
 
@@ -325,10 +290,24 @@ export function GlobalNav(props: GlobalNavProps) {
         anchorEl={clusterButton?.current}
         clusterConnection={defaultClusterInfo}
       />
-      <HelpDialog
-        open={openDialog === NavDialog.Help}
-        anchorEl={helpButton?.current}
-        onClose={() => toggleDialog(NavDialog.Help)}
+      <SettingsDialog
+        open={openDialog === NavDialog.Settings}
+        anchorEl={settingsButton?.current}
+        onClose={() => toggleDialog(NavDialog.Settings)}
+        onSnapshot={
+          props.snapshot.enabled
+            ? () => {
+                setOpenDialog(null)
+                props.snapshot.openModal(settingsButton.current)
+              }
+            : undefined
+        }
+        onKeyboardShortcuts={() => setOpenDialog(NavDialog.KeyboardShortcuts)}
+      />
+      <KeyboardShortcutsDialog
+        open={openDialog === NavDialog.KeyboardShortcuts}
+        anchorEl={settingsButton?.current}
+        onClose={() => toggleDialog(NavDialog.KeyboardShortcuts)}
       />
       <UpdateDialog
         open={openDialog === NavDialog.Update}
@@ -339,7 +318,9 @@ export function GlobalNav(props: GlobalNavProps) {
         isNewInterface={true}
       />
       <GlobalNavShortcuts
-        toggleHelpDialog={() => toggleDialog(NavDialog.Help)}
+        toggleKeyboardShortcuts={() =>
+          toggleDialog(NavDialog.KeyboardShortcuts)
+        }
         snapshot={props.snapshot}
       />
     </GlobalNavRoot>

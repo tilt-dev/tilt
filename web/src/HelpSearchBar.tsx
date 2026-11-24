@@ -9,7 +9,6 @@ import {
   InstrumentedTextField,
 } from "./instrumentedComponents"
 import {
-  Color,
   Font,
   FontSize,
   mixinResetButtonStyle,
@@ -23,19 +22,25 @@ export function searchDocs(query: string) {
   window.open(docsSearchUrl)
 }
 
+// The search bar sits on a white menu in both themes,
+// so its colors stay fixed instead of following the theme.
+const fieldBackground = "#ffffff"
+const fieldForeground = "#2D4D55"
+const iconFill = "#93a1a1"
+
 export const HelpSearchBarTextField = styled(InstrumentedTextField)`
   & .MuiOutlinedInput-root {
     border-radius: ${SizeUnit(0.5)};
-    background-color: ${Color.white};
+    background-color: ${fieldBackground};
 
     & fieldset {
-      border-color: 1px solid ${Color.gray40};
+      border-color: 1px solid ${fieldForeground};
     }
     &:hover fieldset {
-      border: 1px solid ${Color.gray40};
+      border: 1px solid ${fieldForeground};
     }
     &.Mui-focused fieldset {
-      border: 1px solid ${Color.gray40};
+      border: 1px solid ${fieldForeground};
     }
     & .MuiOutlinedInput-input {
       padding: ${SizeUnit(0.2)};
@@ -47,7 +52,7 @@ export const HelpSearchBarTextField = styled(InstrumentedTextField)`
 
   & .MuiInputBase-input {
     font-family: ${Font.monospace};
-    color: ${Color.gray40};
+    color: ${fieldForeground};
     font-size: ${FontSize.small};
   }
 `
@@ -64,7 +69,7 @@ export function HelpSearchBar(props: { className?: string }) {
   let inputProps: Partial<StandardInputProps> = {
     startAdornment: (
       <InputAdornment position="start">
-        <SearchSvg fill={Color.grayLightest} />
+        <SearchSvg fill={iconFill} />
       </InputAdornment>
     ),
     "aria-label": "Search Tilt Docs",
@@ -92,7 +97,7 @@ export function HelpSearchBar(props: { className?: string }) {
           onClick={onClearClick}
           aria-label="Clear search term"
         >
-          <CloseSvg role="presentation" fill={Color.grayLightest} />
+          <CloseSvg role="presentation" fill={iconFill} />
         </ClearHelpSearchBarButton>
       </InputAdornment>
     )
