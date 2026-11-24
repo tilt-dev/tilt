@@ -80,8 +80,8 @@ github.com/containerd/console
 # github.com/containerd/containerd/api v1.10.0
 ## explicit; go 1.23.0
 github.com/containerd/containerd/api/services/content/v1
-# github.com/containerd/containerd/v2 v2.2.4
-## explicit; go 1.24.3
+# github.com/containerd/containerd/v2 v2.2.10
+## explicit; go 1.25.0
 github.com/containerd/containerd/v2/core/content
 github.com/containerd/containerd/v2/core/content/proxy
 github.com/containerd/containerd/v2/core/images
