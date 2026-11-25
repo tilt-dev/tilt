@@ -93,8 +93,11 @@ func (s *tiltfileState) execLocalCmd(t *starlark.Thread, cmd model.Cmd, options 
 	}
 
 	var runIO localexec.RunIO
+	var logOutput io.Writer
+	var logTail *lastByteWriter
 	if options.logOutput {
-		logOutput := logger.NewMutexWriter(logger.NewPrefixedLogger(localLogPrefix, s.logger).Writer(logger.InfoLvl))
+		logTail = &lastByteWriter{w: logger.NewPrefixedLogger(localLogPrefix, s.logger).Writer(logger.InfoLvl)}
+		logOutput = logger.NewMutexWriter(logTail)
 		runIO.Stdout = io.MultiWriter(&stdoutBuf, logOutput)
 		runIO.Stderr = io.MultiWriter(&stderrBuf, logOutput)
 	} else {
@@ -108,6 +111,11 @@ func (s *tiltfileState) execLocalCmd(t *starlark.Thread, cmd model.Cmd, options 
 
 	// TODO(nick): Should this also inject any docker.Env overrides?
 	exitCode, err := s.execer.Run(ctx, cmd, runIO)
+	if logTail != nil && logTail.last != 0 && logTail.last != '\n' {
+		// End the logged output with a newline, so whatever is logged next
+		// starts on its own line.
+		_, _ = logOutput.Write([]byte("\n"))
+	}
 	if err != nil || exitCode != 0 {
 		var errMessage strings.Builder
 		errMessage.WriteString(fmt.Sprintf("command %q failed.", cmd))
@@ -135,6 +143,19 @@ func (s *tiltfileState) execLocalCmd(t *starlark.Thread, cmd model.Cmd, options 
 	}
 
 	return stdoutBuf.String(), nil
+}
+
+// lastByteWriter remembers the last byte written through it.
+type lastByteWriter struct {
+	w    io.Writer
+	last byte
+}
+
+func (w *lastByteWriter) Write(p []byte) (int, error) {
+	if len(p) > 0 {
+		w.last = p[len(p)-1]
+	}
+	return w.w.Write(p)
 }
 
 func (s *tiltfileState) kustomize(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {

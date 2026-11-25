@@ -329,6 +329,17 @@ qux
  → quu`)
 }
 
+func TestLocalOutputWithoutTrailingNewline(t *testing.T) {
+	f := newFixture(t)
+
+	f.file("Tiltfile", `
+local('printf foo', command_bat='<nul set /p=foo& exit 0')
+`)
+
+	f.load()
+	require.Contains(t, f.out.String(), " → foo\n")
+}
+
 func TestLocalStdinChain(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip()
