@@ -242,6 +242,41 @@ k8s_yaml(yml)
 	f.loadErrString("helm: for parameter \"set\"", "string", "List", "type dict")
 }
 
+func TestHelmSetFile(t *testing.T) {
+	f := newFixture(t)
+	f.setupHelm()
+	f.file("first input.txt", "alpha")
+	f.file("second.txt", "beta")
+	f.file("helm/templates/set-file.yaml", `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: set-file-proof
+data:
+  first: {{ .Values.first | quote }}
+  second: {{ .Values.second | quote }}
+`)
+	f.file("Tiltfile", `
+k8s_yaml(helm('./helm', set_file=['first=./first input.txt,second=./second.txt']))
+`)
+	f.load()
+	f.assertConfigFiles("./helm/", "./first input.txt", "./second.txt", ".tiltignore", "Tiltfile")
+
+	m := f.assertNextManifestUnresourced("set-file-proof", "chart-helloworld-chart")
+	assert.Contains(t, m.K8sTarget().YAML, "first: alpha")
+	assert.Contains(t, m.K8sTarget().YAML, "second: beta")
+}
+
+func TestHelmSetFileRejectsNonFileInputs(t *testing.T) {
+	for _, file := range []string{"-", "https:settings.txt"} {
+		t.Run(file, func(t *testing.T) {
+			f := newFixture(t)
+			f.setupHelm()
+			f.file("Tiltfile", "k8s_yaml(helm('./helm', set_file='config="+file+"'))")
+			f.loadErrString("invalid helm set_file argument", "expected a local file path")
+		})
+	}
+}
+
 const exampleHelmV2VersionOutput = `Client: v2.12.3geecf22f`
 const exampleHelmV3_0VersionOutput = `v3.0.0`
 const exampleHelmV3_1VersionOutput = `v3.1.0`

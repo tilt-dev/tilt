@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -19,6 +20,7 @@ import (
 
 	"github.com/pkg/errors"
 	"go.starlark.net/starlark"
+	"helm.sh/helm/v3/pkg/strvals"
 
 	"github.com/tilt-dev/tilt/internal/kustomize"
 )
@@ -196,6 +198,7 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 	var namespace string
 	var valueFiles value.StringOrStringList
 	var set value.StringOrStringList
+	var setFile value.StringOrStringList
 	var kubeVersion string
 	var skip_crds bool
 
@@ -207,6 +210,7 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 		"set?", &set,
 		"kube_version?", &kubeVersion,
 		"skip_crds?", &skip_crds,
+		"set_file?", &setFile,
 	)
 	if err != nil {
 		return nil, err
@@ -274,6 +278,22 @@ func (s *tiltfileState) helm(thread *starlark.Thread, fn *starlark.Builtin, args
 	}
 	for _, setArg := range set.Values {
 		cmd = append(cmd, "--set", setArg)
+	}
+	for _, setFileArg := range setFile.Values {
+		// Use Helm's parser for escapes and multiple assignments. Record only
+		// the paths here; the helm command itself loads the files.
+		err := strvals.ParseIntoFile(setFileArg, map[string]interface{}{}, func(rs []rune) (interface{}, error) {
+			file := string(rs)
+			parsed, parseErr := url.Parse(file)
+			if file == "" || strings.TrimSpace(file) == "-" || parseErr != nil || (parsed.Scheme != "" && filepath.VolumeName(file) == "") {
+				return nil, fmt.Errorf("expected a local file path, got %q", file)
+			}
+			return "", tiltfile_io.RecordReadPath(thread, tiltfile_io.WatchFileOnly, starkit.AbsPath(thread, file))
+		})
+		if err != nil {
+			return nil, fmt.Errorf("invalid helm set_file argument: %w", err)
+		}
+		cmd = append(cmd, "--set-file", setFileArg)
 	}
 
 	stdout, err := s.execLocalCmd(thread, model.Cmd{Argv: cmd, Dir: starkit.AbsWorkingDir(thread)}, execCommandOptions{
