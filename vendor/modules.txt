@@ -1210,6 +1210,7 @@ gopkg.in/yaml.v3
 ## explicit; go 1.25.0
 helm.sh/helm/v3/internal/third_party/k8s.io/kubernetes/deployment/util
 helm.sh/helm/v3/pkg/kube
+helm.sh/helm/v3/pkg/strvals
 # k8s.io/api v0.37.0
 ## explicit; go 1.26.0
 k8s.io/api/admission/v1
