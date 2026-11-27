@@ -75,7 +75,7 @@ func waitForKey(ctx context.Context) error {
 	errCh := make(chan error)
 
 	go func() {
-		_, err = t.ReadRune()
+		err := readKey(t)
 		if err != nil {
 			errCh <- err
 			return
@@ -90,6 +90,21 @@ func waitForKey(ctx context.Context) error {
 		return nil
 	case err := <-errCh:
 		return err
+	}
+}
+
+// readKey blocks until r reads a key. go-tty returns rune 0 for console
+// events that are not a key, such as a key release or a focus change on
+// Windows, so those don't count.
+func readKey(r interface{ ReadRune() (rune, error) }) error {
+	for {
+		key, err := r.ReadRune()
+		if err != nil {
+			return err
+		}
+		if key != 0 {
+			return nil
+		}
 	}
 }
 
