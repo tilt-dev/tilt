@@ -297,5 +297,148 @@ describe("OverviewLogPane", () => {
         logElementsAfterInvoke[logElementsAfterInvoke.length - 1].innerHTML
       ).toEqual(expect.stringContaining(">incremental line 374\n<"))
     })
+
+    // https://github.com/tilt-dev/tilt/issues/6096
+    describe("truncation", () => {
+      // Renders all the initial lines, then truncates the log store the same
+      // way a log append does in production: the appended segment lands in
+      // the store, ensureMaxLength() truncates it, and then the deferred
+      // append and truncate events are delivered.
+      function renderAllThenTruncate() {
+        fakeRaf.invoke(component.renderBufferRafId as number)
+        fakeRaf.invoke(component.renderBufferRafId as number)
+        expect(getLogElements(container).length).toEqual(initLineCount)
+
+        const logStore = component.props.logStore
+        logStore.maxLogLength = 2000
+        appendLines(logStore, "fe", "new line A\n")
+        component.onLogUpdate({ action: LogUpdateAction.append })
+        component.onLogUpdate({ action: LogUpdateAction.truncate })
+
+        return logStore.manifestLog("fe")
+      }
+
+      it("keeps rendered lines and remaps their indices", () => {
+        const lastEl = container.querySelector(
+          '[data-sl-index="499"]'
+        ) as Element | null
+        expect(lastEl).toBeNull() // nothing rendered yet
+
+        const survivors = renderAllThenTruncate()
+        expect(survivors.length).toBeGreaterThan(0)
+        expect(survivors.length).toBeLessThan(initLineCount)
+
+        // The pane never went blank: all the surviving lines except the
+        // fresh "new line A" are still rendered, without waiting for an
+        // animation frame.
+        const els = getLogElements(container)
+        expect(els.length).toEqual(survivors.length - 1)
+
+        // The oldest lines were trimmed.
+        expect(els[0].innerHTML).toEqual(
+          expect.stringContaining(`>${survivors[0].text}\n<`)
+        )
+
+        // The rendered elements were re-used, not rebuilt, and their
+        // data-sl-index attributes were remapped.
+        const newLast = survivors.find((line) => line.text === "line 499")!
+        const lastElAfter = container.querySelector(
+          `[data-sl-index="${newLast.storedLineIndex}"]`
+        )!
+        expect(lastElAfter.innerHTML).toEqual(
+          expect.stringContaining(">line 499\n<")
+        )
+
+        // The fresh line renders on the next animation frame.
+        expect(component.forwardBuffer.map((l) => l.text)).toEqual([
+          "new line A",
+        ])
+        fakeRaf.invoke(component.renderBufferRafId as number)
+        const elsAfter = getLogElements(container)
+        expect(elsAfter.length).toEqual(survivors.length)
+        expect(elsAfter[elsAfter.length - 1].innerHTML).toEqual(
+          expect.stringContaining(">new line A\n<")
+        )
+      })
+
+      it("re-uses the same DOM nodes across truncation", () => {
+        fakeRaf.invoke(component.renderBufferRafId as number)
+        fakeRaf.invoke(component.renderBufferRafId as number)
+        const lastEl = container.querySelector('[data-sl-index="499"]')!
+
+        const logStore = component.props.logStore
+        logStore.maxLogLength = 2000
+        appendLines(logStore, "fe", "new line A\n")
+        component.onLogUpdate({ action: LogUpdateAction.append })
+        component.onLogUpdate({ action: LogUpdateAction.truncate })
+
+        // The same DOM node is still attached, under its new index.
+        expect(container.contains(lastEl)).toEqual(true)
+        const survivors = logStore.manifestLog("fe")
+        const newLast = survivors.find((line) => line.text === "line 499")!
+        expect(lastEl.getAttribute("data-sl-index")).toEqual(
+          String(newLast.storedLineIndex)
+        )
+      })
+
+      it("preserves the autoscroll state", () => {
+        renderAllThenTruncate()
+        expect(component.autoscroll).toEqual(true)
+        expect(component.scrollTop).toEqual(-1)
+      })
+
+      it("does not re-engage autoscroll when scrolled up", () => {
+        fakeRaf.invoke(component.renderBufferRafId as number)
+        fakeRaf.invoke(component.renderBufferRafId as number)
+
+        component.autoscroll = false
+        component.scrollTop = 1000
+
+        const logStore = component.props.logStore
+        logStore.maxLogLength = 2000
+        appendLines(logStore, "fe", "new line A\n")
+        component.onLogUpdate({ action: LogUpdateAction.append })
+        component.onLogUpdate({ action: LogUpdateAction.truncate })
+
+        expect(component.autoscroll).toEqual(false)
+        expect(component.scrollTop).toEqual(-1)
+
+        // The surviving lines are still rendered.
+        const survivors = logStore.manifestLog("fe")
+        expect(getLogElements(container).length).toEqual(survivors.length - 1)
+      })
+
+      it("renders incremental appends after truncation", () => {
+        const survivors = renderAllThenTruncate()
+        fakeRaf.invoke(component.renderBufferRafId as number)
+        expect(getLogElements(container).length).toEqual(survivors.length)
+
+        appendLines(component.props.logStore, "fe", "post 0\n", "post 1\n")
+        component.onLogUpdate({ action: LogUpdateAction.append })
+        expect(component.forwardBuffer.map((l) => l.text)).toEqual([
+          "post 0",
+          "post 1",
+        ])
+
+        fakeRaf.invoke(component.renderBufferRafId as number)
+        const els = getLogElements(container)
+        expect(els.length).toEqual(survivors.length + 2)
+        expect(els[els.length - 1].innerHTML).toEqual(
+          expect.stringContaining(">post 1\n<")
+        )
+      })
+
+      it("falls back to a full re-render when the view is removed", () => {
+        fakeRaf.invoke(component.renderBufferRafId as number)
+        fakeRaf.invoke(component.renderBufferRafId as number)
+        expect(getLogElements(container).length).toEqual(initLineCount)
+
+        const logStore = component.props.logStore
+        logStore.removeSpans(["fe"])
+        component.onLogUpdate({ action: LogUpdateAction.truncate })
+
+        expect(getLogElements(container).length).toEqual(0)
+      })
+    })
   })
 })
