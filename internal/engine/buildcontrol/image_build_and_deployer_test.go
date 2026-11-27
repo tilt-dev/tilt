@@ -402,6 +402,87 @@ ENTRYPOINT /go/bin/sancho
 	testutils.AssertFileInTar(t, tar.NewReader(f.docker.BuildContext), expected)
 }
 
+// Regression test for https://github.com/tilt-dev/tilt/issues/6634: a reused
+// base image must inject the engine's latest tag into a child's FROM, not the
+// (possibly stale) ImageMap status from the apiserver.
+func TestMultiStageDockerBuildReusedBaseWithStaleImageMap(t *testing.T) {
+	f := newIBDFixture(t, clusterid.ProductGKE)
+
+	manifest := NewSanchoDockerBuildMultiStageManifest(f)
+	baseTarget := manifest.ImageTargets[0]
+	childTarget := manifest.ImageTargets[1]
+	baseID := baseTarget.ID()
+	childID := childTarget.ID()
+
+	// The base was just (re)built elsewhere and propagated into this manifest's
+	// state as the latest result. The child depends on it and must rebuild.
+	latestBaseResult := store.NewImageBuildResultSingleRef(
+		baseID, container.MustParseNamedTagged("sancho-base:tilt-latest"))
+	childResult := store.NewImageBuildResultSingleRef(
+		childID, container.MustParseNamedTagged("sancho:tilt-prebuilt2"))
+
+	stateSet := store.BuildStateSet{
+		// Base is clean -> reused (not rebuilt) in this pass.
+		baseID: store.NewBuildState(latestBaseResult, nil, nil),
+		// Child depends on the base, which changed -> rebuilt.
+		childID: store.NewBuildState(childResult, nil, []model.TargetID{baseID}),
+	}
+
+	// Seed the apiserver ImageMap specs.
+	for _, iTarget := range manifest.ImageTargets {
+		im := v1alpha1.ImageMap{
+			ObjectMeta: metav1.ObjectMeta{Name: iTarget.ID().Name.String()},
+			Spec:       iTarget.ImageMapSpec,
+		}
+		f.upsertSpec(&im)
+	}
+
+	// Crucially, the base ImageMap status on the apiserver is STALE: it still
+	// points at an older tag than the latest result in stateSet, simulating the
+	// asynchronous flush lagging behind the engine's propagated result.
+	staleBase := v1alpha1.ImageMap{
+		ObjectMeta: metav1.ObjectMeta{Name: baseID.Name.String()},
+		Spec:       baseTarget.ImageMapSpec,
+		Status: store.NewImageBuildResultSingleRef(
+			baseID, container.MustParseNamedTagged("sancho-base:tilt-stale")).ImageMapStatus,
+	}
+	f.updateStatus(&staleBase)
+
+	// Cluster is normally attached to the build state by the engine.
+	for _, iTarget := range manifest.ImageTargets {
+		s := stateSet[iTarget.ID()]
+		s.Cluster = f.cluster
+		stateSet[iTarget.ID()] = s
+	}
+
+	kTarget := manifest.DeployTarget.(model.K8sTarget)
+	f.upsertSpec(&v1alpha1.KubernetesApply{
+		ObjectMeta: metav1.ObjectMeta{Name: kTarget.ID().Name.String()},
+		Spec:       kTarget.KubernetesApplySpec,
+	})
+
+	_, err := f.ibd.BuildAndDeploy(f.ctx, f.st, BuildTargets(manifest), stateSet)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Only the child is rebuilt; the base is reused.
+	assert.Equal(t, 1, f.docker.BuildCount)
+
+	// The child must be built FROM the latest base tag, not the stale apiserver
+	// one.
+	expected := testutils.ExpectedFile{
+		Path: "Dockerfile",
+		Contents: `
+FROM sancho-base:tilt-latest
+ADD . .
+RUN go install github.com/tilt-dev/sancho
+ENTRYPOINT /go/bin/sancho
+`,
+	}
+	testutils.AssertFileInTar(t, tar.NewReader(f.docker.BuildContext), expected)
+}
+
 func TestK8sUpsertTimeout(t *testing.T) {
 	f := newIBDFixture(t, clusterid.ProductGKE)
 
