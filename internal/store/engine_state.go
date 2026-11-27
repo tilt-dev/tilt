@@ -736,10 +736,13 @@ func (ms *ManifestState) AddPendingFileChange(targetID model.TargetID, file stri
 	if ms.IsBuilding() {
 		build := ms.EarliestCurrentBuild()
 		if timestamp.Before(build.StartTime) {
-			// this file change occurred before the build started, but if the current build already knows
-			// about it (from another target or rapid successive changes that weren't de-duped), it can be ignored
-			for _, edit := range build.Edits {
-				if edit == file {
+			// this file change occurred before the build started. If this target already had it
+			// pending when the build started, the build consumed it for this target and it can be
+			// ignored. The build's Edits span every target, so a match there alone doesn't mean
+			// this target is being rebuilt.
+			if bs, ok := ms.BuildStatus(targetID); ok {
+				if prev, seen := bs.FileChanges[file]; seen && prev.Before(build.StartTime) &&
+					(bs.ConsumedChanges.IsZero() || prev.After(bs.ConsumedChanges)) {
 					return
 				}
 			}
